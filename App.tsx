@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Bell, 
-  Search, 
-  Menu, 
-  X, 
+import {
+  Bell,
+  Search,
+  Menu,
+  X,
   Sparkles,
   ChevronDown,
   ChevronRight,
@@ -22,15 +22,16 @@ import {
   Monitor,
   ExternalLink,
   ChevronLeft,
-  DollarSign
+  DollarSign,
+  Tv
 } from 'lucide-react';
-import { 
-  MASTER_NAV_ITEMS, 
-  PASTOR_NAV_ITEMS, 
-  LEADER_NAV_ITEMS, 
-  MEMBER_NAV_ITEMS, 
-  MOCK_TENANT, 
-  MOCK_CURRENT_USER 
+import {
+  MASTER_NAV_ITEMS,
+  PASTOR_NAV_ITEMS,
+  LEADER_NAV_ITEMS,
+  MEMBER_NAV_ITEMS,
+  MOCK_TENANT,
+  MOCK_CURRENT_USER
 } from './constants';
 import { UserRole } from './types';
 import Dashboard from './components/Dashboard';
@@ -71,9 +72,7 @@ const RoleSwitcher = ({ currentRole, onSwitch }: { currentRole: UserRole, onSwit
               <button
                 key={r.role}
                 onClick={() => { onSwitch(r.role); setIsOpen(false); navigate('/app'); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
-                  currentRole === r.role ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all ${currentRole === r.role ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
               >
                 {r.icon}
                 {r.label}
@@ -82,13 +81,13 @@ const RoleSwitcher = ({ currentRole, onSwitch }: { currentRole: UserRole, onSwit
           </div>
           <div className="h-px bg-white/5 my-3 mx-2" />
           <p className="text-[10px] font-bold text-zinc-500 uppercase px-4 py-2 tracking-widest">Páginas de Demonstração</p>
-          <button 
+          <button
             onClick={() => { navigate('/prayer/new'); setIsOpen(false); }}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-all"
           >
             <Heart size={14} /> Form de Oração
           </button>
-          <button 
+          <button
             onClick={() => { navigate('/prayer-screen'); setIsOpen(false); }}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold text-indigo-400 hover:bg-indigo-500/10 transition-all"
           >
@@ -96,7 +95,7 @@ const RoleSwitcher = ({ currentRole, onSwitch }: { currentRole: UserRole, onSwit
           </button>
         </div>
       )}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-14 h-14 bg-zinc-100 text-zinc-950 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
       >
@@ -110,12 +109,12 @@ const QuickActionsMenu = ({ user }: { user: any }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const isMaster = user.role === UserRole.MASTER_ADMIN;
-  
+
   const actions = isMaster ? [
     { label: 'Nova Igreja', icon: <Plus size={16} />, path: '/app/churches' },
     { label: 'Gerenciar Planos', icon: <DollarSign size={16} />, path: '/app/plans' },
   ] : [
-    { label: 'Novo Membro', icon: <User size={16} />, path: '/app/members' },
+    { label: 'Novo Membro', icon: <User size={16} />, path: '/app/members', state: { openNewMember: true } },
     { label: 'Moderador Orações', icon: <Heart size={16} />, path: '/app/prayer-moderation' },
     { label: 'Enviar Oração', icon: <Plus size={16} />, path: '/prayer/new' },
     { label: 'Abrir Telão', icon: <Monitor size={16} />, path: '/prayer-screen' },
@@ -123,7 +122,7 @@ const QuickActionsMenu = ({ user }: { user: any }) => {
 
   return (
     <div className="relative">
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-4 py-2 ${isMaster ? 'bg-white text-zinc-950' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'} rounded-2xl text-sm font-bold hover:opacity-90 transition-all`}
       >
@@ -136,23 +135,27 @@ const QuickActionsMenu = ({ user }: { user: any }) => {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
           <div className="absolute right-0 mt-3 w-60 bg-zinc-900 border border-white/10 rounded-[2rem] shadow-2xl z-20 py-3 animate-in fade-in zoom-in-95 duration-200">
-             <p className="text-[10px] font-black text-zinc-500 uppercase px-5 py-2 border-b border-white/5 mb-2 tracking-widest">Menu de Atividade</p>
-             {actions.map((action, i) => (
-               <button
-                 key={i}
-                 onClick={() => { 
-                   navigate(action.path); 
-                   setIsOpen(false); 
-                 }}
-                 className="w-full flex items-center justify-between gap-3 px-5 py-3 text-sm font-semibold text-zinc-300 hover:bg-white/5 hover:text-white transition-all text-left"
-               >
-                 <div className="flex items-center gap-3">
-                   <span className="text-blue-500">{action.icon}</span>
-                   {action.label}
-                 </div>
-                 <ChevronRight size={12} className="text-zinc-600" />
-               </button>
-             ))}
+            <p className="text-[10px] font-black text-zinc-500 uppercase px-5 py-2 border-b border-white/5 mb-2 tracking-widest">Menu de Atividade</p>
+            {actions.map((action, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  if (action.state) {
+                    navigate(action.path, { state: action.state });
+                  } else {
+                    navigate(action.path);
+                  }
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center justify-between gap-3 px-5 py-3 text-sm font-semibold text-zinc-300 hover:bg-white/5 hover:text-white transition-all text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-blue-500">{action.icon}</span>
+                  {action.label}
+                </div>
+                <ChevronRight size={12} className="text-zinc-600" />
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -196,16 +199,14 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
             else if (item.id === 'prayer-screen-demo' || item.id === 'prayer-screen-link') path = '/prayer-screen';
             else if (item.id === 'settings' || item.id === 'profile' || item.id === 'master-settings') path = '/app/settings';
             else if (item.id !== 'dashboard' && item.id !== 'master-dashboard') path = `/app/${item.id}`;
-            
+
             const isActive = location.pathname === path;
-            
+
             return (
               <Link
                 key={item.id}
                 to={path}
-                className={`flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                  isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
-                }`}
+                className={`flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className={isActive ? 'text-white' : 'text-zinc-500 transition-colors'}>{item.icon}</span>
@@ -219,8 +220,8 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
 
         <div className="p-6 border-t border-white/5 space-y-4">
           <div onClick={() => navigate('/')} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-500/10 cursor-pointer transition-all group text-zinc-400 hover:text-rose-400">
-             <LogOut size={20} />
-             <span className="text-sm font-bold">Encerrar Sessão</span>
+            <LogOut size={20} />
+            <span className="text-sm font-bold">Encerrar Sessão</span>
           </div>
           <div className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-950 border border-white/5 shadow-inner">
             <img src={user.avatar} className="w-11 h-11 rounded-2xl ring-2 ring-white/10 shadow-lg object-cover" alt="" />

@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Layers, 
-  TrendingUp, 
-  DollarSign, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  Layers,
+  TrendingUp,
+  DollarSign,
+  Settings,
   MessageSquare,
   Globe,
   CreditCard,
@@ -92,16 +92,16 @@ export const MEMBER_NAV_ITEMS = [
 
 export const MOCK_CHURCHES: ChurchTenant[] = [
   {
-    id: '1',
+    id: '779bc274-eab3-489e-a947-d4b0d39ed6ea',
     name: 'Igreja Vida Nova',
     slug: 'vida-nova',
     logo: 'https://picsum.photos/200/200?random=1',
     status: ChurchStatus.ACTIVE,
-    plan: PlanType.BASIC, 
+    plan: PlanType.PRO,
     primaryColor: '#2563eb',
     secondaryColor: '#1e40af',
     createdAt: '2023-01-10',
-    stats: { totalMembers: 48, activeCells: 4, monthlyGrowth: 12.5 }
+    stats: { totalMembers: 0, activeCells: 0, monthlyGrowth: 0 }
   }
 ];
 
@@ -109,20 +109,20 @@ export const MOCK_TENANT = MOCK_CHURCHES[0];
 
 export const MOCK_CURRENT_USER = {
   name: 'Pr. André Lourenço',
-  role: UserRole.PASTOR, 
+  role: UserRole.PASTOR,
   avatar: 'https://i.pravatar.cc/150?u=pastor_andre'
 };
 
 export const MOCK_MEMBERS: Member[] = [
-  { 
-    id: '1', 
-    name: 'João Silva', 
-    email: 'joao@email.com', 
-    phone: '(11) 98888-7777', 
-    role: UserRole.CELL_LEADER_DISCIPLE, 
-    stage: LadderStage.SEND, 
-    cellId: 'c1', 
-    joinedDate: '2022-01-15', 
+  {
+    id: '1',
+    name: 'João Silva',
+    email: 'joao@email.com',
+    phone: '(11) 98888-7777',
+    role: UserRole.CELL_LEADER_DISCIPLE,
+    stage: LadderStage.SEND,
+    cellId: 'c1',
+    joinedDate: '2022-01-15',
     avatar: 'https://i.pravatar.cc/150?u=1',
     stageHistory: [
       { stage: LadderStage.WIN, date: '2022-01-15', recordedBy: 'Admin', notes: 'Aceitou a Jesus no culto de jovens.' },
@@ -131,15 +131,15 @@ export const MOCK_MEMBERS: Member[] = [
       { stage: LadderStage.SEND, date: '2023-01-15', recordedBy: 'Pr. André', notes: 'Iniciou liderança da Célula Renovo.' }
     ]
   },
-  { 
-    id: '2', 
-    name: 'Maria Santos', 
-    email: 'maria@email.com', 
-    phone: '(11) 97777-6666', 
-    role: UserRole.CELL_LEADER_DISCIPLE, 
-    stage: LadderStage.DISCIPLE, 
-    cellId: 'c1', 
-    joinedDate: '2023-03-10', 
+  {
+    id: '2',
+    name: 'Maria Santos',
+    email: 'maria@email.com',
+    phone: '(11) 97777-6666',
+    role: UserRole.CELL_LEADER_DISCIPLE,
+    stage: LadderStage.DISCIPLE,
+    cellId: 'c1',
+    joinedDate: '2023-03-10',
     avatar: 'https://i.pravatar.cc/150?u=2',
     stageHistory: [
       { stage: LadderStage.WIN, date: '2023-03-10', recordedBy: 'João Silva' },
@@ -210,6 +210,7 @@ export const MOCK_MEETING_REPORTS: MeetingReport[] = [
     date: '2024-06-04',
     presentMemberIds: ['1', '2'],
     visitorCount: 2,
+    childrenCount: 0,
     offeringAmount: 150.00,
     report: 'Reunião abençoada com muito louvor e uma palavra sobre fé.',
     recordedBy: 'João Silva'

@@ -42,11 +42,19 @@ export enum PrayerStatus {
   REJECTED = 'REJEITADO'
 }
 
+export enum MemberOrigin {
+  EVANGELISM = 'EVANGELISMO',
+  CELL_VISIT = 'VISITA DE CÉLULA',
+  PRAYER_REQUEST = 'PEDIDO DE ORAÇÃO',
+  OTHER_CHURCH = 'OUTRA IGREJA'
+}
+
 export interface StageHistory {
   stage: LadderStage;
   date: string;
   notes?: string;
   recordedBy: string;
+  milestones?: string[];
 }
 
 export interface Member {
@@ -58,10 +66,23 @@ export interface Member {
   stage: LadderStage;
   cellId: string;
   disciplerId?: string;
-  baptismDate?: string;
-  joinedDate: string;
   avatar: string;
   stageHistory: StageHistory[];
+  completedMilestones?: string[];
+  origin?: MemberOrigin;
+  baptismDate?: string;
+  joinedDate: string;
+  cep?: string;
+  state?: string;
+  city?: string;
+  neighborhood?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  maritalStatus?: string;
+  spouseId?: string | null;
+  login?: string;
+  password?: string;
 }
 
 export interface MeetingReport {
@@ -70,6 +91,8 @@ export interface MeetingReport {
   date: string;
   presentMemberIds: string[];
   visitorCount: number;
+  childrenCount: number;
+  photoUrl?: string;
   offeringAmount: number;
   report: string;
   recordedBy: string;
@@ -86,6 +109,7 @@ export interface Cell {
   membersCount: number;
   status: 'ACTIVE' | 'MULTIPLYING' | 'INACTIVE';
   averageAttendance?: number;
+  logo?: string;
 }
 
 export interface PrayerRequest {

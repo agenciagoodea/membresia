@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
+import React, { useState, useEffect } from 'react';
+import {
+  TrendingUp,
+  TrendingDown,
   Download,
   Plus,
   ArrowUpRight,
@@ -16,7 +16,9 @@ import {
   Search,
   Wallet
 } from 'lucide-react';
-import { MOCK_FINANCE } from '../constants';
+import { MOCK_TENANT } from '../constants';
+import { FinancialRecord } from '../types';
+import { financeService } from '../services/financeService';
 
 const FinanceStatCard = ({ title, amount, trend, icon, color, isNegative }: any) => (
   <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group">
@@ -28,7 +30,7 @@ const FinanceStatCard = ({ title, amount, trend, icon, color, isNegative }: any)
         <MoreVertical size={20} />
       </button>
     </div>
-    
+
     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">{title}</p>
     <div className="flex items-baseline gap-2">
       <span className="text-zinc-500 text-sm font-bold">R$</span>
@@ -42,7 +44,7 @@ const FinanceStatCard = ({ title, amount, trend, icon, color, isNegative }: any)
       </div>
       <span className="text-zinc-600 text-[9px] font-black uppercase tracking-widest">vs mês anterior</span>
     </div>
-    
+
     {/* Decorativo de fundo */}
     <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
       <DollarSign size={120} />
@@ -51,9 +53,42 @@ const FinanceStatCard = ({ title, amount, trend, icon, color, isNegative }: any)
 );
 
 const Finance: React.FC = () => {
-  const totalIncome = MOCK_FINANCE.reduce((acc, curr) => curr.type === 'INCOME' ? acc + curr.amount : acc, 0);
-  const totalExpense = MOCK_FINANCE.reduce((acc, curr) => curr.type === 'EXPENSE' ? acc + curr.amount : acc, 0);
+  const [records, setRecords] = useState<FinancialRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const loadRecords = async () => {
+    try {
+      setLoading(true);
+      const data = await financeService.getAll(MOCK_TENANT.id);
+      setRecords(data);
+    } catch (error) {
+      console.error('Erro ao carregar registros financeiros:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const filteredRecords = records.filter(r =>
+    r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalIncome = records.reduce((acc, curr) => curr.type === 'INCOME' ? acc + curr.amount : acc, 0);
+  const totalExpense = records.reduce((acc, curr) => curr.type === 'EXPENSE' ? acc + curr.amount : acc, 0);
   const balance = totalIncome - totalExpense;
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center p-20 text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">
+        Sincronizando Tesouraria...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
@@ -75,29 +110,29 @@ const Finance: React.FC = () => {
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <FinanceStatCard 
-          title="Total de Entradas" 
-          amount={totalIncome} 
-          trend={15.4} 
-          icon={<TrendingUp size={24} />} 
-          color="bg-emerald-500/10 text-emerald-500" 
+        <FinanceStatCard
+          title="Total de Entradas"
+          amount={totalIncome}
+          trend={15.4}
+          icon={<TrendingUp size={24} />}
+          color="bg-emerald-500/10 text-emerald-500"
         />
-        <FinanceStatCard 
-          title="Total de Saídas" 
-          amount={totalExpense} 
-          trend={2.1} 
-          icon={<TrendingDown size={24} />} 
-          color="bg-rose-500/10 text-rose-500" 
+        <FinanceStatCard
+          title="Total de Saídas"
+          amount={totalExpense}
+          trend={2.1}
+          icon={<TrendingDown size={24} />}
+          color="bg-rose-500/10 text-rose-500"
           isNegative
         />
-        
+
         <div className="bg-gradient-to-br from-blue-600 to-indigo-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group border border-white/10">
           <div className="absolute top-0 right-0 p-8 opacity-20"><Wallet size={100} /></div>
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start mb-8">
-               <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                 <PieChart size={24} className="text-white" />
-               </div>
+              <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+                <PieChart size={24} className="text-white" />
+              </div>
             </div>
             <div>
               <p className="text-[10px] font-black text-blue-100 uppercase tracking-[0.3em] mb-2 opacity-70">Saldo Disponível em Conta</p>
@@ -108,10 +143,10 @@ const Finance: React.FC = () => {
                 </h3>
               </div>
               <div className="mt-6 flex items-center gap-2">
-                 <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-white w-3/4 animate-pulse"></div>
-                 </div>
-                 <span className="text-[9px] font-black text-white uppercase whitespace-nowrap">Meta 75%</span>
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-white w-3/4 animate-pulse"></div>
+                </div>
+                <span className="text-[9px] font-black text-white uppercase whitespace-nowrap">Meta 75%</span>
               </div>
             </div>
           </div>
@@ -127,7 +162,13 @@ const Finance: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-3 bg-zinc-950 px-5 py-2.5 rounded-2xl border border-white/5 focus-within:ring-2 focus-within:ring-blue-600 transition-all group">
               <Search size={16} className="text-zinc-600 group-focus-within:text-blue-500" />
-              <input type="text" placeholder="Filtrar por descrição..." className="bg-transparent border-none outline-none text-xs font-bold text-zinc-300 w-48" />
+              <input
+                type="text"
+                placeholder="Filtrar por descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs font-bold text-zinc-300 w-48"
+              />
             </div>
             <button className="p-3 bg-zinc-950 border border-white/5 text-zinc-500 hover:text-white rounded-2xl transition-all">
               <Filter size={18} />
@@ -147,13 +188,12 @@ const Finance: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {MOCK_FINANCE.map((record) => (
+              {filteredRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-white/5 transition-all group">
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-5">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
-                        record.type === 'INCOME' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
-                      }`}>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${record.type === 'INCOME' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                        }`}>
                         {record.type === 'INCOME' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
                       </div>
                       <div>
@@ -190,33 +230,33 @@ const Finance: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
+
         {/* Footer da Tabela */}
         <div className="p-10 bg-zinc-950/30 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
-           <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-                 Mostrando <span className="text-white">5</span> de <span className="text-white">24</span> lançamentos
-              </div>
-           </div>
-           <div className="flex items-center gap-2">
-              <button className="px-6 py-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Anterior</button>
-              <button className="px-6 py-3 bg-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-zinc-700">Próximo</button>
-           </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
+              Mostrando <span className="text-white">{filteredRecords.length}</span> de <span className="text-white">{records.length}</span> lançamentos
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-6 py-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Anterior</button>
+            <button className="px-6 py-3 bg-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-zinc-700">Próximo</button>
+          </div>
         </div>
       </div>
-      
+
       {/* Widget Informativo IA */}
       <div className="bg-zinc-100 p-10 rounded-[3rem] text-zinc-950 flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden group">
-         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><TrendingUp size={150} /></div>
-         <div className="space-y-4 max-w-2xl">
-            <h4 className="text-3xl font-black tracking-tighter uppercase leading-none">Insight Financeiro IA</h4>
-            <p className="text-zinc-600 font-bold leading-relaxed italic text-lg">
-              "Baseado na média dos últimos 3 meses, sua igreja apresenta um crescimento de 12% nas ofertas voluntárias. Recomendamos destinar o excedente para o fundo de expansão de novas células."
-            </p>
-         </div>
-         <button className="shrink-0 px-10 py-5 bg-zinc-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-105 transition-all flex items-center gap-3">
-            Explorar Insights <ArrowRight size={18} />
-         </button>
+        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><TrendingUp size={150} /></div>
+        <div className="space-y-4 max-w-2xl">
+          <h4 className="text-3xl font-black tracking-tighter uppercase leading-none">Insight Financeiro IA</h4>
+          <p className="text-zinc-600 font-bold leading-relaxed italic text-lg">
+            "Baseado na média dos últimos 3 meses, sua igreja apresenta um crescimento de 12% nas ofertas voluntárias. Recomendamos destinar o excedente para o fundo de expansão de novas células."
+          </p>
+        </div>
+        <button className="shrink-0 px-10 py-5 bg-zinc-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-105 transition-all flex items-center gap-3">
+          Explorar Insights <ArrowRight size={18} />
+        </button>
       </div>
     </div>
   );
