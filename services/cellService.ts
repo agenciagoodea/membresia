@@ -75,5 +75,16 @@ export const cellService = {
 			.eq('id', id);
 
 		if (error) throw error;
+	},
+
+	async getReports(cellId: string) {
+		const { data, error } = await supabase
+			.from('meeting_reports')
+			.select('*')
+			.eq('cell_id', cellId)
+			.order('date', { ascending: false });
+
+		if (error) throw error;
+		return data || [];
 	}
 };

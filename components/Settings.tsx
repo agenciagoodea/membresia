@@ -16,14 +16,16 @@ import {
   Map,
   Home,
   Heart,
-  Users,
   X,
-  Check,
-  Target,
+  Activity,
+  Lock,
+  Calendar,
   ChevronRight,
   Mail,
   Phone,
-  Lock
+  Target,
+  Users,
+  Check
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
@@ -310,12 +312,21 @@ const Settings: React.FC<{ user?: any }> = ({ user = MOCK_CURRENT_USER }) => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CPF</label>
+                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CPF</label>
+                       <div className="relative">
+                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                           <Target size={16} className="text-zinc-600" />
+                         </div>
+                         <input value={profileData.cpf || ''} onChange={e => setProfileData({ ...profileData, cpf: e.target.value })} placeholder="000.000.000-00" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Nascimento</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Target size={16} className="text-zinc-600" />
+                          <Calendar size={16} className="text-zinc-600" />
                         </div>
-                        <input value={profileData.cpf || ''} onChange={e => setProfileData({ ...profileData, cpf: e.target.value })} placeholder="000.000.000-00" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                        <input type="date" value={profileData.birthDate || ''} onChange={e => setProfileData({ ...profileData, birthDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
                       </div>
                     </div>
                     <div className="space-y-2">

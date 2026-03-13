@@ -82,12 +82,11 @@ export const LEADER_NAV_ITEMS = [
 // MEMBER LEVEL (Regular user / Visitor)
 export const MEMBER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Minha Jornada', icon: <LayoutDashboard size={20} /> },
-  { id: 'ladder', label: 'Meu Progresso', icon: <TrendingUp size={20} /> },
-  { id: 'my-cell', label: 'Minha Célula', icon: <MapPin size={20} /> },
+  { id: 'my-progress', label: 'Meu Progresso', icon: <TrendingUp size={20} /> },
+  { id: 'my-cell-detail', label: 'Minha Célula', icon: <MapPin size={20} /> },
   { id: 'prayer-request-new', label: 'Enviar Oração', icon: <Plus size={20} /> },
-  { id: 'prayer-screen-demo', label: 'Ver Telão (Demo)', icon: <Monitor size={20} /> },
   { id: 'my-prayers', label: 'Histórico de Pedidos', icon: <Heart size={20} /> },
-  { id: 'profile', label: 'Configurações', icon: <Settings size={20} /> },
+  { id: 'settings', label: 'Configurações', icon: <Settings size={20} /> },
 ];
 
 export const MOCK_CHURCHES: ChurchTenant[] = [

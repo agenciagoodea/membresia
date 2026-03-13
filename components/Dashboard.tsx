@@ -9,7 +9,6 @@ import {
   ArrowDownRight,
   MoreVertical,
   Globe,
-  Activity,
   DollarSign,
   PieChart,
   ShieldAlert,
@@ -20,8 +19,17 @@ import {
   MapPin,
   CheckCircle2,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  Map,
+  X,
+  Bell,
+  Activity,
+  ChevronRight,
+  Mail,
+  Phone,
+  Lock
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import {
   XAxis,
   YAxis,
@@ -40,6 +48,10 @@ import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import { prayerService } from '../services/prayerService';
 import PageHeader from './Shared/PageHeader';
+import MyProgress from './Member/MyProgress';
+import MyCellDetail from './Member/MyCellDetail';
+import PrayerHistory from './Member/PrayerHistory';
+import PrayerForm from './Prayer/PrayerForm';
 
 
 const dataGrowth = [
@@ -50,6 +62,7 @@ const dataGrowth = [
   { name: 'Mai', members: 425, revenue: 15500 },
   { name: 'Jun', members: 450, revenue: 18000 },
 ];
+
 
 const StatCard = ({ title, value, trend, icon, color, subValue }: any) => (
   <div className="bg-zinc-900 p-8 rounded-[2rem] border border-white/5 shadow-2xl hover:bg-zinc-800 transition-all group overflow-hidden relative">
@@ -388,90 +401,211 @@ const LeaderDashboard = ({ user, members, cells }: { user: any, members: Member[
   );
 };
 
-const MemberDashboard = ({ user, prayers }: { user: any, prayers: PrayerRequest[] }) => (
-  <div className="space-y-10 animate-in fade-in duration-700">
-    <div className="bg-zinc-100 p-12 md:p-16 rounded-[3.5rem] text-zinc-950 shadow-2xl relative overflow-hidden">
-      <div className="absolute -top-10 -right-10 opacity-5"><Zap size={300} /></div>
-      <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Paz do Senhor, <br />{user.name.split(' ')[0]}!</h2>
-      <p className="text-zinc-600 max-w-lg mb-12 font-bold text-lg leading-relaxed italic">Sua caminhada é preciosa para nós. <br />Veja seu progresso na Escada do Sucesso.</p>
+const MemberDashboard = ({ user, prayers, activeTab = 'JOURNEY' }: { user: any, prayers: PrayerRequest[], activeTab?: string }) => {
+  const [mentors, setMentors] = useState<{ leader?: Member, pastor?: Member }>({});
+  const [isPrayerModalOpen, setIsPrayerModalOpen] = useState(false);
+  const location = useLocation();
 
-      <div className="flex items-center gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide">
-        <div className="flex flex-col items-center shrink-0">
-          <div className="w-20 h-20 bg-emerald-600 text-white rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20">
-            <CheckCircle2 size={40} />
-          </div>
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Ganhar</span>
-        </div>
-        <div className="h-0.5 w-16 bg-zinc-300 shrink-0"></div>
-        <div className="flex flex-col items-center shrink-0">
-          <div className="w-20 h-20 bg-blue-600 text-white rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl shadow-blue-500/30 animate-pulse ring-4 ring-white">
-            <Clock size={40} />
-          </div>
-          <span className="text-[10px] font-black text-zinc-950 uppercase tracking-[0.3em]">Consolidar</span>
-        </div>
-        <div className="h-0.5 w-16 bg-zinc-300 shrink-0"></div>
-        <div className="flex flex-col items-center opacity-30 shrink-0">
-          <div className="w-20 h-20 bg-zinc-400 text-white rounded-[1.5rem] flex items-center justify-center mb-4">
-            <Target size={40} />
-          </div>
-          <span className="text-[10px] font-black text-zinc-950 uppercase tracking-[0.3em]">Discipular</span>
-        </div>
-      </div>
-    </div>
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('action') === 'new-prayer') {
+      setIsPrayerModalOpen(true);
+    }
+  }, [location]);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-      <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
-        <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
-          <div className="w-1.5 h-6 bg-rose-500 rounded-full" /> Minhas Orações
-        </h4>
-        <div className="space-y-5">
-          {prayers.slice(0, 2).map(r => (
-            <div key={r.id} className="p-6 bg-zinc-950 rounded-[1.5rem] border border-white/5 shadow-inner">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{new Date(r.createdAt).toLocaleDateString()}</span>
-                <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${r.status === PrayerStatus.IN_PRAYER ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                  {r.status}
-                </span>
+  useEffect(() => {
+    const loadMentors = async () => {
+      if (user.disciplerId || user.pastorId) {
+        try {
+          const [leader, pastor] = await Promise.all([
+            user.disciplerId ? memberService.getById(user.disciplerId) : Promise.resolve(undefined),
+            user.pastorId ? memberService.getById(user.pastorId) : Promise.resolve(undefined)
+          ]);
+          setMentors({ leader: leader as any, pastor: pastor as any });
+        } catch (e) {
+          console.error("Erro ao carregar mentores:", e);
+        }
+      }
+    };
+    loadMentors();
+  }, [user]);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'PROGRESS':
+        return <MyProgress user={user} />;
+      case 'CELL':
+        return <MyCellDetail user={user} />;
+      case 'PRAYERS':
+        return <PrayerHistory user={user} />;
+      default:
+        return (
+          <div className="space-y-10">
+            <div className="bg-zinc-100 p-12 md:p-16 rounded-[3.5rem] text-zinc-950 shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 opacity-5"><Zap size={300} /></div>
+              <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Paz do Senhor, <br />{user.name.split(' ')[0]}!</h2>
+              <p className="text-zinc-600 max-w-lg mb-12 font-bold text-lg leading-relaxed italic">Sua caminhada é preciosa para nós. <br />Veja seu progresso na Escada do Sucesso.</p>
+
+              <div className="flex items-center gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide">
+                {[
+                  { stage: LadderStage.WIN, icon: <CheckCircle2 size={40} />, color: 'bg-emerald-600', active: user.stage === LadderStage.WIN || true },
+                  { stage: LadderStage.CONSOLIDATE, icon: <Clock size={40} />, color: 'bg-blue-600', active: user.stage === LadderStage.CONSOLIDATE },
+                  { stage: LadderStage.DISCIPLE, icon: <Target size={40} />, color: 'bg-amber-500', active: user.stage === LadderStage.DISCIPLE },
+                  { stage: LadderStage.SEND, icon: <Zap size={40} />, color: 'bg-indigo-600', active: user.stage === LadderStage.SEND },
+                ].map((s, i) => (
+                  <React.Fragment key={s.stage}>
+                    <div className={`flex flex-col items-center shrink-0 ${!s.active ? 'opacity-30' : ''}`}>
+                      <div className={`w-20 h-20 ${s.color} text-white rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl ${s.active ? 'ring-4 ring-white animate-pulse' : ''}`}>
+                        {s.icon}
+                      </div>
+                      <span className="text-[10px] font-black text-zinc-950 uppercase tracking-[0.3em]">{s.stage}</span>
+                    </div>
+                    {i < 3 && <div className="h-0.5 w-16 bg-zinc-300 shrink-0"></div>}
+                  </React.Fragment>
+                ))}
               </div>
-              <p className="text-sm text-zinc-300 font-medium italic leading-relaxed">"{r.request}"</p>
             </div>
-          ))}
-          <button className="w-full py-5 bg-zinc-800 border border-white/5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all mt-4">
-            Novo Pedido de Fé
-          </button>
-        </div>
-      </div>
 
-      <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
-        <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
-          <div className="w-1.5 h-6 bg-emerald-500 rounded-full" /> Minha Célula
-        </h4>
-        <div className="flex items-center gap-5 p-6 bg-blue-600 rounded-[2rem] text-white shadow-xl shadow-blue-500/20 mb-8">
-          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-            <Layers size={28} />
+            {/* BARRA DE MENTORES */}
+            <div className="bg-white p-4 rounded-[2rem] shadow-xl flex flex-wrap items-center gap-8 px-8">
+              <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 pr-8 hidden md:block">Meus Mentores</div>
+              
+              <div className="flex items-center gap-4">
+                <img src={mentors.pastor?.avatar || 'https://i.pravatar.cc/150?u=pastor'} className="w-10 h-10 rounded-full ring-2 ring-zinc-100" />
+                <div>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Meu Pastor</p>
+                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.pastor?.name || 'Carregando...'}</p>
+                </div>
+              </div>
+
+              <div className="w-px h-8 bg-zinc-100 hidden sm:block" />
+
+              <div className="flex items-center gap-4">
+                <img src={mentors.leader?.avatar || 'https://i.pravatar.cc/150?u=leader'} className="w-10 h-10 rounded-full ring-2 ring-zinc-100" />
+                <div>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Meu Discipulador</p>
+                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.leader?.name || 'Aguardando Direcionamento'}</p>
+                </div>
+              </div>
+
+              <div className="ml-auto hidden md:flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 italic text-[10px] font-medium text-zinc-500">
+                <Activity size={12} className="text-emerald-500" /> Cobertura Espiritual Ativa
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col">
+                <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
+                  <div className="w-1.5 h-6 bg-rose-500 rounded-full" /> Minhas Orações
+                </h4>
+                <div className="space-y-5 flex-1">
+                  {prayers.length > 0 ? prayers.slice(0, 2).map(r => (
+                    <div key={r.id} className="p-6 bg-zinc-950 rounded-[1.5rem] border border-white/5 shadow-inner">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{new Date(r.createdAt).toLocaleDateString()}</span>
+                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${r.status === PrayerStatus.IN_PRAYER ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                          {r.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-zinc-300 font-medium italic leading-relaxed line-clamp-2">"{r.request}"</p>
+                    </div>
+                  )) : (
+                    <div className="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum pedido recente</div>
+                  )}
+                </div>
+                <button 
+                  onClick={() => setIsPrayerModalOpen(true)}
+                  className="w-full py-5 bg-zinc-800 border border-white/5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all mt-4"
+                >
+                  Novo Pedido de Fé
+                </button>
+              </div>
+
+              <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col">
+                <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
+                  <div className="w-1.5 h-6 bg-emerald-500 rounded-full" /> Minha Célula
+                </h4>
+                <div className="flex items-center gap-5 p-6 bg-blue-600 rounded-[2rem] text-white shadow-xl shadow-blue-500/20 mb-8">
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                    <Layers size={28} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xl font-black uppercase tracking-tight leading-none truncate">Célula Renovo</p>
+                    <p className="text-[10px] text-blue-100 font-black uppercase tracking-[0.1em] mt-1 truncate">Líder: Pr. João Silva</p>
+                  </div>
+                </div>
+                <div className="space-y-5 px-4 mb-10 flex-1">
+                  <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
+                    <Calendar size={18} className="text-zinc-600" /> Terça-feira às 20h
+                  </div>
+                  <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
+                    <MapPin size={18} className="text-zinc-600" /> Rua das Flores, 123
+                  </div>
+                </div>
+                <button className="w-full py-5 bg-white text-zinc-950 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all text-center">
+                  Como Chegar
+                </button>
+              </div>
+
+              {/* CARD DE NOTÍCIAS (TERCEIRO CAMPO) */}
+              <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col relative overflow-hidden group">
+                <div className="absolute -top-10 -right-10 opacity-5 group-hover:opacity-10 transition-opacity"><Bell size={200} /></div>
+                <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
+                  <div className="w-1.5 h-6 bg-amber-500 rounded-full" /> Notícias & Eventos
+                </h4>
+                <div className="space-y-6 flex-1">
+                  <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 hover:bg-zinc-800 transition-all cursor-pointer">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[8px] font-black rounded-full uppercase tracking-widest">Destaque</span>
+                      <span className="text-[9px] text-zinc-600 font-bold uppercase">15 Jun</span>
+                    </div>
+                    <p className="text-sm font-black text-white uppercase leading-tight mb-2">Conferência de Células: Frutos do Espírito</p>
+                    <p className="text-[10px] text-zinc-500 font-bold leading-relaxed">Prepare-se para um tempo sobrenatural com toda a nossa liderança...</p>
+                  </div>
+                  <div className="p-5 bg-zinc-950 rounded-2xl border border-white/5 hover:bg-zinc-800 transition-all cursor-pointer">
+                    <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest mb-2">Aviso Ministerial</p>
+                    <p className="text-sm font-bold text-zinc-200 leading-tight">Batismo nas Águas em Agosto. Inscrições abertas no site.</p>
+                  </div>
+                </div>
+                <button className="w-full py-5 bg-zinc-950 border border-white/10 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] text-zinc-300 hover:text-white transition-all mt-4">
+                  Ver Todas
+                </button>
+              </div>
+            </div>
+
+            {/* Modal de Oração Inline */}
+            {isPrayerModalOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsPrayerModalOpen(false)} />
+                <div className="relative w-full max-w-4xl bg-zinc-950 rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
+                   <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
+                      <div>
+                        <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Enviar Pedido de Oração</h3>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Conecte seu clamor ao altar da igreja.</p>
+                      </div>
+                      <button onClick={() => setIsPrayerModalOpen(false)} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl">
+                        <X size={20} />
+                      </button>
+                   </div>
+                   <div className="max-h-[80vh] overflow-y-auto p-4 scrollbar-hide">
+                      <PrayerForm isInline onComplete={() => setIsPrayerModalOpen(false)} />
+                   </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-xl font-black uppercase tracking-tight leading-none">Célula Renovo</p>
-            <p className="text-[10px] text-blue-100 font-black uppercase tracking-[0.1em] mt-1">Líder: Pr. João Silva</p>
-          </div>
-        </div>
-        <div className="space-y-5 px-4 mb-10">
-          <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
-            <Calendar size={18} className="text-zinc-600" /> Terça-feira às 20h
-          </div>
-          <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
-            <MapPin size={18} className="text-zinc-600" /> Rua das Flores, 123
-          </div>
-        </div>
-        <button className="w-full py-5 bg-white text-zinc-950 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-white/5 hover:scale-105 transition-all text-center">
-          Como Chegar
-        </button>
-      </div>
+        );
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in duration-700">
+      {renderContent()}
     </div>
-  </div>
-);
+  );
+};
 
-const Dashboard: React.FC<{ user: any }> = ({ user }) => {
+const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTab }) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [cells, setCells] = useState<Cell[]>([]);
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
@@ -518,7 +652,7 @@ const Dashboard: React.FC<{ user: any }> = ({ user }) => {
     case UserRole.CELL_LEADER_DISCIPLE:
       return <LeaderDashboard user={user} members={members} cells={cells} />;
     case UserRole.MEMBER_VISITOR:
-      return <MemberDashboard user={user} prayers={prayers.filter(p => p.email === user.email)} />;
+      return <MemberDashboard user={user} prayers={prayers.filter(p => p.email === user.email)} activeTab={activeTab} />;
     default:
       return <div className="p-20 text-center text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">Acesso Restrito</div>;
   }

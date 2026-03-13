@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   UserCog,
   ShieldAlert,
+  Loader2,
   User,
   UserPlus,
   Users,
@@ -36,8 +37,10 @@ import {
 } from './constants';
 import { UserRole, PrayerStatus } from './types';
 import { supabase } from './services/supabaseClient';
+import { authService } from './services/authService';
 import { prayerService } from './services/prayerService';
 import { memberService } from './services/memberService';
+import Login from './components/Auth/Login';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
 import Cells from './components/Cells';
@@ -116,6 +119,19 @@ const RoleSwitcher = ({ currentRole, onSwitch }: { currentRole: UserRole, onSwit
       </button>
     </div>
   );
+};
+
+const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: any }) => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  if (!user) return null;
+  return <>{children}</>;
 };
 
 const QuickActionsMenu = ({ user }: { user: any }) => {
@@ -214,7 +230,9 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
         <nav className="flex-1 px-4 space-y-1.5 mt-4 overflow-y-auto scrollbar-hide">
           {navItems.map((item) => {
             let path = '/app';
-            if (item.id === 'prayer-request-new') path = '/prayer/new';
+            if (item.id === 'prayer-request-new') {
+              path = role === UserRole.MEMBER_VISITOR ? '/app?action=new-prayer' : '/prayer/new';
+            }
             else if (item.id === 'prayer-screen-demo' || item.id === 'prayer-screen-link') path = '/prayer-screen';
             else if (item.id === 'settings' || item.id === 'profile' || item.id === 'master-settings') path = '/app/settings';
             else if (item.id !== 'dashboard' && item.id !== 'master-dashboard') path = `/app/${item.id}`;
@@ -238,7 +256,7 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
         </nav>
 
         <div className="p-6 border-t border-white/5 space-y-4">
-          <div onClick={() => navigate('/')} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-500/10 cursor-pointer transition-all group text-zinc-400 hover:text-rose-400">
+          <div onClick={async () => { await authService.signOut(); navigate('/login'); }} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-500/10 cursor-pointer transition-all group text-zinc-400 hover:text-rose-400">
             <LogOut size={20} />
             <span className="text-sm font-bold uppercase tracking-widest text-[10px]">Encerrar Sessão</span>
           </div>
@@ -310,39 +328,58 @@ const Header = ({ user, onMenuToggle, notificationsCount = 0 }: { user: any, onM
 
 const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(MOCK_CURRENT_USER);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [pendingPrayersCount, setPendingPrayersCount] = useState(0);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Sincronizar dados do usuário inicial com o banco
-    const fetchAdminProfile = async () => {
-      if (currentUser.role === UserRole.CHURCH_ADMIN || currentUser.email === 'arao@mircentrosul.com') {
-        try {
-          const membersList = await memberService.getAll(MOCK_TENANT.id);
-          const realProfile = membersList.find(m => m.email === 'arao@mircentrosul.com') || membersList.find(m => m.role === UserRole.CHURCH_ADMIN);
-          if (realProfile) {
-            setCurrentUser(prev => ({
-              ...prev,
-              name: realProfile.name,
-              avatar: realProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(realProfile.name)}&background=2563eb&color=fff&size=200`,
-              email: realProfile.email
-            }));
-          }
-        } catch (e) {
-          console.error("Erro ao buscar a foto atualizada em App.tsx", e);
+    // Inicializar sessão
+    const initSession = async () => {
+      try {
+        const sessionData = await authService.getSession();
+        if (sessionData?.profile) {
+          setCurrentUser(sessionData.profile);
         }
+      } catch (err) {
+        console.error('Erro ao inicializar sessão:', err);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchAdminProfile();
-  }, [currentUser.role]);
+
+    initSession();
+
+    // Ouvir mudanças de auth
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
+      console.log('Auth Event:', event);
+      if (session?.user?.email) {
+        const profile = await memberService.getByEmail(session.user.email);
+        setCurrentUser(profile);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Buscar total de pendentes se houver usuário e church_id
+    if (currentUser?.church_id) {
+        loadPendingCount();
+    }
+  }, [currentUser]);
 
   const loadPendingCount = async () => {
+    if (!currentUser?.church_id) return;
     try {
       const { count, error } = await supabase
         .from('prayers')
         .select('*', { count: 'exact', head: true })
-        .eq('church_id', MOCK_TENANT.id)
+        .eq('church_id', currentUser.church_id) // Usar church_id do perfil real
         .eq('status', PrayerStatus.PENDING);
 
       if (!error) setPendingPrayersCount(count || 0);
@@ -352,7 +389,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    loadPendingCount();
+    if (!currentUser?.church_id) return;
 
     const subscription = prayerService.subscribeToPrayers((payload) => {
       console.log('Realtime Evento Global (Badge/Som):', payload.eventType);
@@ -370,7 +407,15 @@ const App: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [currentUser]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+      </div>
+    );
+  }
 
   const switchRole = (role: UserRole) => {
     if (role === UserRole.MASTER_ADMIN) {
@@ -404,6 +449,7 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/prayer/new/:slug" element={<PrayerForm />} />
         <Route path="/prayer-screen/:slug" element={<PrayerScreen />} />
         <Route path="/cadastro/:slug" element={<PublicRegistration />} />
@@ -413,55 +459,66 @@ const App: React.FC = () => {
         <Route path="/cadastro" element={<PublicRegistration />} />
 
         <Route path="/app/*" element={
-          <div className="min-h-screen bg-zinc-950 flex">
-            <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
-            <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
-              <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
-              <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
-                <Routes>
-                  <Route path="/" element={<Dashboard user={currentUser} />} />
+          <ProtectedRoute user={currentUser}>
+            <div className="min-h-screen bg-zinc-950 flex">
+              <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
+              <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
+                <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
+                <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
+                  <Routes>
+                    <Route path="/" element={<Dashboard user={currentUser} />} />
 
-                  {/* Rotas Administrativas de Igreja */}
-                  {(currentUser.role === UserRole.MASTER_ADMIN || currentUser.role === UserRole.CHURCH_ADMIN || currentUser.role === UserRole.PASTOR) && (
-                    <>
-                      <Route path="/members" element={<Members />} />
-                      <Route path="/prayer-moderation" element={<PrayerModeration />} />
-                    </>
-                  )}
+                    {/* Rotas Administrativas de Igreja */}
+                    {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
+                      <>
+                        <Route path="/members" element={<Members />} />
+                        <Route path="/prayer-moderation" element={<PrayerModeration />} />
+                      </>
+                    )}
 
-                  {/* Rotas de Célula (Líderes, Pastores e Admins) */}
-                  {currentUser.role !== UserRole.MEMBER_VISITOR && (
-                    <>
-                      <Route path="/cells" element={<Cells />} />
-                      <Route path="/ladder" element={<SuccessLadder />} />
-                      <Route path="/ia-insights" element={<IAInsights />} />
-                    </>
-                  )}
+                    {/* Rotas de Célula (Líderes, Pastores e Admins) */}
+                    {currentUser?.role !== UserRole.MEMBER_VISITOR && (
+                      <>
+                        <Route path="/cells" element={<Cells />} />
+                        <Route path="/ladder" element={<SuccessLadder />} />
+                        <Route path="/ia-insights" element={<IAInsights />} />
+                      </>
+                    )}
 
-                  {/* Rotas Financeiras e Configurações (Apenas Admins e Master) */}
-                  {(currentUser.role === UserRole.MASTER_ADMIN || currentUser.role === UserRole.CHURCH_ADMIN) && (
-                    <Route path="/finance" element={<Finance />} />
-                  )}
+                    {/* Rotas Financeiras e Configurações (Apenas Admins e Master) */}
+                    {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN) && (
+                      <Route path="/finance" element={<Finance />} />
+                    )}
 
-                  {/* Rotas de Master Admin (SaaS Global) */}
-                  {currentUser.role === UserRole.MASTER_ADMIN && (
-                    <>
-                      <Route path="/churches" element={<ChurchesManager />} />
-                      <Route path="/plans" element={<PlansManager />} />
-                      <Route path="/security" element={<SecurityAudit />} />
-                    </>
-                  )}
+                    {/* Rotas de Master Admin (SaaS Global) */}
+                    {currentUser?.role === UserRole.MASTER_ADMIN && (
+                      <>
+                        <Route path="/churches" element={<ChurchesManager />} />
+                        <Route path="/plans" element={<PlansManager />} />
+                        <Route path="/security" element={<SecurityAudit />} />
+                      </>
+                    )}
 
-                  <Route path="/settings" element={<Settings user={currentUser} />} />
+                    <Route path="/settings" element={<Settings user={currentUser} />} />
 
-                  {/* Fallback para Dashboard se tentar acessar algo não permitido */}
-                  <Route path="*" element={<Dashboard user={currentUser} />} />
-                </Routes>
-              </div>
-            </main>
-            {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-            <RoleSwitcher currentRole={currentUser.role} onSwitch={switchRole} />
-          </div>
+                    {/* Rotas de Membro */}
+                    {currentUser?.role === UserRole.MEMBER_VISITOR && (
+                      <>
+                        <Route path="/my-progress" element={<Dashboard user={currentUser} activeTab="PROGRESS" />} />
+                        <Route path="/my-cell-detail" element={<Dashboard user={currentUser} activeTab="CELL" />} />
+                        <Route path="/my-prayers" element={<Dashboard user={currentUser} activeTab="PRAYERS" />} />
+                      </>
+                    )}
+
+                    {/* Fallback para Dashboard se tentar acessar algo não permitido */}
+                    <Route path="*" element={<Dashboard user={currentUser} />} />
+                  </Routes>
+                </div>
+              </main>
+              {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+              {currentUser?.role === UserRole.MASTER_ADMIN && <RoleSwitcher currentRole={currentUser.role} onSwitch={switchRole} />}
+            </div>
+          </ProtectedRoute>
         } />
       </Routes>
       <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" />

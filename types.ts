@@ -86,6 +86,7 @@ export interface Member {
   pastorId?: string;
   login?: string;
   password?: string;
+  birthDate?: string;
 }
 
 export interface MeetingReport {
