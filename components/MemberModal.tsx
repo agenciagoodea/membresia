@@ -335,7 +335,10 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										required
 										type="email"
 										value={formData.email}
-										onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+										onChange={(e) => {
+											const email = e.target.value.toLowerCase();
+											setFormData({ ...formData, email, login: email });
+										}}
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 										placeholder="exemplo@email.com"
 									/>
@@ -527,12 +530,14 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									<div className="relative">
 										<User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 										<input
+											disabled
+											readOnly
 											type="text"
 											value={formData.login || ''}
 											onChange={(e) => setFormData({ ...formData, login: e.target.value })}
 											autoComplete="new-password"
-											className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
-											placeholder="ex: usuario.nome"
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-zinc-500 focus:outline-none transition-all font-medium cursor-not-allowed"
+											placeholder="ex: usuario@email.com"
 										/>
 									</div>
 								</div>

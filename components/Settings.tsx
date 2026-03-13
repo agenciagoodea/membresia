@@ -31,6 +31,7 @@ import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { memberService } from '../services/memberService';
 import { churchService } from '../services/churchService';
+import { supabase } from '../services/supabaseClient';
 import { Member, ChurchTenant, UserRole } from '../types';
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
@@ -83,64 +84,139 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   };
 
   useEffect(() => {
-    if (!user?.church_id) {
+    if (!user?.churchId) {
+      // Sem churchId: usar dados do próprio objeto user (metadata)
+      setProfileData({
+        name: user?.name || user?.user_metadata?.name || '',
+        email: user?.email || user?.user_metadata?.email || '',
+        phone: user?.phone || '',
+        avatar: user?.avatar || user?.user_metadata?.avatar_url || ''
+      });
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     const fetchData = async () => {
+      // 1. Inicializar imediatamente com o que temos do Props
+      setProfileData({
+        name: user.name || user.user_metadata?.name || '',
+        email: user.email || user.user_metadata?.email || '',
+        phone: user.phone || user.user_metadata?.phone || '',
+        avatar: user.avatar || user.user_metadata?.avatar_url || '',
+        cpf: user.cpf || user.user_metadata?.cpf || '',
+        birthDate: user.birthDate || user.user_metadata?.birth_date || '',
+        // Garantir campos de endereço iniciais do cache
+        cep: user.cep || user.user_metadata?.cep || '',
+        street: user.street || user.user_metadata?.street || '',
+        number: user.number || user.user_metadata?.number || '',
+        neighborhood: user.neighborhood || user.user_metadata?.neighborhood || '',
+        city: user.city || user.user_metadata?.city || '',
+        state: user.state || user.user_metadata?.state || ''
+      });
+
+      let effectiveChurchId = user.churchId;
+      let myProfile = null;
+
+      // 2. Se não temos church_id no user, tentar buscar o membro pelo email globalmente para recuperar o ID
+      if (!effectiveChurchId || effectiveChurchId === 'undefined' || typeof effectiveChurchId !== 'string') {
+        const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
+        if (userEmail) {
+          myProfile = await memberService.getByEmail(userEmail).catch(() => null);
+          if (myProfile?.churchId) {
+            effectiveChurchId = myProfile.churchId;
+          }
+        }
+      }
+
+      // Validar church_id efetivo
+      if (!effectiveChurchId || effectiveChurchId === 'undefined' || effectiveChurchId.length < 30) {
+        if (myProfile) {
+          setMember(myProfile);
+          setProfileData(prev => ({ ...prev, ...myProfile }));
+        }
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        // Buscar igreja pelo ID real do usuário
-        const churchRes = await churchService.getById(user.church_id);
-        if (!cancelled && churchRes) {
-          setChurch(churchRes);
-          setChurchData(churchRes);
-        }
 
-        // Buscar membros e achar o perfil logado
+        // Buscar em paralelo: dados da igreja + membros
+        const [churchRes, membersList] = await Promise.all([
+          churchService.getById(effectiveChurchId).catch(() => null),
+          memberService.getAll(effectiveChurchId).catch(() => [])
+        ]);
+
         if (!cancelled) {
-          const membersList = await memberService.getAll(user.church_id);
+          if (churchRes) {
+            setChurch(churchRes);
+            setChurchData(churchRes);
+          }
           setAllMembers(membersList);
 
-          const myProfile = membersList.find(m => m.email === user.email) ||
-                            membersList.find(m => m.id === user.id);
+          // Se ainda não temos o perfil (não buscamos globalmente), buscar na lista da igreja
+          if (!myProfile) {
+            const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
+            myProfile = membersList.find(m => m.email?.toLowerCase().trim() === userEmail);
+          }
 
-          if (myProfile && !cancelled) {
+          if (myProfile) {
             setMember(myProfile);
-            setProfileData(myProfile);
-          } else if (!cancelled) {
-            setProfileData({ name: user.name, email: user.email, avatar: user.avatar });
+            setProfileData(prev => ({
+              ...prev,
+              ...myProfile,
+              name: myProfile.name || prev.name,
+              email: myProfile.email || prev.email,
+              phone: myProfile.phone || prev.phone
+            }));
           }
         }
       } catch (error) {
-        if (!cancelled) console.error('Erro ao buscar cadastro oficial:', error);
+        if (!cancelled) console.error('Erro ao buscar configurações:', error);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     fetchData();
     return () => { cancelled = true; };
-  }, [user?.id, user?.church_id]);
+  }, [user?.id, user?.churchId]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      if (activeTab === 'PROFILE' && member?.id) {
-        // Atualiza Perfil
-        const updated = await memberService.update(member.id, profileData);
-        setMember(updated);
-        // Exibir toast / notificação de sucesso...
+      if (activeTab === 'PROFILE') {
+        if (member?.id) {
+          // Atualiza Perfil na tabela members
+          const updated = await memberService.update(member.id, profileData);
+          setMember(updated);
+        } else {
+          // Para MASTER_ADMIN ou usuários sem registro na tabela: salvar no Auth metadata
+          const { error: authError } = await supabase.auth.updateUser({
+            data: {
+              name: profileData.name,
+              phone: profileData.phone,
+              cpf: profileData.cpf,
+              birth_date: profileData.birthDate,
+            }
+          });
+          if (authError) throw authError;
+          
+          // Se for Master Admin, atualizar também o objeto virtual em cache para refletir na UI imediatamente
+          await supabase.auth.updateUser({
+            data: { profile: { ...user, ...profileData } }
+          });
+        }
+        alert('Perfil pessoal atualizado com sucesso!');
       } else if (activeTab === 'CHURCH' && church?.id) {
         // Atualiza Igreja
         const updated = await churchService.update(church.id, churchData);
         setChurch(updated);
+        alert('Dados da igreja atualizados com sucesso!');
       }
-      alert('Configurações salvas e conectadas com a base de dados oficial!');
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      alert('Não foi possível salvar os dados neste momento.');
+      alert('Resumo do erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido ao salvar.'));
     } finally {
       setSaving(false);
     }
@@ -169,7 +245,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   };
 
   const handleCropConfirm = async () => {
-    if (!member?.id) return;
     try {
       setIsProcessingCrop(true);
       const croppedImageFile = await getCroppedImg(
@@ -181,8 +256,16 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         setIsCropping(false);
         setSaving(true);
         const url = await memberService.uploadAvatar(croppedImageFile);
-        const updated = await memberService.update(member.id, { avatar: url });
-        setMember(updated);
+
+        // Salvar na tabela members se houver membro cadastrado
+        if (member?.id) {
+          const updated = await memberService.update(member.id, { avatar: url });
+          setMember(updated);
+        } else {
+          // Para MASTER_ADMIN: salvar no user_metadata do Auth
+          await supabase.auth.updateUser({ data: { avatar_url: url } });
+        }
+
         setProfileData(prev => ({ ...prev, avatar: url }));
         setPhotoPreview('');
         setSelectedFile(null);
@@ -262,8 +345,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                 <div className="space-y-10 animate-in fade-in duration-300">
                   <div className="flex flex-col md:flex-row md:items-center gap-8">
                     <div className="relative group cursor-pointer">
-                      <img src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name)}&background=2563eb&color=fff&size=200`} className="w-32 h-32 rounded-[2rem] ring-4 ring-zinc-950 shadow-2xl object-cover transition-transform group-hover:scale-105" alt="Avatar" />
-                      <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/40 rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                      <img src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name)}&background=2563eb&color=fff&size=200`} className="w-32 h-32 rounded-full ring-4 ring-zinc-950 shadow-2xl object-cover transition-transform group-hover:scale-105" alt="Avatar" />
+                      <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                         <Camera className="text-white" size={24} />
                       </label>
                       <input id="avatar-upload" type="file" accept="image/*" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />

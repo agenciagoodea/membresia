@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useChurch } from '../contexts/ChurchContext';
 import {
   Plus,
   MapPin,
@@ -672,33 +673,11 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
 };
 
 const Cells: React.FC<{ user: any }> = ({ user }) => {
+  const { cells, members, loading, refreshData } = useChurch();
   const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
-  const [cells, setCells] = useState<Cell[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isCellModalOpen, setIsCellModalOpen] = useState(false);
   const [editingCell, setEditingCell] = useState<Cell | null>(null);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [cellsData, membersData] = await Promise.all([
-        cellService.getAll(user.church_id),
-        memberService.getAll(user.church_id)
-      ]);
-      setCells(cellsData);
-      setMembers(membersData);
-    } catch (error) {
-      console.error('Erro ao carregar dados das células:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const planLimits = PLAN_CONFIGS[user.church_plan || 'PRO'];
   const isLimitReached = cells.length >= planLimits.maxCells;
@@ -715,16 +694,15 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
   const handleSaveCell = async (formData: any) => {
     try {
       if (editingCell) {
-        const updated = await cellService.update(editingCell.id, formData);
-        setCells(cells.map(c => c.id === editingCell.id ? updated : c));
+        await cellService.update(editingCell.id, formData);
       } else {
-        const created = await cellService.create({
+        await cellService.create({
           ...formData,
           church_id: user.church_id,
           status: 'ACTIVE'
         });
-        setCells([created, ...cells]);
       }
+      await refreshData();
     } catch (error) {
       console.error('Erro ao salvar célula:', error);
       throw error;
@@ -735,7 +713,7 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
     if (confirm('Tem certeza que deseja excluir esta célula permanentemente? Todos os dados vinculados serão mantidos, mas a célula deixará de existir.')) {
       try {
         await cellService.delete(id);
-        setCells(cells.filter(c => c.id !== id));
+        await refreshData();
       } catch (error) {
         console.error('Erro ao excluir célula:', error);
         alert('Erro ao excluir célula.');
@@ -787,8 +765,12 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
             </div>
 
             <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 text-blue-500 group-hover:scale-110 transition-transform">
-                <Layers size={32} />
+              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 text-blue-500 group-hover:scale-110 transition-transform overflow-hidden">
+                {cell.logo ? (
+                  <img src={cell.logo} alt={cell.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Layers size={32} />
+                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -863,7 +845,7 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
         onClose={() => setIsCellModalOpen(false)}
         onSave={handleSaveCell}
         cell={editingCell}
-        leadersList={members.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR)}
+        availableLeaders={members.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR)}
       />
     </div>
   );

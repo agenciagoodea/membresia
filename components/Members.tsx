@@ -23,37 +23,15 @@ import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import MemberModal from './MemberModal';
 import PageHeader from './Shared/PageHeader';
+import { useChurch } from '../contexts/ChurchContext';
 const Members: React.FC<{ user: any }> = ({ user }) => {
+  const { members, cells, loading, refreshData } = useChurch();
   const location = useLocation();
   const [filter, setFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
-
-  const [members, setMembers] = useState<Member[]>([]);
-  const [cells, setCells] = useState<Cell[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [membersData, cellsData] = await Promise.all([
-        memberService.getAll(user.church_id),
-        cellService.getAll(user.church_id)
-      ]);
-      setMembers(membersData);
-      setCells(cellsData);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const planLimit = PLAN_CONFIGS[user.church_plan || 'PRO'].maxMembers;
   const currentTotal = members.length;
@@ -102,7 +80,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     if (confirm('Deseja realmente excluir este registro permanentemente?')) {
       try {
         await memberService.delete(id);
-        setMembers(members.filter(m => m.id !== id));
+        await refreshData();
       } catch (error) {
         console.error('Erro ao excluir membro:', error);
         alert('Erro ao excluir registro.');
@@ -131,7 +109,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
         }
 
         savedMember = await memberService.update(editingMember.id, finalFormData);
-        setMembers(prev => prev.map(m => m.id === editingMember.id ? savedMember : m));
+        await refreshData();
       } else {
         const origin = formData.origin || MemberOrigin.OTHER_CHURCH;
         const created = await memberService.create({
@@ -151,7 +129,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
           }]
         } as any);
         savedMember = created;
-        setMembers(prev => [...prev, created]);
+        await refreshData();
       }
 
       // Bidirectional Spouse Sync
@@ -162,7 +140,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
         const oldSpouse = members.find(m => m.id === oldSpouseId);
         if (oldSpouse) {
           const updatedOldSpouse = await memberService.update(oldSpouseId, { spouseId: null });
-          setMembers(prev => prev.map(m => m.id === oldSpouseId ? updatedOldSpouse : m));
+          await refreshData();
         }
       }
 
@@ -173,7 +151,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
             spouseId: savedMember.id,
             maritalStatus: 'Casado(a)'
           });
-          setMembers(prev => prev.map(m => m.id === newSpouseId ? updatedNewSpouse : m));
+          await refreshData();
         }
       }
 

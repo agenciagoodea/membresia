@@ -18,7 +18,8 @@ import {
   MapPin,
   Heart,
   Plus,
-  Tv
+  Tv,
+  Users2
 } from 'lucide-react';
 import { Member, Cell, LadderStage, ChurchTenant, FinancialRecord, UserRole, ChurchStatus, PlanType, MeetingReport, PrayerRequest, PrayerStatus, PlanLimits } from './types';
 
@@ -51,6 +52,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanLimits> = {
 export const MASTER_NAV_ITEMS = [
   { id: 'master-dashboard', label: 'Painel Global', icon: <LayoutDashboard size={20} /> },
   { id: 'churches', label: 'Igrejas / Clientes', icon: <Globe size={20} /> },
+  { id: 'admins', label: 'Administradores', icon: <Users2 size={20} /> },
   { id: 'plans', label: 'Planos & Assinaturas', icon: <CreditCard size={20} /> },
   { id: 'security', label: 'Segurança & Auditoria', icon: <ShieldAlert size={20} /> },
   { id: 'master-settings', label: 'Configurações SaaS', icon: <Settings size={20} /> },

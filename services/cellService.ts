@@ -7,6 +7,13 @@ const mapToFrontend = (c: any): Cell => ({
 	leaderId: c.leader_id,
 	hostName: c.host_name,
 	address: c.address,
+	cep: c.cep,
+	state: c.state,
+	city: c.city,
+	neighborhood: c.neighborhood,
+	street: c.street,
+	number: c.number,
+	complement: c.complement,
 	meetingDay: c.meeting_day,
 	meetingTime: c.meeting_time,
 	membersCount: c.members_count,
@@ -23,6 +30,13 @@ const mapToDb = (c: Partial<Cell> & { church_id?: string }) => {
 	if (c.leaderId !== undefined) db.leader_id = c.leaderId || null;
 	if (c.hostName !== undefined) db.host_name = c.hostName;
 	if (c.address !== undefined) db.address = c.address;
+	if (c.cep !== undefined) db.cep = c.cep;
+	if (c.state !== undefined) db.state = c.state;
+	if (c.city !== undefined) db.city = c.city;
+	if (c.neighborhood !== undefined) db.neighborhood = c.neighborhood;
+	if (c.street !== undefined) db.street = c.street;
+	if (c.number !== undefined) db.number = c.number;
+	if (c.complement !== undefined) db.complement = c.complement;
 	if (c.meetingDay !== undefined) db.meeting_day = c.meetingDay;
 	if (c.meetingTime !== undefined) db.meeting_time = c.meetingTime;
 	if (c.membersCount !== undefined) db.members_count = c.membersCount;

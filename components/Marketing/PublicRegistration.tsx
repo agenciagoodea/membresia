@@ -225,7 +225,61 @@ const PublicRegistration = () => {
 	}
 
 	return (
-		<div className="min-h-screen bg-zinc-950 flex flex-col relative overflow-hidden">
+		<div className="min-h-screen bg-zinc-950 flex flex-col relative overflow-x-hidden">
+			{/* Modal do Cropper de Foto — fora do contêiner com scroll para funcionar corretamente */}
+			{isCropping && (
+				<div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+					<div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={handleCropCancel} />
+					<div className="relative w-full max-w-lg mx-auto bg-zinc-950 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+						<div className="p-5 border-b border-white/5 flex items-center justify-between bg-zinc-900/80">
+							<div>
+								<h3 className="text-lg font-black text-white tracking-tight">Ajustar Foto de Perfil</h3>
+								<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Recorte para enquadrar seu rosto</p>
+							</div>
+							<button type="button" onClick={handleCropCancel} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
+								<X size={20} />
+							</button>
+						</div>
+						<div className="relative h-[50vw] max-h-[380px] min-h-[260px] bg-zinc-950">
+							<Cropper
+								image={photoPreview}
+								crop={crop}
+								zoom={zoom}
+								aspect={1}
+								onCropChange={setCrop}
+								onCropComplete={onCropComplete}
+								onZoomChange={setZoom}
+								cropShape="round"
+								showGrid={false}
+								style={{
+									containerStyle: { backgroundColor: '#09090b' },
+									cropAreaStyle: { border: '2px solid rgba(255,255,255,0.5)' }
+								}}
+							/>
+						</div>
+						<div className="p-5 bg-zinc-900/80 border-t border-white/5">
+							<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-3">Zoom</label>
+							<input type="range" value={zoom} min={1} max={3} step={0.1}
+								aria-label="Zoom" onChange={(e) => setZoom(Number(e.target.value))}
+								className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-6"
+							/>
+							<div className="flex gap-3">
+								<button type="button" onClick={handleCropCancel} disabled={isProcessingCrop}
+									className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-300 hover:bg-white/5 transition-all">
+									Cancelar
+								</button>
+								<button type="button" onClick={handleCropConfirm} disabled={isProcessingCrop}
+									className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-500 transition-all flex items-center justify-center gap-2">
+									{isProcessingCrop
+										? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+										: <><CropIcon size={16} /> Confirmar</>
+									}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 			{/* Banner Topo */}
 			<div className="w-full h-48 md:h-64 relative flex items-center justify-center overflow-hidden shrink-0">
 				<div className="absolute inset-0 bg-gradient-to-b from-blue-900/40 to-zinc-950 z-0" />
@@ -255,61 +309,6 @@ const PublicRegistration = () => {
 						<p className="text-zinc-400 text-xs font-medium uppercase tracking-widest mt-1">Preencha seus dados reais com atenção</p>
 					</div>
 
-					{/* Modal de Crop de Foto */}
-					{isCropping && (
-						<div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-							<div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
-							<div className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-								<div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
-									<div>
-										<h3 className="text-xl font-black text-white tracking-tight">Ajustar Perfil</h3>
-										<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Recorte para enquadrar seu rosto</p>
-									</div>
-									<button type="button" onClick={handleCropCancel} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
-										<X size={20} />
-									</button>
-								</div>
-								<div className="relative h-[400px] bg-zinc-950">
-									<Cropper
-										image={photoPreview}
-										crop={crop}
-										zoom={zoom}
-										aspect={1}
-										onCropChange={setCrop}
-										onCropComplete={onCropComplete}
-										onZoomChange={setZoom}
-										cropShape="round"
-										showGrid={false}
-										style={{
-											containerStyle: { backgroundColor: '#09090b' },
-											cropAreaStyle: { border: '2px solid rgba(255, 255, 255, 0.5)' }
-										}}
-									/>
-								</div>
-								<div className="p-6 bg-zinc-900/50 border-t border-white/5">
-									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-4">Zoom</label>
-									<input
-										type="range"
-										value={zoom}
-										min={1}
-										max={3}
-										step={0.1}
-										aria-labelledby="Zoom"
-										onChange={(e) => setZoom(Number(e.target.value))}
-										className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-8"
-									/>
-									<div className="flex gap-4">
-										<button type="button" onClick={handleCropCancel} disabled={isProcessingCrop} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-white hover:bg-white/5 transition-all">
-											Cancelar
-										</button>
-										<button type="button" onClick={handleCropConfirm} disabled={isProcessingCrop} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-500 transition-all flex items-center justify-center gap-2">
-											{isProcessingCrop ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><CropIcon size={16} /> Confirmar</>}
-										</button>
-									</div>
-								</div>
-							</div>
-						</div>
-					)}
 
 					<form onSubmit={handleSubmit} className="space-y-8">
 						{/* Seção 1: Foto */}
@@ -317,7 +316,7 @@ const PublicRegistration = () => {
 							<div className="relative group cursor-pointer mb-2">
 								<div className={`w-36 h-36 rounded-full flex items-center justify-center border-2 border-dashed ${formData.avatar ? 'border-transparent' : 'border-zinc-700 bg-zinc-950'} overflow-hidden shadow-2xl transition-all group-hover:border-blue-500 group-hover:bg-blue-500/5`}>
 									{formData.avatar ? (
-										<img src={formData.avatar} className="w-full h-full object-cover" alt="Sua Foto" />
+										<img src={formData.avatar} className="w-full h-full object-cover rounded-full" alt="Sua Foto" />
 									) : (
 										<div className="flex flex-col items-center text-zinc-500 group-hover:text-blue-500 transition-colors">
 											<Camera size={32} className="mb-2" />

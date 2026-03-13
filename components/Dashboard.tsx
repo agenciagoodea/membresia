@@ -47,11 +47,13 @@ import { LadderStage, UserRole, PrayerStatus, Member, Cell, PrayerRequest, PlanT
 import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import { prayerService } from '../services/prayerService';
+import { churchService } from '../services/churchService';
 import PageHeader from './Shared/PageHeader';
 import MyProgress from './Member/MyProgress';
 import MyCellDetail from './Member/MyCellDetail';
 import PrayerHistory from './Member/PrayerHistory';
 import PrayerForm from './Prayer/PrayerForm';
+import { useChurch } from '../contexts/ChurchContext';
 
 
 const dataGrowth = [
@@ -89,84 +91,129 @@ const StatCard = ({ title, value, trend, icon, color, subValue }: any) => (
     )}
   </div>
 );
+const MasterDashboard = () => {
+  const [churches, setChurches] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-const MasterDashboard = () => (
-  <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
-    <PageHeader
-      title="Global Control"
-      subtitle="Visão estratégica e saúde do ecossistema SaaS."
-      actions={
-        <div className="flex w-full md:w-auto items-center justify-center gap-3 text-[10px] font-black text-zinc-400 bg-zinc-900 border border-white/5 px-5 py-3 rounded-2xl shadow-2xl">
-          <Activity size={14} className="text-emerald-500 animate-pulse" /> INFRA ESTRUTURA ONLINE • JUN 2024
-        </div>
-      }
-    />
+  React.useEffect(() => {
+    let cancelled = false;
+    churchService.list().then((data: any[]) => {
+      if (!cancelled) { setChurches(data || []); setLoading(false); }
+    }).catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <StatCard title="Total de Clientes" value="124" trend={5} icon={<Globe className="text-blue-400" />} color="bg-blue-500/10" />
-      <StatCard title="MRR Mensal" value="R$ 42.500" trend={12} icon={<DollarSign className="text-emerald-400" />} color="bg-emerald-500/10" />
-      <StatCard title="Novas Instâncias" value="14" trend={20} icon={<Zap className="text-amber-400" />} color="bg-amber-500/10" />
-      <StatCard title="Churn Global" value="1.2%" trend={-0.5} icon={<ShieldAlert className="text-rose-400" />} color="bg-rose-500/10" />
-    </div>
+  const totalMembers = churches.reduce((s, c) => s + (c.stats?.totalMembers || 0), 0);
+  const totalCells   = churches.reduce((s, c) => s + (c.stats?.activeCells   || 0), 0);
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-      <div className="lg:col-span-2 bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
-        <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
-          <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Receita & Performance (6 Meses)
-        </h4>
-        <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dataGrowth}>
-              <defs>
-                <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11, fontWeight: 'bold' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11, fontWeight: 'bold' }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#18181b', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)' }}
-                itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-              />
-              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={4} fill="url(#colorRev)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+  // Distribuição de planos
+  const planCount: Record<string, number> = {};
+  churches.forEach(c => { planCount[c.plan] = (planCount[c.plan] || 0) + 1; });
+  const planColors: Record<string, string> = { enterprise: 'bg-indigo-600', pro: 'bg-blue-600', basic: 'bg-zinc-400' };
 
-      <div className="bg-zinc-100 p-10 rounded-[3rem] text-zinc-950 shadow-2xl relative overflow-hidden flex flex-col justify-between">
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-          <PieChart size={180} />
-        </div>
-        <div>
-          <Zap size={48} className="mb-8 text-blue-600 fill-blue-600/20" />
-          <h4 className="text-3xl font-black mb-2 tracking-tighter">SaaS Health</h4>
-          <p className="text-zinc-500 text-sm mb-12 font-bold uppercase tracking-widest">Carga por Plano</p>
-          <div className="space-y-8">
-            {[
-              { name: 'Enterprise', val: 12, color: 'bg-indigo-600' },
-              { name: 'Pro', val: 48, color: 'bg-blue-600' },
-              { name: 'Basic', val: 40, color: 'bg-zinc-400' },
-            ].map(p => (
-              <div key={p.name}>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">
-                  <span>{p.name}</span>
-                  <span>{p.val}%</span>
+  return (
+    <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
+      <PageHeader
+        title="Global Control"
+        subtitle="Visão estratégica e saúde do ecossistema SaaS."
+        actions={
+          <div className="flex w-full md:w-auto items-center justify-center gap-3 text-[10px] font-black text-zinc-400 bg-zinc-900 border border-white/5 px-5 py-3 rounded-2xl shadow-2xl">
+            <Activity size={14} className="text-emerald-500 animate-pulse" /> INFRA ESTRUTURA ONLINE
+          </div>
+        }
+      />
+
+      {loading ? (
+        <div className="py-20 text-center text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">Sincronizando...</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <StatCard title="Total de Igr. / Clientes" value={churches.length} icon={<Globe className="text-blue-400" />} color="bg-blue-500/10" />
+            <StatCard title="Total de Membros" value={totalMembers} icon={<Users className="text-emerald-400" />} color="bg-emerald-500/10" />
+            <StatCard title="Células Ativas" value={totalCells} icon={<Layers className="text-amber-400" />} color="bg-amber-500/10" />
+            <StatCard title="Planos Ativos" value={Object.values(planCount).reduce((a, b) => a + b, 0)} icon={<Zap className="text-rose-400" />} color="bg-rose-500/10" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Lista de Igrejas */}
+            <div className="lg:col-span-2 bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
+              <h4 className="font-black text-white text-xl mb-8 flex items-center gap-4 uppercase tracking-tighter">
+                <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Igrejas Cadastradas
+              </h4>
+              {churches.length === 0 ? (
+                <p className="text-zinc-600 text-center py-10 font-black uppercase tracking-widest text-[10px]">Nenhuma igreja cadastrada ainda</p>
+              ) : (
+                <div className="space-y-4">
+                  {churches.map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-zinc-950 rounded-2xl border border-white/5 hover:border-white/10 transition-all">
+                      <div className="flex items-center gap-4">
+                        {c.logo ? (
+                          <img src={c.logo} className="w-10 h-10 rounded-xl object-cover" alt={c.name} />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm">
+                            {c.name?.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-white">{c.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-black uppercase tracking-tight">{c.slug}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-5 text-right">
+                        <div>
+                          <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Membros</p>
+                          <p className="text-sm font-black text-white">{c.stats?.totalMembers || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Células</p>
+                          <p className="text-sm font-black text-white">{c.stats?.activeCells || 0}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                          c.plan === 'enterprise' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                          : c.plan === 'pro' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                          : 'bg-zinc-700/50 text-zinc-400 border border-zinc-600/20'
+                        }`}>{c.plan || 'basic'}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="w-full bg-zinc-950/5 h-2 rounded-full overflow-hidden">
-                  <div className={`${p.color} h-full rounded-full transition-all duration-1000`} style={{ width: `${p.val}%` }}></div>
+              )}
+            </div>
+
+            {/* SaaS Health */}
+            <div className="bg-zinc-100 p-10 rounded-[3rem] text-zinc-950 shadow-2xl relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-0 right-0 p-8 opacity-5"><PieChart size={180} /></div>
+              <div>
+                <Zap size={48} className="mb-8 text-blue-600 fill-blue-600/20" />
+                <h4 className="text-3xl font-black mb-2 tracking-tighter">SaaS Health</h4>
+                <p className="text-zinc-500 text-sm mb-12 font-bold uppercase tracking-widest">Carga por Plano</p>
+                <div className="space-y-8">
+                  {Object.keys(planColors).map(plan => {
+                    const count = planCount[plan] || 0;
+                    const total = churches.length || 1;
+                    const pct = Math.round((count / total) * 100);
+                    return (
+                      <div key={plan}>
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">
+                          <span>{plan}</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <div className="w-full bg-zinc-950/5 h-2 rounded-full overflow-hidden">
+                          <div className={`${planColors[plan]} h-full rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
+              <button className="mt-12 w-full py-5 bg-zinc-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">Rel. Completo</button>
+            </div>
           </div>
-        </div>
-        <button className="mt-12 w-full py-5 bg-zinc-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">Relatório Completo</button>
-      </div>
+        </>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const ChurchAdminDashboard = ({ members, cells, prayers }: { members: Member[], cells: Cell[], prayers: PrayerRequest[] }) => {
   const planLimits = PLAN_CONFIGS[PlanType.PRO]; // Fallback para PRO enquanto não carregamos detalhes da igreja
@@ -188,9 +235,9 @@ const ChurchAdminDashboard = ({ members, cells, prayers }: { members: Member[], 
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard title="Fluxo de Caixa" value="R$ 18.250" trend={8} icon={<DollarSign className="text-emerald-400" />} color="bg-emerald-500/10" />
-        <StatCard title="Entradas (Mês)" value="R$ 5.400" trend={15} icon={<ArrowUpRight className="text-blue-400" />} color="bg-blue-500/10" />
-        <StatCard title="Pendências" value={prayers.filter(p => p.status === PrayerStatus.PENDING).length} subValue="pedidos" icon={<Clock className="text-amber-400" />} color="bg-amber-500/10" />
+        <StatCard title="Membros Cadastrados" value={totalMembers} subValue={`/ ${planLimits.maxMembers}`} trend={totalMembers > 0 ? 100 : 0} icon={<Users className="text-blue-400" />} color="bg-blue-500/10" />
+        <StatCard title="Células Ativas" value={activeCells} subValue={`/ ${planLimits.maxCells}`} trend={activeCells > 0 ? 100 : 0} icon={<Layers className="text-indigo-400" />} color="bg-indigo-500/10" />
+        <StatCard title="Orações Pendentes" value={prayers.filter(p => p.status === PrayerStatus.PENDING).length} subValue="pedidos" icon={<Clock className="text-amber-400" />} color="bg-amber-500/10" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -226,25 +273,27 @@ const ChurchAdminDashboard = ({ members, cells, prayers }: { members: Member[], 
 
         <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
           <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
-            <div className="w-1.5 h-6 bg-emerald-600 rounded-full" /> Timeline de Atividade
+            <div className="w-1.5 h-6 bg-emerald-600 rounded-full" /> Últimos Membros
           </h4>
           <div className="space-y-6">
-            {[
-              { label: 'Oferta Lançada', user: 'Líder João', date: 'Hoje, 10:24', icon: <DollarSign size={16} />, color: 'text-emerald-400 bg-emerald-500/10' },
-              { label: 'Novo Membro', user: 'Sec. Maria', date: 'Hoje, 09:15', icon: <Users size={16} />, color: 'text-blue-400 bg-blue-500/10' },
-              { label: 'Célula Ativada', user: 'Pr. André', date: 'Ontem', icon: <Layers size={16} />, color: 'text-indigo-400 bg-indigo-500/10' },
-            ].map((activity, i) => (
-              <div key={i} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0">
+            {members.length === 0 ? (
+              <p className="text-zinc-600 text-center py-10 font-black uppercase tracking-widest text-[10px]">Nenhum membro cadastrado ainda</p>
+            ) : (members.slice(0, 5).map((m, i) => (
+              <div key={m.id || i} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0">
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-2xl ${activity.color}`}>{activity.icon}</div>
+                  <img
+                    src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=fff&size=80`}
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-white/5"
+                    alt={m.name}
+                  />
                   <div>
-                    <p className="text-sm font-bold text-zinc-100">{activity.label}</p>
-                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-tight">{activity.user}</p>
+                    <p className="text-sm font-bold text-zinc-100">{m.name}</p>
+                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-tight">{m.role}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-tighter">{activity.date}</span>
+                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-tighter">{m.joinedDate ? new Date(m.joinedDate).toLocaleDateString('pt-BR') : ''}</span>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </div>
@@ -331,7 +380,15 @@ const PastorDashboard = ({ members, cells, prayers }: { members: Member[], cells
 };
 
 const LeaderDashboard = ({ user, members, cells }: { user: any, members: Member[], cells: Cell[] }) => {
-  const myCell = cells.find(c => c.leaderId === user.id) || cells[0];
+  const myChurchId = user?.churchId || user?.church_id;
+  const myCell = cells.find(c => c.leaderId === user.id) || (cells.length > 0 ? cells[0] : null);
+  
+  if (!myCell) return (
+    <div className="py-20 text-center text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">
+      Nenhuma célula vinculada ou encontrada.
+    </div>
+  );
+
   const cellMembers = members.filter(m => m.cellId === myCell.id);
 
   return (
@@ -606,55 +663,7 @@ const MemberDashboard = ({ user, prayers, activeTab = 'JOURNEY' }: { user: any, 
 };
 
 const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTab }) => {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [cells, setCells] = useState<Cell[]>([]);
-  const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Sem church_id e sem ser Master Admin: nada a carregar
-    const churchId = user?.church_id;
-    const role = user?.role;
-
-    if (!churchId && role !== UserRole.MASTER_ADMIN) {
-      setLoading(false);
-      return;
-    }
-
-    // Master Admin tem painel próprio com dados estáticos — não carregar
-    if (role === UserRole.MASTER_ADMIN) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [mTable, cTable, pTable] = await Promise.all([
-          memberService.getAll(churchId),
-          cellService.getAll(churchId),
-          prayerService.getAll(churchId)
-        ]);
-        if (!cancelled) {
-          setMembers(mTable);
-          setCells(cTable);
-          setPrayers(pTable);
-        }
-      } catch (error) {
-        if (!cancelled) console.error('Erro ao carregar dados do dashboard:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadData();
-
-    return () => { cancelled = true; };
-  // Usar valores primitivos como dependência evita re-execução desnecessária
-  // quando o objeto `user` tem nova referência mas os mesmos dados
-  }, [user?.church_id, user?.role]);
+  const { members, cells, prayers, loading } = useChurch();
 
   if (loading && user.role !== UserRole.MASTER_ADMIN) {
     return (

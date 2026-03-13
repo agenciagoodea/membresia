@@ -23,16 +23,15 @@ import {
   Trash2,
   Users
 } from 'lucide-react';
-import { MOCK_CHURCHES } from '../../constants';
 import { ChurchStatus, PlanType, ChurchTenant, Member, UserRole, LadderStage } from '../../types';
 import PageHeader from '../Shared/PageHeader';
 import { churchService } from '../../services/churchService';
 import { memberService } from '../../services/memberService';
+import { supabase } from '../../services/supabaseClient';
 
 const ChurchModal = ({ isOpen, onClose, church, onSave }: { isOpen: boolean, onClose: () => void, church?: ChurchTenant | null, onSave: (data: any) => Promise<void> }) => {
   const [loadingCep, setLoadingCep] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [adminMode, setAdminMode] = useState<'EXISTING' | 'NEW'>('NEW');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Member[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -47,6 +46,8 @@ const ChurchModal = ({ isOpen, onClose, church, onSave }: { isOpen: boolean, onC
     plan: PlanType.BASIC,
     status: ChurchStatus.ACTIVE,
     logo: '',
+    adminId: '',
+    password: '',
     addressDetails: {
       cep: '',
       street: '',
@@ -57,6 +58,35 @@ const ChurchModal = ({ isOpen, onClose, church, onSave }: { isOpen: boolean, onC
       state: ''
     }
   });
+
+  const handleSearchAdmin = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await memberService.search(query);
+      setSearchResults(results);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectAdmin = (m: Member) => {
+    setFormData({
+      ...formData,
+      responsibleName: m.name,
+      email: m.email || '',
+      phone: m.phone || formData.phone,
+      adminId: m.id
+    });
+    setSearchResults([]);
+    setSearchQuery('');
+  };
 
   useEffect(() => {
     if (church) {
@@ -205,54 +235,70 @@ const ChurchModal = ({ isOpen, onClose, church, onSave }: { isOpen: boolean, onC
           <section className="space-y-6">
             <div className="flex items-center gap-4 text-emerald-500 font-black text-[10px] uppercase tracking-[0.3em] mb-2">
               <div className="w-8 h-px bg-emerald-500/30" />
-              <span className="flex items-center gap-2"><Users size={14} /> Acesso do Administrador (Igreja)</span>
+              <span className="flex items-center gap-2"><Users size={14} /> Selecionar Responsável (Admin / Pastor)</span>
               <div className="w-full h-px bg-emerald-500/30 flex-1" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-zinc-900/40 p-8 rounded-[2rem] border border-white/5">
+            <div className="bg-zinc-900/40 p-8 rounded-[2rem] border border-white/5 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Nome do Responsável / Past(ora)</label>
+                <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-2">Buscar Administrador Cadastrado</label>
                 <div className="relative">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
-                    required
-                    value={formData.responsibleName || ''}
-                    onChange={e => setFormData({ ...formData, responsibleName: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
-                    placeholder="Ap. Arão Amazonas"
+                    value={searchQuery}
+                    onChange={e => handleSearchAdmin(e.target.value)}
+                    className="w-full bg-zinc-950 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+                    placeholder="Digite o nome ou e-mail para selecionar o responsável..."
                   />
+                  {isSearching && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <Loader2 className="animate-spin text-blue-500" size={18} />
+                    </div>
+                  )}
+
+                  {/* Resultados da Busca */}
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl z-[110] overflow-hidden max-h-60 overflow-y-auto border border-blue-500/20">
+                      {searchResults.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => selectAdmin(m)}
+                          className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0"
+                        >
+                          <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+                          <div>
+                            <p className="text-sm font-bold text-white">{m.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] text-zinc-500 font-bold uppercase">{m.email}</span>
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/10">
+                                {m.role}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">E-mail (Login de Acesso)</label>
-                <div className="relative">
-                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    required
-                    type="email"
-                    value={formData.email || ''}
-                    onChange={e => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
-                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
-                    placeholder="arao@mircentrosul.com"
-                  />
+              {formData.responsibleName && (
+                <div className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Responsável Selecionado</p>
+                      <p className="text-sm font-bold text-white">{formData.responsibleName}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] text-zinc-500 font-bold">{formData.email}</p>
+                    <span className="text-[9px] font-black text-emerald-500 uppercase">Vínculo Ativo</span>
+                  </div>
                 </div>
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Senha do Painel</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                  <input
-                    value={formData.password || ''}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
-                    placeholder="Senha provisória / definitiva"
-                    type="password"
-                  />
-                  <p className="text-[10px] text-zinc-500 mt-2 font-bold px-2">Esta será a senha que o administrador precisará utilizar para o seu primeiro acesso ao dashboard desta instituição.</p>
-                </div>
-              </div>
+              )}
             </div>
           </section>
 
@@ -486,28 +532,13 @@ const ChurchesManager: React.FC = () => {
         savedChurch = await churchService.create(formData);
       }
 
-      // Se houver um adminId (vinculando existente), atualizamos o membro
+      // Vínculo obrigatório com adminId selecionado no fluxo novo
       if (formData.adminId) {
-        await memberService.update(formData.adminId, {
-          role: UserRole.CHURCH_ADMIN,
-          password: formData.password || undefined // Atualiza só se existir senha preenchida
-        } as any);
-      } else if (formData.responsibleName && formData.email) {
-        // Se for novo, criamos o membro para esta igreja
-        await memberService.create({
-          name: formData.responsibleName,
-          email: formData.email,
-          phone: formData.phone || '',
-          role: UserRole.CHURCH_ADMIN,
-          stage: LadderStage.SEND, // Nível máximo inicial para admin
-          joinedDate: new Date().toISOString(),
-          church_id: savedChurch.id,
-          avatar: '',
-          stageHistory: [],
-          completedMilestones: [],
-          cellId: '',
-          password: formData.password || 'admin123' // fallback pra uma senha óbvia se nao preenchida no novo
-        } as any);
+        // Atualizar church_id diretamente no banco (não exposto no type, mas necessário)
+        await supabase.from('members').update({ church_id: savedChurch.id }).eq('id', formData.adminId);
+        
+        // Se houver senha opcional no formulário (removido do UI, mas mantido em alguns fluxos), 
+        // poderíamos atualizar aqui. Mas no novo fluxo a senha é gerida no AdminsManager.
       }
 
       await loadChurches(); // Recarrega do banco real

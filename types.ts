@@ -62,6 +62,7 @@ export interface Member {
   name: string;
   email: string;
   phone: string;
+  churchId?: string;
   role: UserRole;
   stage: LadderStage;
   cellId: string;
@@ -108,6 +109,13 @@ export interface Cell {
   leaderId: string;
   hostName: string;
   address: string;
+  cep?: string;
+  state?: string;
+  city?: string;
+  neighborhood?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
   meetingDay: string;
   meetingTime: string;
   membersCount: number;

@@ -6,6 +6,7 @@ const mapToFrontend = (m: any): Member => ({
 	name: m.name,
 	email: m.email,
 	phone: m.phone,
+	churchId: m.church_id,
 	role: m.role,
 	stage: m.stage,
 	cellId: m.cell_id,
@@ -34,6 +35,7 @@ const mapToFrontend = (m: any): Member => ({
 
 const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	const db: any = {};
+	if (m.churchId) db.church_id = m.churchId;
 	if (m.church_id) db.church_id = m.church_id;
 	if (m.name !== undefined) db.name = m.name;
 	if (m.email !== undefined) db.email = m.email;
@@ -136,26 +138,27 @@ export const memberService = {
 		const dbData = mapToDb(updates);
 
 		// 1. Verificar se houve mudança de senha ou email
-		// Nota: No Supabase Auth, o usuário só pode alterar seus próprios dados via frontend.
-		// Para administradores alterarem senhas de terceiros, seria necessária uma Edge Function com service_role.
 		if (updates.password || updates.email) {
-			const { data: { user } } = await supabase.auth.getUser();
+			const { data: { user: currentUser } } = await supabase.auth.getUser();
+			const targetMember = await this.getById(id);
 			
-			// Se o ID sendo editado é o do próprio usuário logado e ele está mudando a senha
-			const currentMember = await this.getByEmail(user?.email || '');
-			if (currentMember && currentMember.id === id) {
+			// Se for a própria senha, usa o método padrão
+			if (currentUser?.email === targetMember.email) {
 				const authUpdates: any = {};
 				if (updates.password) authUpdates.password = updates.password;
 				if (updates.email) authUpdates.email = updates.email;
-
-				const { error: authError } = await supabase.auth.updateUser(authUpdates);
-				if (authError) {
-					console.warn('Não foi possível sincronizar com o Auth (pessoal):', authError.message);
-				} else {
-					console.log('Dados sincronizados com o Supabase Auth com sucesso.');
-				}
+				await supabase.auth.updateUser(authUpdates);
 			} else if (updates.password) {
-				console.log('Aviso: Alteração de senha de terceiros requer permissão administrativa de servidor (Edge Function). A senha foi salva apenas no banco de dados.');
+				// Se for senha de terceiro (Master Admin alterando), usa a RPC segura
+				const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
+					user_email: targetMember.email,
+					new_password: updates.password
+				});
+				
+				if (rpcError) {
+					console.error('Erro ao trocar senha via RPC:', rpcError.message);
+					throw new Error('Falha ao atualizar senha: a função SQL pode não estar configurada.');
+				}
 			}
 		}
 

@@ -55,6 +55,9 @@ const PrayerModeration = lazy(() => import('./components/Prayer/PrayerModeration
 const LandingPage = lazy(() => import('./components/Marketing/LandingPage'));
 const PublicRegistration = lazy(() => import('./components/Marketing/PublicRegistration'));
 const Settings = lazy(() => import('./components/Settings'));
+const AdminsManager = lazy(() => import('./components/MasterAdmin/AdminsManager'));
+
+import { ChurchProvider } from './contexts/ChurchContext';
 
 const PageLoader = () => (
   <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-12">
@@ -70,16 +73,18 @@ const PageLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: any }) => {
+const ProtectedRoute = ({ children, user, loading }: { children: React.ReactNode, user: any, loading: boolean }) => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (!user) {
+    // Só redirecionar se não estiver carregando — evita race condition pós-login
+    if (!loading && !user) {
       navigate('/login');
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
-  if (!user) return null;
+  // Enquanto carregando ou resolvendo o perfil, não renderizar nada
+  if (loading || !user) return null;
   return <>{children}</>;
 };
 
@@ -287,19 +292,34 @@ const App: React.FC = () => {
   const resolveProfile = React.useCallback(async (session: any) => {
     if (!session?.user) return null;
 
-    // 1. Tentar cache no metadata (90%+ dos casos - zero latência)
+    // 1. Tentar cache no metadata (Zero latência)
     const cached = session.user.user_metadata?.profile;
-    if (cached) return cached;
+    // Se temos cache e ele já tem church_id (ou é MASTER_ADMIN que não precisa), retornar
+    if (cached && (cached.churchId || cached.role === UserRole.MASTER_ADMIN)) {
+      return cached;
+    }
 
-    // 2. Fallback: buscar no banco e atualizar cache para próxima vez
+    // 2. Fallback: buscar no banco (essencial para novos vínculos feitos pelo Master Admin)
     if (session.user.email) {
       const fresh = await memberService.getByEmail(session.user.email);
       if (fresh) {
+        // Atualiza cache de metadados para as próximas sessões
         supabase.auth.updateUser({ data: { profile: fresh } }).catch(() => {});
+        return fresh;
       }
-      return fresh;
     }
-    return null;
+
+    // 3. Last resort: retornar dados do Auth (para Master Admin ou novos usuários ainda não vinculados)
+    const virtualProfile = {
+      id: session.user.id,
+      name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || 'Usuário',
+      email: session.user.email,
+      role: session.user.user_metadata?.role || UserRole.MASTER_ADMIN,
+      churchId: session.user.user_metadata?.church_id || session.user.user_metadata?.churchId || null,
+      church_id: session.user.user_metadata?.church_id || session.user.user_metadata?.churchId || null,
+      avatar: session.user.user_metadata?.avatar_url || ''
+    };
+    return virtualProfile;
   }, []);
 
   useEffect(() => {
@@ -322,10 +342,9 @@ const App: React.FC = () => {
         setLoading(false);
         profileResolvedRef.current = true;
       } else if (event === 'SIGNED_IN') {
-        if (!profileResolvedRef.current) {
-          const profile = await resolveProfile(session);
-          if (profile) setCurrentUser(profile);
-        }
+        // Sempre resolver o perfil no SIGNED_IN — garante que login manual funcione
+        const profile = await resolveProfile(session);
+        if (profile) setCurrentUser(profile);
         profileResolvedRef.current = true;
         setLoading(false);
       } else if (event === 'USER_UPDATED') {
@@ -345,31 +364,27 @@ const App: React.FC = () => {
     };
   }, [resolveProfile]);
 
-  // Carregar contador de orações pendentes de forma não-bloqueante
   useEffect(() => {
-    if (currentUser?.church_id) {
+    if (currentUser?.churchId) {
       loadPendingCount();
     }
-  }, [currentUser?.church_id]);
+  }, [currentUser?.churchId]);
 
   const loadPendingCount = async () => {
-    if (!currentUser?.church_id) return;
+    if (!currentUser?.churchId) return;
     try {
       const { count, error } = await supabase
-        .from('prayers')
+        .from('prayer_requests')
         .select('id', { count: 'exact', head: true })
-        .eq('church_id', currentUser.church_id)
+        .eq('church_id', currentUser.churchId)
         .eq('status', PrayerStatus.PENDING);
 
       if (!error) setPendingPrayersCount(count || 0);
     } catch (error) {
       console.error('Erro ao buscar total de pendentes:', error);
     }
-  };
-
-
-  useEffect(() => {
-    if (!currentUser?.church_id) return;
+  };  useEffect(() => {
+    if (!currentUser?.churchId) return;
 
     const subscription = prayerService.subscribeToPrayers((payload) => {
       console.log('Realtime Evento Global (Badge/Som):', payload.eventType);
@@ -387,7 +402,7 @@ const App: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser]);
+  }, [currentUser?.churchId]);
 
   if (loading) {
     return (
@@ -412,22 +427,23 @@ const App: React.FC = () => {
           <Route path="/cadastro" element={<PublicRegistration />} />
 
           <Route path="/app/*" element={
-            <ProtectedRoute user={currentUser}>
-              <div className="min-h-screen bg-zinc-950 flex">
-                <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
-                <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
-                  <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
-                  <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
-                    <Routes>
-                      <Route path="/" element={<Dashboard user={currentUser} />} />
+            <ProtectedRoute user={currentUser} loading={loading}>
+              <ChurchProvider user={currentUser}>
+                <div className="min-h-screen bg-zinc-950 flex">
+                  <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
+                  <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
+                    <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
+                    <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
+                      <Routes>
+                        <Route path="/" element={<Dashboard user={currentUser} />} />
 
-                      {/* Rotas Administrativas de Igreja */}
-                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
-                        <>
-                          <Route path="/members" element={<Members user={currentUser} />} />
-                          <Route path="/prayer-moderation" element={<PrayerModeration user={currentUser} />} />
-                        </>
-                      )}
+                        {/* Rotas Administrativas de Igreja */}
+                        {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
+                          <>
+                            <Route path="/members" element={<Members user={currentUser} />} />
+                            <Route path="/prayer-moderation" element={<PrayerModeration user={currentUser} />} />
+                          </>
+                        )}
 
                       {/* Rotas de Célula (Líderes, Pastores e Admins) */}
                       {currentUser?.role !== UserRole.MEMBER_VISITOR && (
@@ -444,13 +460,14 @@ const App: React.FC = () => {
                       )}
 
                       {/* Rotas de Master Admin (SaaS Global) */}
-                      {currentUser?.role === UserRole.MASTER_ADMIN && (
-                        <>
-                          <Route path="/churches" element={<ChurchesManager />} />
-                          <Route path="/plans" element={<PlansManager />} />
-                          <Route path="/security" element={<SecurityAudit />} />
-                        </>
-                      )}
+                        {currentUser?.role === UserRole.MASTER_ADMIN && (
+                          <>
+                            <Route path="/churches" element={<ChurchesManager />} />
+                            <Route path="/admins" element={<AdminsManager />} />
+                            <Route path="/plans" element={<PlansManager />} />
+                            <Route path="/security" element={<SecurityAudit />} />
+                          </>
+                        )}
 
                       <Route path="/settings" element={<Settings user={currentUser} />} />
 
@@ -464,12 +481,12 @@ const App: React.FC = () => {
                       )}
 
                       {/* Fallback para Dashboard se tentar acessar algo não permitido */}
-                      <Route path="*" element={<Dashboard user={currentUser} />} />
-                    </Routes>
-                  </div>
-                </main>
-                {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-              </div>
+                      </Routes>
+                    </div>
+                  </main>
+                  {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+                </div>
+              </ChurchProvider>
             </ProtectedRoute>
           } />
         </Routes>
