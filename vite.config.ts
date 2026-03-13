@@ -14,6 +14,19 @@ export default defineConfig(({ mode }) => {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'vendor-recharts': ['recharts'],
+              'vendor-lucide': ['lucide-react'],
+              'vendor-framer': ['framer-motion'],
+              'vendor-supabase': ['@supabase/supabase-js'],
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000,
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

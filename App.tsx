@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -33,28 +33,42 @@ import {
   LEADER_NAV_ITEMS,
   MEMBER_NAV_ITEMS
 } from './constants';
-import { UserRole, PrayerStatus } from './types';
-import { supabase } from './services/supabaseClient';
 import { authService } from './services/authService';
 import { prayerService } from './services/prayerService';
 import { memberService } from './services/memberService';
-import Login from './components/Auth/Login';
-import Dashboard from './components/Dashboard';
-import Members from './components/Members';
-import Cells from './components/Cells';
-import Finance from './components/Finance';
-import IAInsights from './components/IAInsights';
-import SuccessLadder from './components/Ladder/SuccessLadder';
-import ChurchesManager from './components/MasterAdmin/ChurchesManager';
-import PlansManager from './components/MasterAdmin/PlansManager';
-import SecurityAudit from './components/MasterAdmin/SecurityAudit';
-import LandingPageSettings from './components/MasterAdmin/LandingPageSettings';
-import PrayerForm from './components/Prayer/PrayerForm';
-import PrayerScreen from './components/Prayer/PrayerScreen';
-import PrayerModeration from './components/Prayer/PrayerModeration';
-import LandingPage from './components/Marketing/LandingPage';
-import PublicRegistration from './components/Marketing/PublicRegistration';
-import Settings from './components/Settings';
+import { UserRole, PrayerStatus } from './types';
+import { supabase } from './services/supabaseClient';
+const Login = lazy(() => import('./components/Auth/Login'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const Members = lazy(() => import('./components/Members'));
+const Cells = lazy(() => import('./components/Cells'));
+const Finance = lazy(() => import('./components/Finance'));
+const IAInsights = lazy(() => import('./components/IAInsights'));
+const SuccessLadder = lazy(() => import('./components/Ladder/SuccessLadder'));
+const ChurchesManager = lazy(() => import('./components/MasterAdmin/ChurchesManager'));
+const PlansManager = lazy(() => import('./components/MasterAdmin/PlansManager'));
+const SecurityAudit = lazy(() => import('./components/MasterAdmin/SecurityAudit'));
+const LandingPageSettings = lazy(() => import('./components/MasterAdmin/LandingPageSettings'));
+const PrayerForm = lazy(() => import('./components/Prayer/PrayerForm'));
+const PrayerScreen = lazy(() => import('./components/Prayer/PrayerScreen'));
+const PrayerModeration = lazy(() => import('./components/Prayer/PrayerModeration'));
+const LandingPage = lazy(() => import('./components/Marketing/LandingPage'));
+const PublicRegistration = lazy(() => import('./components/Marketing/PublicRegistration'));
+const Settings = lazy(() => import('./components/Settings'));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-12">
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+        <div className="absolute inset-0 blur-2xl bg-blue-600/20 animate-pulse rounded-full" />
+      </div>
+      <p className="text-zinc-500 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
+        Carregando Módulo...
+      </p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: any }) => {
   const navigate = useNavigate();
@@ -363,79 +377,81 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/prayer/new/:slug" element={<PrayerForm />} />
-        <Route path="/prayer-screen/:slug" element={<PrayerScreen />} />
-        <Route path="/cadastro/:slug" element={<PublicRegistration />} />
-        {/* Fallbacks sem slug para compatibilidade temporária */}
-        <Route path="/prayer/new" element={<PrayerForm />} />
-        <Route path="/prayer-screen" element={<PrayerScreen />} />
-        <Route path="/cadastro" element={<PublicRegistration />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/prayer/new/:slug" element={<PrayerForm />} />
+          <Route path="/prayer-screen/:slug" element={<PrayerScreen />} />
+          <Route path="/cadastro/:slug" element={<PublicRegistration />} />
+          {/* Fallbacks sem slug para compatibilidade temporária */}
+          <Route path="/prayer/new" element={<PrayerForm />} />
+          <Route path="/prayer-screen" element={<PrayerScreen />} />
+          <Route path="/cadastro" element={<PublicRegistration />} />
 
-        <Route path="/app/*" element={
-          <ProtectedRoute user={currentUser}>
-            <div className="min-h-screen bg-zinc-950 flex">
-              <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
-              <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
-                <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
-                <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
-                  <Routes>
-                    <Route path="/" element={<Dashboard user={currentUser} />} />
+          <Route path="/app/*" element={
+            <ProtectedRoute user={currentUser}>
+              <div className="min-h-screen bg-zinc-950 flex">
+                <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
+                <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
+                  <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />
+                  <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto w-full">
+                    <Routes>
+                      <Route path="/" element={<Dashboard user={currentUser} />} />
 
-                    {/* Rotas Administrativas de Igreja */}
-                    {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
-                      <>
-                        <Route path="/members" element={<Members user={currentUser} />} />
-                        <Route path="/prayer-moderation" element={<PrayerModeration user={currentUser} />} />
-                      </>
-                    )}
+                      {/* Rotas Administrativas de Igreja */}
+                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
+                        <>
+                          <Route path="/members" element={<Members user={currentUser} />} />
+                          <Route path="/prayer-moderation" element={<PrayerModeration user={currentUser} />} />
+                        </>
+                      )}
 
-                    {/* Rotas de Célula (Líderes, Pastores e Admins) */}
-                    {currentUser?.role !== UserRole.MEMBER_VISITOR && (
-                      <>
-                        <Route path="/cells" element={<Cells user={currentUser} />} />
-                        <Route path="/ladder" element={<SuccessLadder user={currentUser} />} />
-                        <Route path="/ia-insights" element={<IAInsights user={currentUser} />} />
-                      </>
-                    )}
+                      {/* Rotas de Célula (Líderes, Pastores e Admins) */}
+                      {currentUser?.role !== UserRole.MEMBER_VISITOR && (
+                        <>
+                          <Route path="/cells" element={<Cells user={currentUser} />} />
+                          <Route path="/ladder" element={<SuccessLadder user={currentUser} />} />
+                          <Route path="/ia-insights" element={<IAInsights user={currentUser} />} />
+                        </>
+                      )}
 
-                    {/* Rotas Financeiras e Configurações (Apenas Admins e Master) */}
-                    {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN) && (
-                      <Route path="/finance" element={<Finance />} />
-                    )}
+                      {/* Rotas Financeiras e Configurações (Apenas Admins e Master) */}
+                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN) && (
+                        <Route path="/finance" element={<Finance />} />
+                      )}
 
-                    {/* Rotas de Master Admin (SaaS Global) */}
-                    {currentUser?.role === UserRole.MASTER_ADMIN && (
-                      <>
-                        <Route path="/churches" element={<ChurchesManager />} />
-                        <Route path="/plans" element={<PlansManager />} />
-                        <Route path="/security" element={<SecurityAudit />} />
-                      </>
-                    )}
+                      {/* Rotas de Master Admin (SaaS Global) */}
+                      {currentUser?.role === UserRole.MASTER_ADMIN && (
+                        <>
+                          <Route path="/churches" element={<ChurchesManager />} />
+                          <Route path="/plans" element={<PlansManager />} />
+                          <Route path="/security" element={<SecurityAudit />} />
+                        </>
+                      )}
 
-                    <Route path="/settings" element={<Settings user={currentUser} />} />
+                      <Route path="/settings" element={<Settings user={currentUser} />} />
 
-                    {/* Rotas de Membro */}
-                    {currentUser?.role === UserRole.MEMBER_VISITOR && (
-                      <>
-                        <Route path="/my-progress" element={<Dashboard user={currentUser} activeTab="PROGRESS" />} />
-                        <Route path="/my-cell-detail" element={<Dashboard user={currentUser} activeTab="CELL" />} />
-                        <Route path="/my-prayers" element={<Dashboard user={currentUser} activeTab="PRAYERS" />} />
-                      </>
-                    )}
+                      {/* Rotas de Membro */}
+                      {currentUser?.role === UserRole.MEMBER_VISITOR && (
+                        <>
+                          <Route path="/my-progress" element={<Dashboard user={currentUser} activeTab="PROGRESS" />} />
+                          <Route path="/my-cell-detail" element={<Dashboard user={currentUser} activeTab="CELL" />} />
+                          <Route path="/my-prayers" element={<Dashboard user={currentUser} activeTab="PRAYERS" />} />
+                        </>
+                      )}
 
-                    {/* Fallback para Dashboard se tentar acessar algo não permitido */}
-                    <Route path="*" element={<Dashboard user={currentUser} />} />
-                  </Routes>
-                </div>
-              </main>
-              {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-            </div>
-          </ProtectedRoute>
-        } />
-      </Routes>
+                      {/* Fallback para Dashboard se tentar acessar algo não permitido */}
+                      <Route path="*" element={<Dashboard user={currentUser} />} />
+                    </Routes>
+                  </div>
+                </main>
+                {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+              </div>
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </Suspense>
       <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" />
     </Router>
   );
