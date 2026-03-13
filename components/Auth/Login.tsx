@@ -16,7 +16,8 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const response = await authService.signIn(email, password);
+      const trimmedEmail = email.trim().toLowerCase();
+      const response = await authService.signIn(trimmedEmail, password);
       console.log('Login realizado:', response);
       if (!response.profile) {
           // Se autenticou mas não tem perfil de membro, talvez seja um erro de cadastro

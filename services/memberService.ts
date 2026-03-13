@@ -184,14 +184,15 @@ export const memberService = {
 		const { data, error } = await supabase
 			.from('members')
 			.select('*')
-			.eq('email', email)
-			.single();
+			.ilike('email', email.trim())
+			.limit(1)
+			.maybeSingle();
 
 		if (error) {
-			if (error.code === 'PGRST116') return null; // Not found
-			throw error;
+			console.error('Erro ao buscar membro por e-mail:', error);
+			return null;
 		}
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async uploadAvatar(file: File) {
