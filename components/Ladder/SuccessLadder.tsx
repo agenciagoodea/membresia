@@ -254,7 +254,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
   );
 };
 
-const SuccessLadder: React.FC = () => {
+const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [cells, setCells] = useState<Cell[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,7 +312,7 @@ const SuccessLadder: React.FC = () => {
         stageHistory: [{
           stage: formData.stage || LadderStage.WIN,
           date: new Date().toISOString(),
-          recordedBy: 'Sistema',
+          recordedBy: user.name,
           notes: 'Visitante registrado via Escada do Sucesso'
         }]
       } as any);
@@ -385,7 +385,7 @@ const SuccessLadder: React.FC = () => {
             {
               stage: member.stage,
               date: new Date().toISOString(),
-              recordedBy: 'Sistema',
+              recordedBy: user.name,
               notes: `Concluiu a etapa de ${member.stage.toLowerCase()} e avançou via Escada do Sucesso.`,
               milestones: member.completedMilestones || []
             }
@@ -414,7 +414,7 @@ const SuccessLadder: React.FC = () => {
             {
               stage: prevStage,
               date: new Date().toISOString(),
-              recordedBy: 'Sistema',
+              recordedBy: user.name,
               notes: `Retornou da etapa de ${member.stage.toLowerCase()} para ${prevStage.toLowerCase()}.`,
               milestones: []
             }

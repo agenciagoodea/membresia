@@ -23,7 +23,7 @@ import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import MemberModal from './MemberModal';
 import PageHeader from './Shared/PageHeader';
-const Members: React.FC = () => {
+const Members: React.FC<{ user: any }> = ({ user }) => {
   const location = useLocation();
   const [filter, setFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,7 +146,7 @@ const Members: React.FC = () => {
           stageHistory: [{
             stage: finalFormData.stage || LadderStage.WIN,
             date: new Date().toISOString(),
-            recordedBy: 'Sistema',
+            recordedBy: user.name,
             notes: 'Membro registrado manualmente'
           }]
         } as any);

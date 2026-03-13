@@ -31,7 +31,7 @@ import { prayerService } from '../../services/prayerService';
 import { memberService } from '../../services/memberService';
 import PageHeader from '../Shared/PageHeader';
 
-const PrayerModeration: React.FC = () => {
+const PrayerModeration: React.FC<{ user: any }> = ({ user }) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<string>('ALL');
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
@@ -113,7 +113,7 @@ const PrayerModeration: React.FC = () => {
         stageHistory: [{
           stage: LadderStage.WIN,
           date: new Date().toISOString(),
-          recordedBy: 'Conversão via Pedido de Oração',
+          recordedBy: `Importado por ${user.name}`,
           notes: `Importado do clamor: "${request.request.substring(0, 50)}..."`
         }]
       });

@@ -18,7 +18,7 @@ import {
 import { generatePastoralInsight, generateSermonDraft } from '../services/geminiService';
 import { MOCK_TENANT } from '../constants';
 
-const IAInsights: React.FC = () => {
+const IAInsights: React.FC<{ user: any }> = ({ user }) => {
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loadingSermon, setLoadingSermon] = useState(false);
   const [insight, setInsight] = useState<string | null>(null);

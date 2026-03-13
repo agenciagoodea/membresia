@@ -32,8 +32,7 @@ import {
   PASTOR_NAV_ITEMS,
   LEADER_NAV_ITEMS,
   MEMBER_NAV_ITEMS,
-  MOCK_TENANT,
-  MOCK_CURRENT_USER
+  MOCK_TENANT
 } from './constants';
 import { UserRole, PrayerStatus } from './types';
 import { supabase } from './services/supabaseClient';
@@ -57,69 +56,6 @@ import PrayerModeration from './components/Prayer/PrayerModeration';
 import LandingPage from './components/Marketing/LandingPage';
 import PublicRegistration from './components/Marketing/PublicRegistration';
 import Settings from './components/Settings';
-
-const RoleSwitcher = ({ currentRole, onSwitch }: { currentRole: UserRole, onSwitch: (role: UserRole) => void }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
-
-  const roles = [
-    { role: UserRole.MASTER_ADMIN, label: 'Master Admin', icon: <ShieldAlert size={14} /> },
-    { role: UserRole.CHURCH_ADMIN, label: 'Admin Igreja', icon: <SettingsIcon size={14} /> },
-    { role: UserRole.PASTOR, label: 'Pastor', icon: <UserCog size={14} /> },
-    { role: UserRole.CELL_LEADER_DISCIPLE, label: 'Líder Célula', icon: <Users size={14} /> },
-    { role: UserRole.MEMBER_VISITOR, label: 'Visitante / Demo', icon: <User size={14} /> },
-  ];
-
-  return (
-    <div className="fixed bottom-6 right-6 z-[9999]">
-      {isOpen && (
-        <div className="mb-3 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-2 min-w-[260px] animate-in slide-in-from-bottom-4 duration-300">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase px-4 py-3 border-b border-white/5 mb-1 tracking-widest">Simulação de Perfil</p>
-          <div className="space-y-1">
-            {roles.map((r) => (
-              <button
-                key={r.role}
-                onClick={() => { onSwitch(r.role); setIsOpen(false); navigate('/app'); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all ${currentRole === r.role ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                {r.icon}
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <div className="h-px bg-white/5 my-3 mx-2" />
-          <p className="text-[10px] font-bold text-zinc-500 uppercase px-4 py-2 tracking-widest">Páginas de Demonstração</p>
-          <button
-            onClick={() => { navigate('/prayer/new'); setIsOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-all"
-          >
-            <Heart size={14} /> Form de Oração
-          </button>
-          <button
-            onClick={() => { navigate('/prayer-screen'); setIsOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold text-indigo-400 hover:bg-indigo-500/10 transition-all"
-          >
-            <Monitor size={14} /> Telão de Clamor
-          </button>
-          <div className="h-px bg-white/5 my-3 mx-2" />
-          <p className="text-[10px] font-bold text-zinc-500 uppercase px-4 py-2 tracking-widest">Acesso de Membros</p>
-          <button
-            onClick={() => { navigate('/cadastro/mircentrosul'); setIsOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-all"
-          >
-            <UserPlus size={14} /> Cadastro Público
-          </button>
-        </div>
-      )}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-zinc-100 text-zinc-950 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
-      >
-        {isOpen ? <X size={24} /> : <UserCog size={24} />}
-      </button>
-    </div>
-  );
-};
 
 const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: any }) => {
   const navigate = useNavigate();
@@ -417,34 +353,6 @@ const App: React.FC = () => {
     );
   }
 
-  const switchRole = (role: UserRole) => {
-    if (role === UserRole.MASTER_ADMIN) {
-      setCurrentUser({
-        name: 'Agência Goodea',
-        role: role,
-        email: 'contato@agenciagoodea.com',
-        phone: '(92) 99519-1467',
-        avatar: 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&rounded=true'
-      });
-    } else if (role === UserRole.CHURCH_ADMIN) {
-      setCurrentUser({
-        name: 'Arão',
-        role: role,
-        email: 'arao@mircentrosul.com',
-        avatar: 'https://i.pravatar.cc/150?u=arao_mir'
-      });
-    } else if (role === UserRole.PASTOR) {
-      setCurrentUser({
-        name: 'Pr. André Lourenço',
-        role: role,
-        email: 'pastor@mircentrosul.com',
-        avatar: 'https://i.pravatar.cc/150?u=pastor_andre'
-      });
-    } else {
-      setCurrentUser({ ...currentUser, role: role, name: role.toString().replace(/_/g, ' '), avatar: `https://i.pravatar.cc/150?u=${role}` });
-    }
-  };
-
   return (
     <Router>
       <Routes>
@@ -471,17 +379,17 @@ const App: React.FC = () => {
                     {/* Rotas Administrativas de Igreja */}
                     {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
                       <>
-                        <Route path="/members" element={<Members />} />
-                        <Route path="/prayer-moderation" element={<PrayerModeration />} />
+                        <Route path="/members" element={<Members user={currentUser} />} />
+                        <Route path="/prayer-moderation" element={<PrayerModeration user={currentUser} />} />
                       </>
                     )}
 
                     {/* Rotas de Célula (Líderes, Pastores e Admins) */}
                     {currentUser?.role !== UserRole.MEMBER_VISITOR && (
                       <>
-                        <Route path="/cells" element={<Cells />} />
-                        <Route path="/ladder" element={<SuccessLadder />} />
-                        <Route path="/ia-insights" element={<IAInsights />} />
+                        <Route path="/cells" element={<Cells user={currentUser} />} />
+                        <Route path="/ladder" element={<SuccessLadder user={currentUser} />} />
+                        <Route path="/ia-insights" element={<IAInsights user={currentUser} />} />
                       </>
                     )}
 
@@ -516,7 +424,6 @@ const App: React.FC = () => {
                 </div>
               </main>
               {sidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-              {currentUser?.role === UserRole.MASTER_ADMIN && <RoleSwitcher currentRole={currentUser.role} onSwitch={switchRole} />}
             </div>
           </ProtectedRoute>
         } />

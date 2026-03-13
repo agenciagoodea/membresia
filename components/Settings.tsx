@@ -29,12 +29,12 @@ import {
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
-import { MOCK_CURRENT_USER, MOCK_TENANT } from '../constants';
+import { MOCK_TENANT } from '../constants';
 import { memberService } from '../services/memberService';
 import { churchService } from '../services/churchService';
 import { Member, ChurchTenant, UserRole } from '../types';
 
-const Settings: React.FC<{ user?: any }> = ({ user = MOCK_CURRENT_USER }) => {
+const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [activeTab, setActiveTab] = useState('PROFILE');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,15 +96,10 @@ const Settings: React.FC<{ user?: any }> = ({ user = MOCK_CURRENT_USER }) => {
         const membersList = await memberService.getAll(churchRes.id);
         setAllMembers(membersList);
 
-        let myProfile = membersList.find(m => m.name === user.name);
-
-        // Especial para simulação do MasterAdmin visualizando Admin de Igreja
-        if (!myProfile && user.role === UserRole.CHURCH_ADMIN) {
-          myProfile = membersList.find(m => m.email === 'arao@mircentrosul.com') || membersList.find(m => m.role === UserRole.CHURCH_ADMIN);
-        }
+        let myProfile = membersList.find(m => m.email === user.email);
 
         if (!myProfile) {
-          myProfile = membersList.find(m => m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN);
+          myProfile = membersList.find(m => m.name === user.name);
         }
 
         if (myProfile) {

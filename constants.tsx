@@ -107,13 +107,6 @@ export const MOCK_CHURCHES: ChurchTenant[] = [
 
 export const MOCK_TENANT = MOCK_CHURCHES[0];
 
-export const MOCK_CURRENT_USER = {
-  name: 'Ap. Arão Amazonas',
-  email: 'arao@mircentrosul.com',
-  role: UserRole.CHURCH_ADMIN,
-  avatar: 'https://i.pravatar.cc/150?u=arao_mir'
-};
-
 export const MOCK_MEMBERS: Member[] = [
   {
     id: '1',

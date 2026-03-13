@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
-import { MOCK_CURRENT_USER, MOCK_TENANT, PLAN_CONFIGS } from '../constants';
+import { MOCK_TENANT, PLAN_CONFIGS } from '../constants';
 import { Cell, UserRole, Member, MeetingReport, LadderStage, MemberOrigin } from '../types';
 import UpgradeModal from './Shared/UpgradeModal';
 import { cellService } from '../services/cellService';
@@ -41,7 +41,7 @@ import { meetingReportService } from '../services/meetingReportService';
 import CellModal from './CellModal';
 import PageHeader from './Shared/PageHeader';
 import { STAGE_ACTIVITIES, isStageComplete, getMissingMilestones } from '../utils/ladderUtils';
-const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onBack: () => void, members: Member[] }) => {
+const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }: { cell: Cell, onBack: () => void, members: Member[], user: any }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [membersList, setMembersList] = useState<Member[]>(allMembers);
   const [showReportForm, setShowReportForm] = useState(false);
@@ -71,7 +71,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onB
 
   disciplesList = cellMembers.filter(m => !leadersList.find(l => l.id === m.id));
 
-  const isLeader = MOCK_CURRENT_USER.role === UserRole.CELL_LEADER_DISCIPLE || MOCK_CURRENT_USER.role === UserRole.PASTOR || MOCK_CURRENT_USER.role === UserRole.CHURCH_ADMIN;
+  const isLeader = currentUser.role === UserRole.CELL_LEADER_DISCIPLE || currentUser.role === UserRole.PASTOR || currentUser.role === UserRole.CHURCH_ADMIN || currentUser.role === UserRole.MASTER_ADMIN;
 
   useEffect(() => {
     const loadReports = async () => {
@@ -127,7 +127,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onB
           photoUrl: photoUrl || undefined,
           report: formData.get('report') as string,
           presentMemberIds: Array.from(presentMemberIds),
-          recordedBy: MOCK_CURRENT_USER.name
+          recordedBy: currentUser.name
         });
         setReports([newReport, ...reports]);
         setShowReportForm(false);
@@ -223,7 +223,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onB
             {
               stage: member.stage,
               date: new Date().toISOString(),
-              recordedBy: MOCK_CURRENT_USER.name,
+              recordedBy: currentUser.name,
               notes: `Concluiu a etapa de ${member.stage.toLowerCase()} e avançou via Gestão de Células.`,
               milestones: member.completedMilestones || []
             }
@@ -251,7 +251,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onB
             {
               stage: prevStage,
               date: new Date().toISOString(),
-              recordedBy: MOCK_CURRENT_USER.name,
+              recordedBy: currentUser.name,
               notes: `Retornou da etapa de ${member.stage.toLowerCase()} para ${prevStage.toLowerCase()} via Gestão de Células.`,
               milestones: []
             }
@@ -671,7 +671,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers }: { cell: Cell, onB
   );
 };
 
-const Cells: React.FC = () => {
+const Cells: React.FC<{ user: any }> = ({ user }) => {
   const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
   const [cells, setCells] = useState<Cell[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -752,7 +752,7 @@ const Cells: React.FC = () => {
   }
 
   if (selectedCell) {
-    return <CellDetailView cell={selectedCell} members={members} onBack={() => setSelectedCell(null)} />;
+    return <CellDetailView cell={selectedCell} members={members} onBack={() => setSelectedCell(null)} user={user} />;
   }
 
   return (
