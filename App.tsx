@@ -215,7 +215,12 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
             <span className="text-sm font-bold uppercase tracking-widest text-[10px]">Encerrar Sessão</span>
           </div>
           <div className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-950 border border-white/5 shadow-inner group cursor-pointer hover:border-blue-500/30 transition-all" onClick={() => navigate('/app/settings')}>
-            <img src={activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name)}&background=2563eb&color=fff&size=200`} className="w-11 h-11 rounded-2xl ring-2 ring-white/10 shadow-lg object-cover" alt="" />
+            <img 
+              src={activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name)}&background=2563eb&color=fff&size=200`} 
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
+              className="w-11 h-11 rounded-full ring-2 ring-white/10 shadow-lg object-cover" 
+              alt="" 
+            />
             <div className="flex-1 overflow-hidden font-black uppercase">
               <p className="text-[11px] text-white truncate tracking-tighter uppercase">{activeUser.name}</p>
               <p className="text-[8px] text-zinc-500 tracking-widest mt-0.5">{activeUser.role}</p>
@@ -272,7 +277,12 @@ const Header = ({ user, onMenuToggle, notificationsCount = 0 }: { user: any, onM
               <p className="text-xs font-black text-white uppercase tracking-tight group-hover:text-blue-500 transition-colors">{activeUser.name}</p>
               <p className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">{activeUser.role}</p>
             </div>
-            <img src={activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name)}&background=2563eb&color=fff&size=200`} className="w-10 h-10 rounded-xl ring-2 ring-white/10 group-hover:ring-blue-500/50 transition-all object-cover" alt="" />
+            <img 
+              src={activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name)}&background=2563eb&color=fff&size=200`} 
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
+              className="w-10 h-10 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500/50 transition-all object-cover" 
+              alt="" 
+            />
           </div>
         </div>
       </div>

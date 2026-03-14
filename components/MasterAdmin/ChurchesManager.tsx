@@ -265,7 +265,12 @@ const ChurchModal = ({ isOpen, onClose, church, onSave }: { isOpen: boolean, onC
                           onClick={() => selectAdmin(m)}
                           className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0"
                         >
-                          <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+                          <img 
+                            src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}`} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}`; }}
+                            className="w-10 h-10 rounded-full object-cover" 
+                            alt="" 
+                          />
                           <div>
                             <p className="text-sm font-bold text-white">{m.name}</p>
                             <div className="flex items-center gap-2">

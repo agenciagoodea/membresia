@@ -107,7 +107,12 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} className="w-10 h-10 rounded-full border border-white/10 object-cover aspect-square" alt="" />
+                    <img 
+                      src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                      className="w-10 h-10 rounded-full border border-white/10 object-cover aspect-square" 
+                      alt="" 
+                    />
                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-zinc-900 ${color} flex items-center justify-center`}>
                       <CheckCircle2 size={8} className="text-white" />
                     </div>
@@ -623,7 +628,12 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
               <div className="p-8">
                 <div className="flex items-center gap-6 mb-12">
                   <div className="relative">
-                    <img src={selectedMember.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name)}&background=random`} className="w-24 h-24 rounded-full border-4 border-white/5 shadow-2xl object-cover aspect-square" alt="" />
+                    <img 
+                      src={selectedMember.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name)}&background=random`} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || 'User')}&background=random`; }}
+                      className="w-24 h-24 rounded-full border-4 border-white/5 shadow-2xl object-cover aspect-square" 
+                      alt="" 
+                    />
                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white border-4 border-zinc-950">
                       <TrendingUp size={20} />
                     </div>

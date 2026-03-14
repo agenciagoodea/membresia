@@ -283,8 +283,9 @@ const ChurchAdminDashboard = ({ members, cells, prayers }: { members: Member[], 
                 <div className="flex items-center gap-4">
                   <img
                     src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=fff&size=80`}
-                    className="w-12 h-12 rounded-full object-cover ring-2 ring-white/5"
-                    alt={m.name}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=2563eb&color=fff&size=80`; }}
+                    className="w-12 h-12 rounded-full border border-white/10"
+                    alt=""
                   />
                   <div>
                     <p className="text-sm font-bold text-zinc-100">{m.name}</p>

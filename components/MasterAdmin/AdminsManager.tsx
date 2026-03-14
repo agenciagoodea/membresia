@@ -259,7 +259,12 @@ const AdminsManager: React.FC = () => {
               <tr key={admin.id} className="hover:bg-zinc-950/50 transition-colors">
                 <td className="px-10 py-6">
                   <div className="flex items-center gap-4">
-                    <img src={admin.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(admin.name)}&background=2563eb&color=fff`} className="w-10 h-10 rounded-full border border-white/10" alt="" />
+                    <img 
+                      src={admin.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(admin.name)}&background=2563eb&color=fff`} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(admin.name || 'Admin')}&background=2563eb&color=fff`; }}
+                      className="w-10 h-10 rounded-full border border-white/10" 
+                      alt="" 
+                    />
                     <span className="text-sm font-bold text-white">{admin.name}</span>
                   </div>
                 </td>

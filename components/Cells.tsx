@@ -391,7 +391,12 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                         className="flex items-center justify-between group p-4 hover:bg-white/5 rounded-[1.5rem] transition-all border border-rose-500/10 hover:border-rose-500/30 cursor-pointer bg-rose-500/5"
                       >
                         <div className="flex items-center gap-4">
-                          <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} className="w-12 h-12 rounded-full ring-2 ring-rose-500/30 group-hover:ring-rose-500 transition-all object-cover aspect-square" alt="" />
+                          <img 
+                            src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                            className="w-12 h-12 rounded-full ring-2 ring-rose-500/30 group-hover:ring-rose-500 transition-all object-cover aspect-square" 
+                            alt="" 
+                          />
                           <div>
                             <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.name}</p>
                             <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest">Líder de Célula</p>
@@ -417,7 +422,12 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                         className="flex items-center justify-between group p-4 hover:bg-white/5 rounded-[1.5rem] transition-all border border-transparent hover:border-white/5 cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
-                          <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
+                          <img 
+                            src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                            className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" 
+                            alt="" 
+                          />
                           <div>
                             <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.name}</p>
                             <div className="flex flex-wrap gap-1">
@@ -552,7 +562,12 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                           }`}
                       >
                         <div className="flex items-center gap-3">
-                          <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} className="w-8 h-8 rounded-full object-cover aspect-square" alt="" />
+                          <img 
+                            src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                            className="w-8 h-8 rounded-full object-cover aspect-square" 
+                            alt="" 
+                          />
                           <span className="text-xs font-bold text-zinc-200 uppercase tracking-tight">{member.name}</span>
                         </div>
                         {presentMemberIds.has(member.id) ? (
@@ -662,7 +677,12 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                     const m = cellMembers.find(member => member.id === pid);
                     return m ? (
                       <div key={pid} className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
-                        <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random`} className="w-5 h-5 rounded-full" alt="" />
+                        <img 
+                          src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random`} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=random`; }}
+                          className="w-5 h-5 rounded-full" 
+                          alt="" 
+                        />
                         <span className="text-[10px] font-black text-blue-400 uppercase">{m.name.split(' ')[0]}</span>
                       </div>
                     ) : null;

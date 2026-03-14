@@ -345,7 +345,12 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                 <div className="space-y-10 animate-in fade-in duration-300">
                   <div className="flex flex-col md:flex-row md:items-center gap-8">
                     <div className="relative group cursor-pointer">
-                      <img src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name)}&background=2563eb&color=fff&size=200`} className="w-32 h-32 rounded-full ring-4 ring-zinc-950 shadow-2xl object-cover transition-transform group-hover:scale-105" alt="Avatar" />
+                      <img 
+                        src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`} 
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
+                        className="w-32 h-32 rounded-full ring-4 ring-zinc-950 shadow-2xl object-cover transition-transform group-hover:scale-105" 
+                        alt="Avatar" 
+                      />
                       <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                         <Camera className="text-white" size={24} />
                       </label>
