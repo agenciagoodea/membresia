@@ -35,6 +35,24 @@ export const eventService = {
     return data || [];
   },
 
+  async uploadPhoto(file: File, churchId: string): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${churchId}/${Math.random()}.${fileExt}`;
+    const filePath = `events/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('event-photos')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('event-photos')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  },
+
   async create(eventData: Omit<ChurchEvent, 'id' | 'created_at'>): Promise<ChurchEvent> {
     const { data, error } = await supabase
       .from('events')

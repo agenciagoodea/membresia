@@ -197,6 +197,7 @@ export interface ChurchEvent {
   date: string;
   time?: string;
   location?: string;
+  image_url?: string;
   created_by: string;
   created_at: string;
 }

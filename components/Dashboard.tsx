@@ -32,7 +32,10 @@ import { UserRole, LadderStage, PrayerStatus, Member, Cell, PrayerRequest } from
 import { PLAN_CONFIGS, PlanType } from '../constants';
 import { memberService } from '../services/memberService';
 import { useLocation } from 'react-router-dom';
-import PrayerForm from './Prayers/PrayerForm';
+import PrayerForm from './Prayer/PrayerForm';
+import MyProgress from './Member/MyProgress';
+import MyCellDetail from './Member/MyCellDetail';
+import PrayerHistory from './Member/PrayerHistory';
 
 // Componentes Auxiliares
 const PageHeader = ({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -157,10 +160,16 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
       <div className="space-y-4">
         {upcoming.map(evt => (
           <div key={evt.id} className="flex items-center gap-4 p-4 bg-zinc-950 rounded-2xl border border-white/5">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center shrink-0">
-              <span className="text-sm font-black text-amber-500 leading-none">{evt.date.split('-')[2]}</span>
-              <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">{new Date(evt.date).toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}</span>
-            </div>
+            {evt.image_url ? (
+              <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/5 shrink-0">
+                <img src={evt.image_url} className="w-full h-full object-cover" alt="" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center shrink-0">
+                <span className="text-sm font-black text-amber-500 leading-none">{evt.date.split('-')[2]}</span>
+                <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">{new Date(evt.date).toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white truncate">{evt.title}</p>
               <div className="flex items-center gap-2 mt-0.5">

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, AlignLeft, Save } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, AlignLeft, Save, Camera, Upload } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../Shared/cropImage';
+import { eventService } from '../../services/eventService';
 import { ChurchEvent } from '../../types';
 
 interface EventModalProps {
@@ -20,10 +23,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
     location: ''
   });
   const [saving, setSaving] = useState(false);
+  
+  // Photo states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>(event?.image_url || '');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [isProcessingCrop, setIsProcessingCrop] = useState(false);
 
   useEffect(() => {
     if (event) {
       setFormData(event);
+      setPhotoPreview(event.image_url || '');
     } else {
       setFormData({
         title: '',
@@ -34,14 +47,55 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
         church_id: churchId,
         created_by: userId
       });
+      setPhotoPreview('');
     }
   }, [event, churchId, userId]);
+
+  const onCropComplete = (_: any, croppedPixels: any) => {
+    setCroppedAreaPixels(croppedPixels);
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+      setIsCropping(true);
+    }
+  };
+
+  const handleCropConfirm = async () => {
+    try {
+      setIsProcessingCrop(true);
+      const croppedFile = await getCroppedImg(photoPreview, croppedAreaPixels);
+      if (croppedFile) {
+        setSelectedFile(croppedFile);
+        setPhotoPreview(URL.createObjectURL(croppedFile));
+      }
+      setIsCropping(false);
+    } catch (error) {
+      console.error('Erro ao recortar imagem:', error);
+    } finally {
+      setIsProcessingCrop(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSaving(true);
-      await onSave(formData);
+      
+      let finalImageUrl = formData.image_url;
+
+      // Upload nova foto se selecionada
+      if (selectedFile) {
+        finalImageUrl = await eventService.uploadPhoto(selectedFile, churchId);
+      }
+
+      await onSave({
+        ...formData,
+        image_url: finalImageUrl
+      });
       onClose();
     } catch (error: any) {
       console.error('Erro ao salvar evento:', error);
@@ -72,7 +126,69 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {isCropping && (
+          <div className="absolute inset-0 z-[110] bg-zinc-950 flex flex-col">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h4 className="text-white font-black uppercase tracking-widest text-sm">Recortar Foto (1080x1350)</h4>
+              <button onClick={() => setIsCropping(false)} className="text-zinc-500 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="relative flex-1 bg-black">
+              <Cropper
+                image={photoPreview}
+                crop={crop}
+                zoom={zoom}
+                aspect={1080 / 1350}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="p-6 border-t border-white/5 bg-zinc-900/50 space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Zoom</span>
+                <input 
+                  type="range" 
+                  min={1} 
+                  max={3} 
+                  step={0.1} 
+                  value={zoom} 
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="flex-1 accent-blue-600"
+                />
+              </div>
+              <button 
+                onClick={handleCropConfirm}
+                disabled={isProcessingCrop}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50"
+              >
+                {isProcessingCrop ? 'Processando...' : 'Confirmar Recorte'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
+          {/* Photo Upload Area */}
+          <div className="relative group rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 aspect-[4/5] max-h-[300px] mx-auto w-full max-w-[240px]">
+            {photoPreview ? (
+              <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-700 gap-3">
+                <Upload size={40} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Sem Imagem</span>
+              </div>
+            )}
+            <label htmlFor="event-photo" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer gap-2">
+              <Camera className="text-white" size={24} />
+              <span className="text-[10px] font-black uppercase text-white tracking-widest">
+                {photoPreview ? 'Alterar Foto' : 'Adicionar Foto'}
+              </span>
+            </label>
+            <input id="event-photo" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+          </div>
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Título do Evento</label>

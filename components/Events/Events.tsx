@@ -110,6 +110,12 @@ const Events = ({ user }: { user: any }) => {
                 <div key={evt.id} className="group relative bg-zinc-900 border border-white/5 hover:border-blue-500/30 rounded-[2rem] p-6 transition-all hover:shadow-2xl hover:shadow-blue-500/5">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center flex-1">
+                      {evt.image_url && (
+                        <div className="w-24 h-30 shrink-0 rounded-2xl overflow-hidden border border-white/5 shadow-xl aspect-[4/5]">
+                          <img src={evt.image_url} className="w-full h-full object-cover" alt={evt.title} />
+                        </div>
+                      )}
+                      
                       <div className="w-20 h-20 shrink-0 bg-blue-600/10 border border-blue-500/20 rounded-2xl flex flex-col items-center justify-center">
                         <span className="text-2xl font-black text-blue-500 leading-none">{evt.date.split('-')[2]}</span>
                         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-1">

@@ -22,6 +22,7 @@ import {
   Users2,
   Calendar
 } from 'lucide-react';
+export { PlanType } from './types';
 import { Member, Cell, LadderStage, ChurchTenant, FinancialRecord, UserRole, ChurchStatus, PlanType, MeetingReport, PrayerRequest, PrayerStatus, PlanLimits } from './types';
 
 // SaaS PLAN CONFIGURATIONS
@@ -31,21 +32,21 @@ export const PLAN_CONFIGS: Record<PlanType, PlanLimits> = {
     maxMembers: 50,
     maxCells: 5,
     maxLeaders: 2,
-    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'PRAYER_SYSTEM']
+    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'PRAYER_SYSTEM', 'AGENDA']
   },
   [PlanType.PRO]: {
     price: 247,
     maxMembers: 500,
     maxCells: 50,
     maxLeaders: 20,
-    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'LADDER', 'PRAYER_SYSTEM', 'FINANCE', 'IA_INSIGHTS']
+    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'LADDER', 'PRAYER_SYSTEM', 'FINANCE', 'IA_INSIGHTS', 'AGENDA']
   },
   [PlanType.ENTERPRISE]: {
     price: 997,
     maxMembers: 99999,
     maxCells: 9999,
     maxLeaders: 9999,
-    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'LADDER', 'PRAYER_SYSTEM', 'FINANCE', 'IA_INSIGHTS', 'WHITE_LABEL']
+    features: ['DASHBOARD', 'MEMBERS', 'CELLS', 'LADDER', 'PRAYER_SYSTEM', 'FINANCE', 'IA_INSIGHTS', 'WHITE_LABEL', 'AGENDA']
   }
 };
 
@@ -62,7 +63,7 @@ export const MASTER_NAV_ITEMS = [
 
 // CHURCH LEVEL (Pastor / Admin)
 export const PASTOR_NAV_ITEMS = [
-  { id: 'dashboard', label: 'PAINEL TESTE', icon: <LayoutDashboard size={20} /> },
+  { id: 'dashboard', label: 'Painel Pastoral', icon: <LayoutDashboard size={20} /> },
   { id: 'members', label: 'Membros & Líderes', icon: <Users size={20} /> },
   { id: 'cells', label: 'Gestão de Células', icon: <Layers size={20} /> },
   { id: 'ladder', label: 'Escada do Sucesso', icon: <TrendingUp size={20} /> },
