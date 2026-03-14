@@ -298,7 +298,12 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 								<input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 								{photoPreview || formData.avatar ? (
 									<>
-										<img src={photoPreview || (formData.avatar as string)} className="w-full h-full object-cover" alt="Avatar" />
+										<img 
+											src={photoPreview || (formData.avatar as string)} 
+											onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'User')}&background=random`; }}
+											className="w-full h-full object-cover" 
+											alt="Avatar" 
+										/>
 										<div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
 											<Camera className="text-white" size={24} />
 										</div>
@@ -421,7 +426,11 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									>
 										<option value="" className="bg-zinc-950">Sem Discipulador</option>
 										{allMembers
-											.filter(m => m.id !== member?.id && m.role === UserRole.CELL_LEADER_DISCIPLE)
+											.filter(m => m.id !== member?.id && (
+												formData.role === UserRole.PASTOR 
+													? m.role === UserRole.CHURCH_ADMIN 
+													: (m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
+											))
 											.map(m => (
 												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
 											))}
@@ -440,7 +449,11 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									>
 										<option value="" className="bg-zinc-950">Sem Pastor</option>
 										{allMembers
-											.filter(m => m.id !== member?.id && m.role === UserRole.PASTOR)
+											.filter(m => m.id !== member?.id && (
+												formData.role === UserRole.PASTOR
+													? (m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR)
+													: (m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
+											))
 											.map(m => (
 												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
 											))}

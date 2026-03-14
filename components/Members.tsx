@@ -239,7 +239,12 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-5">
                       <div className="relative">
-                        <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} alt="" className="w-14 h-14 rounded-full ring-2 ring-white/10 group-hover:ring-blue-600 transition-all shadow-xl object-cover aspect-square" />
+                        <img 
+                          src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`; }}
+                          alt="" 
+                          className="w-14 h-14 rounded-full ring-2 ring-white/10 group-hover:ring-blue-600 transition-all shadow-xl object-cover aspect-square" 
+                        />
                         {member.role === UserRole.PASTOR && (
                           <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center border-2 border-zinc-900">
                             <Shield size={10} className="text-white" />
@@ -306,7 +311,12 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
               <div key={member.id} className="p-5 hover:bg-white/5 transition-all">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative shrink-0">
-                    <img src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} alt="" className="w-12 h-12 rounded-full ring-2 ring-white/10 shadow-xl object-cover aspect-square" />
+                    <img 
+                      src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`; }}
+                      alt="" 
+                      className="w-12 h-12 rounded-full ring-2 ring-white/10 shadow-xl object-cover aspect-square" 
+                    />
                     {member.role === UserRole.PASTOR && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-zinc-900">
                         <Shield size={8} className="text-white" />
