@@ -42,6 +42,8 @@ import { meetingReportService } from '../services/meetingReportService';
 import CellModal from './CellModal';
 import PageHeader from './Shared/PageHeader';
 import { STAGE_ACTIVITIES, isStageComplete, getMissingMilestones } from '../utils/ladderUtils';
+import { generateCellOccurrences } from '../utils/agendaUtils';
+import { cellMeetingService } from '../services/cellMeetingService';
 const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }: { cell: Cell, onBack: () => void, members: Member[], user: any }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [membersList, setMembersList] = useState<Member[]>(allMembers);
@@ -52,6 +54,11 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
   const [presentMemberIds, setPresentMemberIds] = useState<Set<string>>(new Set());
   const [selectedReport, setSelectedReport] = useState<MeetingReport | null>(null);
   const [isEditingReport, setIsEditingReport] = useState(false);
+
+  const { meetingExceptions, refreshData } = useChurch();
+  const [isExceptionModalOpen, setIsExceptionModalOpen] = useState(false);
+  const [exceptionType, setExceptionType] = useState<'CANCELLED' | 'RESCHEDULED'>('CANCELLED');
+  const [selectedOccurrence, setSelectedOccurrence] = useState<any>(null);
 
   const cellMembers = membersList.filter(m => m.cellId === cell.id);
   const leaderId = cell.leaderId;
@@ -174,6 +181,49 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
       }
     }
   };
+  const handleExceptionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    try {
+      await cellMeetingService.createException({
+        cell_id: cell.id,
+        original_date: selectedOccurrence.date,
+        status: exceptionType,
+        reason: formData.get('reason') as string,
+        new_date: exceptionType === 'RESCHEDULED' ? formData.get('new_date') as string : undefined,
+        new_time: exceptionType === 'RESCHEDULED' ? formData.get('new_time') as string : undefined,
+        church_id: cell.churchId || currentUser.churchId || currentUser.church_id
+      });
+      await refreshData();
+      setIsExceptionModalOpen(false);
+      setSelectedOccurrence(null);
+    } catch (error) {
+      console.error('Erro ao salvar exceção:', error);
+      alert('Erro ao salvar alteração na reunião.');
+    }
+  };
+
+  const handleRemoveException = async (exceptionId: string) => {
+    if (confirm('Deseja reverter esta alteração e voltar ao horário normal?')) {
+      try {
+        await cellMeetingService.deleteException(exceptionId);
+        await refreshData();
+      } catch (error) {
+        console.error('Erro ao remover exceção:', error);
+      }
+    }
+  };
+
+  const upcomingMeetings = generateCellOccurrences(cell, meetingExceptions, 4);
+
+  // Combine reports with exceptions for a unified history
+  const unifiedHistory = [
+    ...reports.map(r => ({ ...r, type: 'REPORT' as const })),
+    ...meetingExceptions
+      .filter(e => e.cell_id === cell.id)
+      .map(e => ({ ...e, type: 'EXCEPTION' as const }))
+  ].sort((a, b) => b.date?.localeCompare(a.date || b.original_date) || b.original_date?.localeCompare(a.original_date));
+
 
 
 
@@ -310,6 +360,74 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
           <div className="bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
             <div className="p-8 border-b border-white/5 flex items-center justify-between bg-zinc-950/50">
               <h3 className="text-xl font-black text-white flex items-center gap-4 uppercase tracking-tighter">
+                <Calendar size={22} className="text-amber-500" /> Próximas Reuniões
+              </h3>
+            </div>
+            <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {upcomingMeetings.map((mtg, i) => {
+                const isCancelled = mtg.status === 'CANCELLED';
+                const isRescheduled = mtg.status === 'RESCHEDULED';
+                
+                return (
+                  <div key={mtg.id} className={`p-4 rounded-2xl border transition-all ${isCancelled ? 'bg-rose-500/5 border-rose-500/20' : isRescheduled ? 'bg-amber-500/5 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-zinc-950 border-white/5 hover:border-white/10'}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">
+                          {new Date(mtg.date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase()}
+                        </p>
+                        <h5 className="text-lg font-black text-white tracking-tighter">
+                          {new Date(mtg.date).toLocaleDateString('pt-BR')}
+                        </h5>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Horário</p>
+                        <p className="text-sm font-black text-zinc-100">{mtg.time}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-2 mt-4">
+                      {isCancelled ? (
+                         <span className="text-[8px] font-black text-rose-500 bg-rose-500/10 px-2 py-1 rounded-full uppercase tracking-widest">CANCELADO</span>
+                      ) : isRescheduled ? (
+                         <span className="text-[8px] font-black text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full uppercase tracking-widest">REAGENDADO</span>
+                      ) : (
+                         <span className="text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full uppercase tracking-widest text-center">NORMAL</span>
+                      )}
+
+                      {isLeader && !isCancelled && !isRescheduled && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedOccurrence(mtg);
+                              setExceptionType('RESCHEDULED');
+                              setIsExceptionModalOpen(true);
+                            }}
+                            className="p-2 text-zinc-600 hover:text-amber-500 transition-colors"
+                          >
+                            <Calendar size={14} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSelectedOccurrence(mtg);
+                              setExceptionType('CANCELLED');
+                              setIsExceptionModalOpen(true);
+                            }}
+                            className="p-2 text-zinc-600 hover:text-rose-500 transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
+            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-zinc-950/50">
+              <h3 className="text-xl font-black text-white flex items-center gap-4 uppercase tracking-tighter">
                 <FileText size={22} className="text-blue-500" /> Relatórios de Encontro
               </h3>
               {isLeader && (
@@ -322,49 +440,86 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
               )}
             </div>
             <div className="divide-y divide-white/5">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  onClick={() => {
-                    setSelectedReport(report);
-                    setIsEditingReport(false);
-                  }}
-                  className="p-8 hover:bg-white/5 transition-all group overflow-hidden cursor-pointer"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={18} className="text-zinc-600" />
-                      <span className="text-lg font-black text-zinc-100 tracking-tight">
-                        {new Date(report.date).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">R$ {report.offeringAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  {report.photoUrl && (
-                    <div className="w-full h-48 mb-6 rounded-2xl overflow-hidden border border-white/10 group-hover:border-white/20 transition-colors">
-                      <img src={report.photoUrl} alt="Foto da Célula" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                    </div>
-                  )}
-
-                  <p className="text-sm text-zinc-400 mb-6 font-medium leading-relaxed italic group-hover:text-zinc-200 transition-colors">"{report.report}"</p>
-
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-3 py-1.5 rounded-full border border-white/5">
-                      <Users size={14} className="text-indigo-500" /> {report.visitorCount} Visitantes
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-3 py-1.5 rounded-full border border-white/5">
-                      <Users size={14} className="text-amber-500" /> {report.childrenCount} Crianças
-                    </div>
-                    {report.presentMemberIds && report.presentMemberIds.length > 0 && (
-                      <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-blue-500/5 px-3 py-1.5 rounded-full border border-blue-500/20 text-blue-400">
-                        <CheckSquare size={14} className="text-blue-500" /> {report.presentMemberIds.length} / {cellMembers.length} Presentes
+              {unifiedHistory.map((item) => {
+                if ('type' in item && item.type === 'REPORT') {
+                  const report = item as MeetingReport;
+                  return (
+                    <div
+                      key={report.id}
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setIsEditingReport(false);
+                      }}
+                      className="p-8 hover:bg-white/5 transition-all group overflow-hidden cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <Calendar size={18} className="text-zinc-600" />
+                          <span className="text-lg font-black text-zinc-100 tracking-tight">
+                            {new Date(report.date).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">R$ {report.offeringAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {reports.length === 0 && (
+
+                      {report.photoUrl && (
+                        <div className="w-full h-48 mb-6 rounded-2xl overflow-hidden border border-white/10 group-hover:border-white/20 transition-colors">
+                          <img src={report.photoUrl} alt="Foto da Célula" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        </div>
+                      )}
+
+                      <p className="text-sm text-zinc-400 mb-6 font-medium leading-relaxed italic group-hover:text-zinc-200 transition-colors">"{report.report}"</p>
+
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-3 py-1.5 rounded-full border border-white/5">
+                          <Users size={14} className="text-indigo-500" /> {report.visitorCount} Visitantes
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-3 py-1.5 rounded-full border border-white/5">
+                          <Users size={14} className="text-amber-500" /> {report.childrenCount} Crianças
+                        </div>
+                        {report.presentMemberIds && report.presentMemberIds.length > 0 && (
+                          <div className="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-blue-500/5 px-3 py-1.5 rounded-full border border-blue-500/20 text-blue-400">
+                            <CheckSquare size={14} className="text-blue-500" /> {report.presentMemberIds.length} / {cellMembers.length} Presentes
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  const exception = item as any;
+                  return (
+                    <div key={exception.id} className="p-8 hover:bg-white/5 transition-all group overflow-hidden border-l-4 border-amber-500 bg-amber-500/5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${exception.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                            {exception.status === 'CANCELLED' ? <X size={16} /> : <Calendar size={16} />}
+                          </div>
+                          <div>
+                            <span className="text-lg font-black text-zinc-100 tracking-tight">
+                              {new Date(exception.original_date).toLocaleDateString('pt-BR')}
+                            </span>
+                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                              {exception.status === 'CANCELLED' ? 'REUNIÃO CANCELADA' : `REAGENDADO PARA ${new Date(exception.new_date).toLocaleDateString('pt-BR')} às ${exception.new_time}`}
+                            </p>
+                          </div>
+                        </div>
+                        {isLeader && (
+                          <button onClick={() => handleRemoveException(exception.id)} className="p-2 text-zinc-600 hover:text-white transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="bg-zinc-950/50 p-4 rounded-xl border border-white/5">
+                        <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <MessageSquare size={12} /> Motivo Informado:
+                        </p>
+                        <p className="text-sm text-zinc-300 font-medium italic">"{exception.reason || 'Sem motivo especificado'}"</p>
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+              {unifiedHistory.length === 0 && (
                 <div className="py-24 text-center text-zinc-600 font-black uppercase tracking-[0.3em] opacity-30 italic">Sem relatórios ativos</div>
               )}
             </div>
@@ -695,6 +850,57 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Registrado por: {selectedReport.recordedBy}</span>
               <button onClick={() => setSelectedReport(null)} className="px-8 py-3 bg-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all">Fechar Detalhes</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isExceptionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setIsExceptionModalOpen(false)} />
+          <div className="relative bg-zinc-900 w-full max-w-lg rounded-[3rem] border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-zinc-950/50">
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                {exceptionType === 'CANCELLED' ? 'Cancelar Reunião' : 'Reagendar Reunião'}
+              </h3>
+              <button onClick={() => setIsExceptionModalOpen(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all text-zinc-500 hover:text-white">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleExceptionSubmit} className="p-8 space-y-6">
+              <div className="bg-zinc-950 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Data Original selecionada</p>
+                <p className="text-lg font-black text-white">{new Date(selectedOccurrence.date).toLocaleDateString('pt-BR')}</p>
+              </div>
+
+              {exceptionType === 'RESCHEDULED' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Nova Data</label>
+                    <input name="new_date" type="date" required className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Novo Horário</label>
+                    <input name="new_time" type="time" required className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Motivo da Alteração</label>
+                <textarea 
+                  name="reason" 
+                  required 
+                  rows={3} 
+                  placeholder="Por que esta reunião está sendo alterada?" 
+                  className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-medium outline-none focus:ring-2 focus:ring-blue-600 resize-none"
+                ></textarea>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase italic">* Este motivo será visível para todos os membros no dashboard.</p>
+              </div>
+
+              <button type="submit" className={`w-full py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all ${exceptionType === 'CANCELLED' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'} text-white shadow-xl`}>
+                {exceptionType === 'CANCELLED' ? 'CONFIRMAR CANCELAMENTO' : 'CONFIRMAR REAGENDAMENTO'}
+              </button>
+            </form>
           </div>
         </div>
       )}

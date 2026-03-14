@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, MapPin, AlignLeft, CalendarCheck2, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { eventService } from '../../services/eventService';
-import { ChurchEvent, UserRole } from '../../types';
+import { cellService } from '../../services/cellService';
+import { ChurchEvent, UserRole, Cell, CellMeetingException } from '../../types';
+import { mergeAgendaItems } from '../../utils/agendaUtils';
+import { cellMeetingService } from '../../services/cellMeetingService';
 import EventModal from './EventModal';
 
 const Events = ({ user }: { user: any }) => {
@@ -15,8 +18,16 @@ const Events = ({ user }: { user: any }) => {
   const loadEvents = async () => {
     try {
       setLoading(true);
-      const data = await eventService.getAll(user.churchId || user.church_id);
-      setEvents(data);
+      const churchId = user.churchId || user.church_id;
+      
+      const [eventsData, cellsData, exceptionsData] = await Promise.all([
+        eventService.getAll(churchId),
+        cellService.getAll(churchId),
+        cellMeetingService.getExceptions(churchId)
+      ]);
+
+      const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, user);
+      setEvents(merged);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
     } finally {
@@ -131,12 +142,30 @@ const Events = ({ user }: { user: any }) => {
                             </span>
                           )}
                           {evt.location && (
-                            <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 max-w-[200px] truncate">
+                            <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 max-w-[2000px] truncate">
                               <MapPin size={12} className="text-zinc-400" /> <span className="truncate">{evt.location}</span>
                             </span>
                           )}
+                          {(evt as any).status === 'CANCELLED' && (
+                            <span className="flex items-center gap-1.5 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 text-rose-500">
+                              CANCELADO
+                            </span>
+                          )}
+                          {(evt as any).status === 'RESCHEDULED' && (
+                            <span className="flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 text-amber-500">
+                              REAGENDADO
+                            </span>
+                          )}
                         </div>
-                        {evt.description && (
+                        {(evt as any).reason && (
+                          <div className="bg-rose-500/5 border border-rose-500/10 p-3 rounded-xl mt-2">
+                            <p className="text-[10px] font-black text-rose-500/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+                              <AlignLeft size={10} /> Motivo do Cancelamento:
+                            </p>
+                            <p className="text-xs font-medium text-zinc-300 italic">"{(evt as any).reason}"</p>
+                          </div>
+                        )}
+                        {evt.description && !(evt as any).reason && (
                           <p className="text-sm font-medium text-zinc-400 mt-2 line-clamp-2 pr-12">
                             {evt.description}
                           </p>
@@ -144,7 +173,7 @@ const Events = ({ user }: { user: any }) => {
                       </div>
                     </div>
 
-                    {canEdit && (
+                    {canEdit && !evt.id.startsWith('cell-') && (
                       <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity mt-4 md:mt-0">
                         <button onClick={() => openEditEvent(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5">
                           <Edit2 size={16} />
@@ -183,7 +212,7 @@ const Events = ({ user }: { user: any }) => {
                           <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-1">{formatDate(evt.date)}</p>
                           <h4 className="text-sm font-bold text-zinc-300 uppercase leading-snug">{evt.title}</h4>
                         </div>
-                        {canEdit && (
+                        {canEdit && !evt.id.startsWith('cell-') && (
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
                             <button onClick={() => openEditEvent(evt)} className="p-1.5 text-zinc-500 hover:text-white">
                               <Edit2 size={12} />

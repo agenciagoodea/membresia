@@ -171,22 +171,32 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
           {/* Photo Upload Area */}
-          <div className="relative group rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 aspect-[4/5] max-h-[300px] mx-auto w-full max-w-[240px]">
-            {photoPreview ? (
-              <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-700 gap-3">
-                <Upload size={40} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Sem Imagem</span>
-              </div>
-            )}
-            <label htmlFor="event-photo" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer gap-2">
-              <Camera className="text-white" size={24} />
-              <span className="text-[10px] font-black uppercase text-white tracking-widest">
-                {photoPreview ? 'Alterar Foto' : 'Adicionar Foto'}
-              </span>
-            </label>
-            <input id="event-photo" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative group rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 aspect-[4/5] max-h-[280px] w-full max-w-[220px]">
+              {photoPreview ? (
+                <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-zinc-700 gap-3">
+                  <Upload size={40} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Sem Imagem</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <label htmlFor="event-camera" className="flex items-center justify-center gap-2 py-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl cursor-pointer transition-all border border-white/5 group">
+                <Camera size={18} className="group-hover:scale-110 transition-transform text-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Câmera</span>
+              </label>
+              
+              <label htmlFor="event-gallery" className="flex items-center justify-center gap-2 py-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl cursor-pointer transition-all border border-white/5 group">
+                <Upload size={18} className="group-hover:-translate-y-1 transition-transform text-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Galeria</span>
+              </label>
+            </div>
+
+            <input id="event-camera" type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
+            <input id="event-gallery" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
           </div>
 
           <div className="space-y-4">

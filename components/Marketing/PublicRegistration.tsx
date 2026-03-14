@@ -324,25 +324,42 @@ const PublicRegistration = () => {
 						<form onSubmit={handleSubmit} className="space-y-12">
 							{/* Seção 1: Foto */}
 							<div className="flex flex-col items-center">
-								<div className="relative group cursor-pointer mb-4">
-									<div className={`w-40 h-40 rounded-full flex items-center justify-center border-2 border-dashed ${formData.avatar ? 'border-transparent' : 'border-white/10 bg-white/5'} overflow-hidden shadow-2xl transition-all group-hover:border-blue-500 group-hover:bg-blue-500/10 backdrop-blur-md`}>
+								<div className="relative group mb-8">
+									<div className={`w-44 h-44 rounded-full flex items-center justify-center border-2 border-dashed ${formData.avatar ? 'border-transparent' : 'border-white/10 bg-white/5'} overflow-hidden shadow-2xl transition-all group-hover:border-blue-500/50 backdrop-blur-md relative`}>
 										{formData.avatar ? (
 											<img src={formData.avatar} className="w-full h-full object-cover rounded-full" alt="Sua Foto" />
 										) : (
-											<div className="flex flex-col items-center text-zinc-500 group-hover:text-blue-400 transition-colors">
-												<Camera size={40} className="mb-2" />
-												<span className="text-[10px] font-black uppercase tracking-widest text-center">Enviar<br />Foto</span>
+											<div className="flex flex-col items-center text-zinc-500">
+												<Camera size={48} className="mb-2 opacity-20" />
+												<span className="text-[10px] font-black uppercase tracking-widest text-center opacity-40">Perfil</span>
 											</div>
 										)}
 									</div>
-									<label htmlFor="avatar-upload" className="absolute inset-0 bg-blue-600/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer backdrop-blur-sm">
-										<Upload className="text-white mb-1" size={24} />
-										<span className="text-white text-[10px] font-black uppercase tracking-widest">Mudar Foto</span>
-									</label>
-									<input id="avatar-upload" type="file" accept="image/*" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} />
 								</div>
-								<div className="px-6 py-2 bg-rose-500/10 border border-rose-500/20 rounded-full">
-									<p className="text-[9px] text-rose-400 font-bold uppercase tracking-widest text-center italic">⚠️ A foto de perfil é obrigatória para identificação</p>
+
+								<div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+									<label htmlFor="camera-upload" className="flex-1 flex items-center justify-center gap-3 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl cursor-pointer transition-all shadow-xl shadow-blue-500/10 group">
+										<Camera size={20} className="group-hover:scale-110 transition-transform" />
+										<div className="flex flex-col items-start leading-none">
+											<span className="text-[11px] font-black uppercase tracking-wider">Tirar Foto</span>
+											<span className="text-[8px] font-bold uppercase tracking-widest opacity-60 mt-0.5">Usar Câmera</span>
+										</div>
+									</label>
+									
+									<label htmlFor="gallery-upload" className="flex-1 flex items-center justify-center gap-3 py-5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-2xl cursor-pointer border border-white/5 transition-all group">
+										<Upload size={20} className="group-hover:-translate-y-1 transition-transform text-zinc-500" />
+										<div className="flex flex-col items-start leading-none">
+											<span className="text-[11px] font-black uppercase tracking-wider">Galeria</span>
+											<span className="text-[8px] font-bold uppercase tracking-widest opacity-60 mt-0.5">Escolher Arquivo</span>
+										</div>
+									</label>
+								</div>
+
+								<input id="camera-upload" type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoSelect} />
+								<input id="gallery-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+								
+								<div className="mt-6 px-6 py-2 bg-rose-500/5 border border-rose-500/10 rounded-full">
+									<p className="text-[9px] text-rose-500/70 font-black uppercase tracking-widest text-center italic">⚠️ A foto de perfil é obrigatória para identificação</p>
 								</div>
 							</div>
 

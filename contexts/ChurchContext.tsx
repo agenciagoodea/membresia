@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Member, Cell, PrayerRequest, UserRole } from '../types';
+import { Member, Cell, PrayerRequest, UserRole, CellMeetingException } from '../types';
 import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import { prayerService } from '../services/prayerService';
 import { eventService } from '../services/eventService';
+import { cellMeetingService } from '../services/cellMeetingService';
 
 interface ChurchContextType {
   members: Member[];
   cells: Cell[];
   prayers: PrayerRequest[];
   events: any[];
+  meetingExceptions: CellMeetingException[];
   loading: boolean;
   refreshData: () => Promise<void>;
 }
@@ -21,6 +23,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   const [cells, setCells] = useState<Cell[]>([]);
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [meetingExceptions, setMeetingExceptions] = useState<CellMeetingException[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refreshData = useCallback(async () => {
@@ -33,6 +36,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
       setCells([]);
       setPrayers([]);
       setEvents([]);
+      setMeetingExceptions([]);
       setLoading(false);
       return;
     }
@@ -46,17 +50,19 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
 
     try {
       setLoading(true);
-      const [membersData, cellsData, prayersData, eventsData] = await Promise.all([
+      const [membersData, cellsData, prayersData, eventsData, exceptionsData] = await Promise.all([
         memberService.getAll(churchId).catch(() => []),
         cellService.getAll(churchId).catch(() => []),
         prayerService.getAll(churchId).catch(() => []),
-        eventService.getAll(churchId).catch(() => [])
+        eventService.getAll(churchId).catch(() => []),
+        cellMeetingService.getExceptions(churchId).catch(() => [])
       ]);
 
       setMembers(membersData);
       setCells(cellsData);
       setPrayers(prayersData);
       setEvents(eventsData);
+      setMeetingExceptions(exceptionsData);
     } catch (error) {
       console.error('Erro ao sincronizar dados da igreja:', error);
     } finally {
@@ -69,7 +75,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   }, [refreshData]);
 
   return (
-    <ChurchContext.Provider value={{ members, cells, prayers, events, loading, refreshData }}>
+    <ChurchContext.Provider value={{ members, cells, prayers, events, meetingExceptions, loading, refreshData }}>
       {children}
     </ChurchContext.Provider>
   );

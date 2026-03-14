@@ -105,6 +105,7 @@ export interface MeetingReport {
 
 export interface Cell {
   id: string;
+  churchId?: string;
   name: string;
   leaderId: string;
   hostName: string;
@@ -122,6 +123,18 @@ export interface Cell {
   status: 'ACTIVE' | 'MULTIPLYING' | 'INACTIVE';
   averageAttendance?: number;
   logo?: string;
+}
+
+export interface CellMeetingException {
+  id: string;
+  cell_id: string;
+  original_date: string;
+  new_date?: string;
+  new_time?: string;
+  status: 'CANCELLED' | 'RESCHEDULED';
+  reason?: string;
+  church_id: string;
+  created_at?: string;
 }
 
 export interface PrayerRequest {

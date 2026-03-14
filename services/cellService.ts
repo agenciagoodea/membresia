@@ -3,6 +3,7 @@ import { Cell } from '../types';
 
 const mapToFrontend = (c: any): Cell => ({
 	id: c.id,
+	churchId: c.church_id,
 	name: c.name,
 	leaderId: c.leader_id,
 	hostName: c.host_name,

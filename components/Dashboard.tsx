@@ -36,6 +36,7 @@ import PrayerForm from './Prayer/PrayerForm';
 import MyProgress from './Member/MyProgress';
 import MyCellDetail from './Member/MyCellDetail';
 import PrayerHistory from './Member/PrayerHistory';
+import { mergeAgendaItems } from '../utils/agendaUtils';
 
 // Componentes Auxiliares
 const PageHeader = ({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -145,41 +146,120 @@ const MasterDashboard = () => (
 );
 
 const DashboardEventsWidget = ({ events }: { events: any[] }) => {
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  
   const upcoming = events
     .filter(e => e.date >= new Date().toISOString().split('T')[0])
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3);
+    .slice(0, 5);
 
   if (upcoming.length === 0) return null;
 
   return (
-    <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
-      <h4 className="font-black text-white text-xl mb-8 flex items-center gap-4 uppercase tracking-tighter">
+    <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl h-full flex flex-col">
+      <h4 className="font-black text-white text-xl mb-8 flex items-center gap-4 uppercase tracking-tighter shrink-0">
         <div className="w-1.5 h-6 bg-amber-500 rounded-full" /> Próximos Eventos
       </h4>
-      <div className="space-y-4">
+      <div className="space-y-4 flex-1 overflow-y-auto scrollbar-hide">
         {upcoming.map(evt => (
-          <div key={evt.id} className="flex items-center gap-4 p-4 bg-zinc-950 rounded-2xl border border-white/5">
+          <div 
+            key={evt.id} 
+            onClick={() => setSelectedEvent(evt)}
+            className="flex items-center gap-4 p-4 bg-zinc-950 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all cursor-pointer group"
+          >
             {evt.image_url ? (
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/5 shrink-0">
-                <img src={evt.image_url} className="w-full h-full object-cover" alt="" />
+              <div className="w-14 h-14 rounded-xl overflow-hidden border border-white/5 shrink-0">
+                <img src={evt.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
               </div>
             ) : (
-              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center shrink-0">
+              <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center shrink-0">
                 <span className="text-sm font-black text-amber-500 leading-none">{evt.date.split('-')[2]}</span>
                 <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">{new Date(evt.date).toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}</span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{evt.title}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Clock size={10} className="text-zinc-600" />
-                <span className="text-[10px] text-zinc-500 font-bold uppercase">{evt.time || 'Horário não definido'}</span>
+              <p className="text-sm font-black text-white truncate uppercase tracking-tight">{evt.title}</p>
+              <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={10} className="text-amber-500/50" />
+                  <span className="text-[9px] text-zinc-500 font-bold uppercase">{new Date(evt.date).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock size={10} className="text-amber-500/50" />
+                  <span className="text-[9px] text-zinc-500 font-bold uppercase">{evt.time || '00:00'}</span>
+                </div>
               </div>
+              {evt.location && (
+                <div className="flex items-center gap-1.5 mt-1.5 opacity-60">
+                  <MapPin size={10} className="text-zinc-600" />
+                  <span className="text-[9px] text-zinc-500 font-bold uppercase truncate">{evt.location}</span>
+                </div>
+              )}
             </div>
+            <ChevronRight size={14} className="text-zinc-800 group-hover:text-amber-500 transition-colors shrink-0" />
           </div>
         ))}
       </div>
+
+      {selectedEvent && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedEvent(null)} />
+          <div className="relative w-full max-w-lg bg-zinc-950 rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
+             <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 z-10 p-3 text-zinc-500 hover:text-white bg-black/40 backdrop-blur-md rounded-2xl transition-all border border-white/5">
+                <X size={20} />
+             </button>
+             
+             {selectedEvent.image_url && (
+               <div className="w-full aspect-video overflow-hidden">
+                 <img src={selectedEvent.image_url} className="w-full h-full object-cover" alt="" />
+               </div>
+             )}
+             
+             <div className="p-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                    Evento da Agenda
+                  </div>
+                </div>
+                
+                <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-8 leading-none">
+                  {selectedEvent.title}
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-6 mb-10">
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                       <Calendar size={12} className="text-amber-500" /> Data do Evento
+                    </p>
+                    <p className="text-lg font-black text-white">{new Date(selectedEvent.date).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                       <Clock size={12} className="text-amber-500" /> Horário
+                    </p>
+                    <p className="text-lg font-black text-white">{selectedEvent.time || '00:00'}</p>
+                  </div>
+                </div>
+                
+                {selectedEvent.location && (
+                  <div className="bg-white/5 p-8 rounded-3xl border border-white/5 mb-10">
+                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                       <MapPin size={14} className="text-rose-500" /> Localização
+                    </p>
+                    <p className="text-sm font-bold text-zinc-300 uppercase leading-relaxed">{selectedEvent.location}</p>
+                  </div>
+                )}
+                
+                {selectedEvent.description && (
+                  <div className="border-t border-white/5 pt-8">
+                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Sobre o Evento</p>
+                    <p className="text-sm text-zinc-400 font-medium leading-relaxed italic">{selectedEvent.description}</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -210,8 +290,8 @@ const ChurchAdminDashboard = ({ members, cells, prayers, events }: { members: Me
         <StatCard title="Eventos na Agenda" value={events.length} subValue="Totais" icon={<Calendar className="text-emerald-400" />} color="bg-emerald-500/10" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5"><Zap size={100} /></div>
           <h4 className="font-black text-white text-xl mb-12 flex items-center gap-4 uppercase tracking-tighter">
             <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Limites de Escala
@@ -240,7 +320,7 @@ const ChurchAdminDashboard = ({ members, cells, prayers, events }: { members: Me
 
         <DashboardEventsWidget events={events} />
 
-        <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
+        <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl h-full">
           <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
             <div className="w-1.5 h-6 bg-emerald-600 rounded-full" /> Últimos Membros
           </h4>
@@ -320,6 +400,8 @@ const PastorDashboard = ({ members, cells, prayers, events }: { members: Member[
           </div>
         </div>
 
+        <DashboardEventsWidget events={events} />
+
         <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-black p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
           <div className="absolute -top-10 -right-10 opacity-10"><Zap size={200} /></div>
           <div>
@@ -328,8 +410,8 @@ const PastorDashboard = ({ members, cells, prayers, events }: { members: Member[
             <p className="text-indigo-300 text-sm mb-12 font-bold uppercase tracking-widest italic leading-relaxed">Meta: 100 células ativas e 1.200 discípulos em envio.</p>
             <div className="space-y-8">
               {[
-                { label: 'DISCÍPULOS', val: 45 },
-                { label: 'ESTRUTURA', val: 42 },
+                { label: 'DISCÍPULOS', val: Math.round((members.length / 1200) * 100) },
+                { label: 'ESTRUTURA', val: Math.round((cells.length / 100) * 100) },
               ].map(meta => (
                 <div key={meta.label}>
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.3em] mb-3 opacity-60">
@@ -344,8 +426,6 @@ const PastorDashboard = ({ members, cells, prayers, events }: { members: Member[
             </div>
           </div>
         </div>
-
-        <DashboardEventsWidget events={events} />
       </div>
     </div>
   );
@@ -613,7 +693,7 @@ const MemberDashboard = ({ user, prayers, events, activeTab = 'JOURNEY' }: { use
 };
 
 const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTab }) => {
-  const { members, cells, prayers, events, loading } = useChurch();
+  const { members, cells, prayers, events, meetingExceptions, loading, refreshData } = useChurch();
 
   if (loading && user.role !== UserRole.MASTER_ADMIN) {
     return (
@@ -624,18 +704,19 @@ const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTa
   }
 
   const role = user.role;
+  const mergedEvents = mergeAgendaItems(events, cells, meetingExceptions, user);
 
   switch (role) {
     case UserRole.MASTER_ADMIN:
       return <MasterDashboard />;
     case UserRole.CHURCH_ADMIN:
-      return <ChurchAdminDashboard members={members} cells={cells} prayers={prayers} events={events} />;
+      return <ChurchAdminDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} />;
     case UserRole.PASTOR:
-      return <PastorDashboard members={members} cells={cells} prayers={prayers} events={events} />;
+      return <PastorDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} />;
     case UserRole.CELL_LEADER_DISCIPLE:
-      return <LeaderDashboard user={user} members={members} cells={cells} events={events} />;
+      return <LeaderDashboard user={user} members={members} cells={cells} events={mergedEvents} />;
     case UserRole.MEMBER_VISITOR:
-      return <MemberDashboard user={user} prayers={prayers.filter(p => p.email === user.email)} events={events} activeTab={activeTab} />;
+      return <MemberDashboard user={user} prayers={prayers.filter(p => p.email === user.email)} events={mergedEvents} activeTab={activeTab} />;
     default:
       return <div className="p-20 text-center text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">Acesso Restrito</div>;
   }
