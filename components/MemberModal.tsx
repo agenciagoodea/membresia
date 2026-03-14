@@ -426,11 +426,17 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									>
 										<option value="" className="bg-zinc-950">Sem Discipulador</option>
 										{allMembers
-											.filter(m => m.id !== member?.id && (
-												formData.role === UserRole.PASTOR 
-													? m.role === UserRole.CHURCH_ADMIN 
-													: (m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
-											))
+											.filter(m => {
+												if (m.id === member?.id) return false;
+												// Regra: Ocultar admin para membros e líderes de célula
+												const hideAdmin = formData.role === UserRole.MEMBER_VISITOR || formData.role === UserRole.CELL_LEADER_DISCIPLE;
+												if (hideAdmin && m.role === UserRole.CHURCH_ADMIN) return false;
+
+												if (formData.role === UserRole.PASTOR) {
+													return m.role === UserRole.CHURCH_ADMIN;
+												}
+												return m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN;
+											})
 											.map(m => (
 												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
 											))}
@@ -449,11 +455,17 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									>
 										<option value="" className="bg-zinc-950">Sem Pastor</option>
 										{allMembers
-											.filter(m => m.id !== member?.id && (
-												formData.role === UserRole.PASTOR
-													? (m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR)
-													: (m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
-											))
+											.filter(m => {
+												if (m.id === member?.id) return false;
+												// Regra: Ocultar admin para membros e líderes de célula
+												const hideAdmin = formData.role === UserRole.MEMBER_VISITOR || formData.role === UserRole.CELL_LEADER_DISCIPLE;
+												if (hideAdmin && m.role === UserRole.CHURCH_ADMIN) return false;
+
+												if (formData.role === UserRole.PASTOR) {
+													return m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR;
+												}
+												return m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN;
+											})
 											.map(m => (
 												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
 											))}

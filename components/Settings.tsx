@@ -300,7 +300,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Configurações</h2>
           <p className="text-zinc-500 font-medium text-lg italic">Console de controle da sua instância e perfil pessoal.</p>
         </div>
-        {(activeTab === 'PROFILE' || activeTab === 'CHURCH') && (
+        {(activeTab === 'PROFILE' || (activeTab === 'CHURCH' && activeUser.role === UserRole.CHURCH_ADMIN)) && (
           <button
             onClick={handleSave}
             disabled={saving || loading}
@@ -522,7 +522,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               )}
 
               {activeTab === 'CHURCH' && (
-                <div className="space-y-10 animate-in fade-in duration-300">
+                <div className={`space-y-10 animate-in fade-in duration-300 ${activeUser.role !== UserRole.CHURCH_ADMIN ? 'opacity-80 pointer-events-none' : ''}`}>
                   <div className="flex flex-col md:flex-row md:items-center gap-8">
                     <div className="w-32 h-32 rounded-[2rem] bg-zinc-950 border border-white/5 shadow-2xl flex items-center justify-center p-2 relative overflow-hidden group cursor-pointer">
                       {churchData.logo ? (
