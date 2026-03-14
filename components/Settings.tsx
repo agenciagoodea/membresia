@@ -190,6 +190,10 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           // Atualiza Perfil na tabela members
           const updated = await memberService.update(member.id, profileData);
           setMember(updated);
+          // Importante: Manter o cache local do Auth atualizado para a UI global (Sidebar/TopBar)
+          await supabase.auth.updateUser({
+            data: { profile: { ...user, ...updated } }
+          });
         } else {
           // Para MASTER_ADMIN ou usuários sem registro na tabela: salvar no Auth metadata
           const { error: authError } = await supabase.auth.updateUser({
@@ -261,9 +265,18 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         if (member?.id) {
           const updated = await memberService.update(member.id, { avatar: url });
           setMember(updated);
+          // Manter o cache local do Auth atualizado para a UI global refletir a nova foto
+          await supabase.auth.updateUser({ 
+            data: { profile: { ...user, ...updated, avatar: url } } 
+          });
         } else {
           // Para MASTER_ADMIN: salvar no user_metadata do Auth
-          await supabase.auth.updateUser({ data: { avatar_url: url } });
+          await supabase.auth.updateUser({ 
+            data: { 
+              avatar_url: url,
+              profile: { ...user, avatar: url } 
+            } 
+          });
         }
 
         setProfileData(prev => ({ ...prev, avatar: url }));
@@ -289,8 +302,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   // Ajustar perfil para Agência Goodea se for Master Admin
   const activeUser = user.role === UserRole.MASTER_ADMIN ? {
     ...user,
-    name: 'Agência Goodea',
-    avatar: 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
+    name: user.name || 'Agência Goodea',
+    avatar: user.avatar || user.avatar_url || 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
   } : user;
 
   return (

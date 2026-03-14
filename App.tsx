@@ -163,8 +163,8 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
   // Perfil mestre para o Master Admin
   const activeUser = role === UserRole.MASTER_ADMIN ? {
     ...user,
-    name: 'AGÊNCIA GOODEA',
-    avatar: 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
+    name: user.name || 'AGÊNCIA GOODEA',
+    avatar: user.avatar || user.avatar_url || 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
   } : user;
 
   return (
@@ -236,8 +236,8 @@ const Header = ({ user, onMenuToggle, notificationsCount = 0 }: { user: any, onM
   const isMaster = user.role === UserRole.MASTER_ADMIN;
   const activeUser = isMaster ? {
     ...user,
-    name: 'AGÊNCIA GOODEA',
-    avatar: 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
+    name: user.name || 'AGÊNCIA GOODEA',
+    avatar: user.avatar || user.avatar_url || 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
   } : user;
 
   return (
@@ -336,29 +336,54 @@ const App: React.FC = () => {
     // Timer de segurança reduzido para 2s
     const safetyTimer = setTimeout(() => setLoading(false), 2000);
 
-    // Usar APENAS o listener onAuthStateChange como fonte de verdade.
-    // O evento INITIAL_SESSION é disparado automaticamente na montagem
-    // e elimina a necessidade de chamar getSession() separadamente.
+    // Função para buscar dados frescos em background (avatar etc)
+    const syncFreshProfile = async (email: string) => {
+      if (!email) return;
+      try {
+        const fresh = await memberService.getByEmail(email);
+        if (fresh) {
+          // Se tiver diferença (ex: foto nova), atualiza
+          setCurrentUser((prev: any) => {
+            if (prev?.avatar !== fresh.avatar || prev?.name !== fresh.name) {
+              supabase.auth.updateUser({ data: { profile: fresh } }).catch(() => {});
+              return fresh;
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.warn('Silent sync failed', e);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Evento de Autenticação:', event);
       clearTimeout(safetyTimer);
 
       if (event === 'INITIAL_SESSION') {
-        // Sessão restaurada do localStorage — geralmente instantâneo
         if (session) {
           const profile = await resolveProfile(session);
-          if (profile) setCurrentUser(profile);
+          if (profile) {
+             setCurrentUser(profile);
+             // Background sync to ensure avatar is up to date (e.g. if admin changed it)
+             if (profile.role !== UserRole.MASTER_ADMIN && session.user.email) {
+               syncFreshProfile(session.user.email);
+             }
+          }
         }
         setLoading(false);
         profileResolvedRef.current = true;
       } else if (event === 'SIGNED_IN') {
-        // Sempre resolver o perfil no SIGNED_IN — garante que login manual funcione
         const profile = await resolveProfile(session);
-        if (profile) setCurrentUser(profile);
+        if (profile) {
+           setCurrentUser(profile);
+           if (profile.role !== UserRole.MASTER_ADMIN && session.user?.email) {
+             syncFreshProfile(session.user.email);
+           }
+        }
         profileResolvedRef.current = true;
         setLoading(false);
       } else if (event === 'USER_UPDATED') {
-        // Atualizar cache local quando perfil mudar
         const updated = session?.user?.user_metadata?.profile;
         if (updated) setCurrentUser(updated);
       } else if (event === 'SIGNED_OUT') {
