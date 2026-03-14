@@ -17,6 +17,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     // Armazenamento padrão: localStorage (mais rápido que sessionStorage)
     storageKey: 'ecclesia_auth',
+    // Bypass para o "Error: Acquiring an exclusive Navigator LockManager lock timed out"
+    // frequente em navegadores mobile como Safari/Chrome Android.
+    lock: (name: string, acquireTimeout: number, fn: () => Promise<any>) => {
+      // Executa a operação imediatamente, ignorando o LockManager nativo
+      return fn();
+    },
   },
   global: {
     headers: {
