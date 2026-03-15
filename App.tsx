@@ -345,7 +345,7 @@ const App: React.FC = () => {
         if (fresh) {
           // Se tiver diferença (ex: foto nova), atualiza
           setCurrentUser((prev: any) => {
-            if (prev?.avatar !== fresh.avatar || prev?.name !== fresh.name) {
+            if (prev?.avatar !== fresh.avatar || prev?.name !== fresh.name || prev?.role !== fresh.role) {
               supabase.auth.updateUser({ data: { profile: fresh } }).catch(() => {});
               return fresh;
             }
