@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Save, User, Mail, Phone, Shield, Target, Layers, Users, Camera, MapPin, Building, Home, Map, Check, Crop as CropIcon, Heart, Lock } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
-import { Member, UserRole, LadderStage, Cell, MemberOrigin } from '../types';
+import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus } from '../types';
 import { cellService } from '../services/cellService';
 import { memberService } from '../services/memberService';
 import { MOCK_TENANT } from '../constants';
@@ -37,7 +37,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		spouseId: '',
 		pastorId: '',
 		login: '',
-		password: ''
+		password: '',
+		status: MemberStatus.ACTIVE
 	});
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -108,7 +109,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				spouseId: '',
 				pastorId: '',
 				login: '',
-				password: ''
+				password: '',
+				status: MemberStatus.ACTIVE
 			});
 			setConfirmPassword('');
 			setPhotoPreview('');
@@ -718,6 +720,19 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 							>
 								Cancelar
 							</button>
+							{member?.status === MemberStatus.PENDING && (
+								<button
+									type="button"
+									onClick={() => {
+										setFormData({ ...formData, status: MemberStatus.ACTIVE });
+										handleSubmit({ preventDefault: () => { } } as any);
+									}}
+									disabled={saving}
+									className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
+								>
+									<Check size={18} /> Aprovar Cadastro
+								</button>
+							)}
 							<button
 								type="submit"
 								disabled={saving || loadingData}

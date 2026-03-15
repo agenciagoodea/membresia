@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChurchTenant, UserRole, LadderStage, MemberOrigin, Cell, Member } from '../../types';
+import { ChurchTenant, UserRole, LadderStage, MemberOrigin, Cell, Member, MemberStatus } from '../../types';
 import { churchService } from '../../services/churchService';
 import { memberService } from '../../services/memberService';
 import { cellService } from '../../services/cellService';
@@ -23,7 +23,9 @@ const PublicRegistration = () => {
 	const [formData, setFormData] = useState({
 		name: '', email: '', phone: '', cpf: '', password: '', confirmPassword: '',
 		cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
-		origin: MemberOrigin.EVANGELISM as MemberOrigin, cellId: '', disciplerId: '', pastorId: '', maritalStatus: '', spouseId: '', avatar: ''
+		origin: MemberOrigin.EVANGELISM as MemberOrigin, role: UserRole.MEMBER_VISITOR as UserRole,
+		cellId: '', disciplerId: '', pastorId: '', maritalStatus: '', spouseId: '', avatar: '',
+		newCellName: '', isCreatingCell: false
 	});
 
 	// Cropper State
@@ -154,7 +156,7 @@ const PublicRegistration = () => {
 				finalAvatar = await memberService.uploadAvatar(selectedFile);
 			}
 
-			await memberService.create({
+			const res = await memberService.create({
 				name: formData.name,
 				email: formData.email,
 				login: formData.email,
@@ -174,13 +176,31 @@ const PublicRegistration = () => {
 				maritalStatus: formData.maritalStatus,
 				spouseId: formData.spouseId,
 				avatar: finalAvatar,
-				role: UserRole.MEMBER_VISITOR,
+				role: formData.role,
+				status: MemberStatus.PENDING,
 				stage: LadderStage.WIN,
 				joinedDate: new Date().toISOString(),
 				church_id: church.id,
 				stageHistory: [],
 				password: formData.password
 			} as any);
+
+			// Se for novo pastor/lider e criou celula, vincular (opcional, o service poderia tratar)
+			if (formData.isCreatingCell && formData.newCellName) {
+				const created = await cellService.create({
+					name: formData.newCellName,
+					leaderId: (res as any).id,
+					church_id: church.id,
+					hostName: '',
+					address: '',
+					meetingDay: 'A definir',
+					meetingTime: '19:30',
+					membersCount: 1,
+					status: 'ACTIVE'
+				} as any);
+				
+				await memberService.update((res as any).id, { cellId: created.id });
+			}
 
 			setSuccess(true);
 		} catch (err: any) {
@@ -211,7 +231,11 @@ const PublicRegistration = () => {
 						</div>
 						<h2 className="text-2xl font-black text-white uppercase tracking-tight mb-3">Cadastro Concluído!</h2>
 						<p className="text-zinc-400 text-sm mb-8 leading-relaxed font-medium">
-							Sua conta na instituição <span className="text-white font-bold">{church.name}</span> foi criada com sucesso. Procure a liderança para obter seu acesso.
+							Sua conta na instituição <span className="text-white font-bold">{church.name}</span> foi criada com sucesso. 
+							<br /><br />
+							<span className="text-amber-500 font-bold uppercase tracking-widest text-[10px]">Aguardando Liberação:</span>
+							<br />
+							Seu acesso será liberado pelo Pastor indicado em breve. Você receberá um aviso.
 						</p>
 					</div>
 				) : (
@@ -458,6 +482,15 @@ const PublicRegistration = () => {
 								</div>
 
 								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Cargo / Perfil</label>
+									<select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
+										<option value={UserRole.MEMBER_VISITOR} className="bg-zinc-900">Membro</option>
+										<option value={UserRole.CELL_LEADER_DISCIPLE} className="bg-zinc-900">Líder de Célula</option>
+										<option value={UserRole.PASTOR} className="bg-zinc-900">Pastor</option>
+									</select>
+								</div>
+
+								<div className="space-y-3">
 									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Origem / Indicação</label>
 									<select value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value as MemberOrigin })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
 										<option value={MemberOrigin.EVANGELISM} className="bg-zinc-900">Evangelismo / Ganho</option>
@@ -469,10 +502,21 @@ const PublicRegistration = () => {
 
 								<div className="space-y-3">
 									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Célula Principal</label>
-									<select value={formData.cellId} onChange={e => setFormData({ ...formData, cellId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-										<option value="" className="bg-zinc-900">Ainda não participo...</option>
-										{cells.map(c => <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>)}
-									</select>
+									{(formData.role === UserRole.PASTOR || formData.role === UserRole.CELL_LEADER_DISCIPLE) && (
+										<div className="flex items-center gap-2 mb-2">
+											<input type="checkbox" id="createCell" checked={formData.isCreatingCell} onChange={e => setFormData({ ...formData, isCreatingCell: e.target.checked })} className="rounded bg-zinc-900 border-white/10 text-blue-600 focus:ring-blue-500" />
+											<label htmlFor="createCell" className="text-[9px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer">Cadastrar nova célula na hora</label>
+										</div>
+									)}
+									
+									{formData.isCreatingCell ? (
+										<input value={formData.newCellName} onChange={e => setFormData({ ...formData, newCellName: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="Nome da Nova Célula..." />
+									) : (
+										<select value={formData.cellId} onChange={e => setFormData({ ...formData, cellId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
+											<option value="" className="bg-zinc-900">Ainda não participo...</option>
+											{cells.map(c => <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>)}
+										</select>
+									)}
 								</div>
 
 								<div className="space-y-3">
@@ -480,7 +524,11 @@ const PublicRegistration = () => {
 									<select value={formData.disciplerId} onChange={e => setFormData({ ...formData, disciplerId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
 										<option value="" className="bg-zinc-900">Não tenho / Não sei</option>
 										{members
-											.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE)
+											.filter(m => {
+												if (formData.role === UserRole.PASTOR) return m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR;
+												if (formData.role === UserRole.CELL_LEADER_DISCIPLE) return m.role === UserRole.PASTOR;
+												return m.role === UserRole.CELL_LEADER_DISCIPLE;
+											})
 											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)}
 									</select>
 								</div>

@@ -8,6 +8,7 @@ const mapToFrontend = (m: any): Member => ({
 	phone: m.phone,
 	churchId: m.church_id,
 	role: m.role,
+	status: m.status || 'PENDENTE',
 	stage: m.stage,
 	cellId: m.cell_id,
 	disciplerId: m.discipler_id,
@@ -41,6 +42,7 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.email !== undefined) db.email = m.email;
 	if (m.phone !== undefined) db.phone = m.phone;
 	if (m.role !== undefined) db.role = m.role;
+	if (m.status !== undefined) db.status = m.status;
 	if (m.stage !== undefined) db.stage = m.stage;
 	if (m.cellId !== undefined) db.cell_id = m.cellId || null;
 	if (m.disciplerId !== undefined) db.discipler_id = m.disciplerId || null;
@@ -129,7 +131,10 @@ export const memberService = {
 		// 2. Criar o registro na tabela members
 		const { data, error } = await supabase
 			.from('members')
-			.insert([dbData])
+			.insert([{
+				...dbData,
+				status: dbData.status || 'PENDENTE'
+			}])
 			.select()
 			.single();
 

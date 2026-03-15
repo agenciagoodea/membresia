@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { MOCK_TENANT, PLAN_CONFIGS } from '../constants';
-import { LadderStage, UserRole, Member, Cell, MemberOrigin } from '../types';
+import { LadderStage, UserRole, Member, Cell, MemberOrigin, MemberStatus } from '../types';
 import UpgradeModal from './Shared/UpgradeModal';
 import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
@@ -51,7 +51,17 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
   }, [location.state, isLimitReached, loading]);
 
   const filteredMembers = members.filter(m => {
-    const matchesFilter = filter === 'ALL' ? true : m.stage === filter;
+    // 1. Lógica de Visibilidade: Membros Pendentes são exclusivos
+    if (m.status === MemberStatus.PENDING) {
+      const isSupervisor = user.id === m.pastorId || user.id === m.disciplerId;
+      const isAdmin = user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN;
+      if (!isSupervisor && !isAdmin) return false;
+    }
+
+    // 2. Filtro por Estágio/Status
+    const matchesFilter = filter === 'ALL' ? true : 
+                         filter === 'PENDING' ? m.status === MemberStatus.PENDING :
+                         m.stage === filter;
 
     const cellName = cells.find(c => c.id === m.cellId)?.name || 'Sem Célula';
 
@@ -213,6 +223,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 onChange={(e) => setFilter(e.target.value)}
               >
                 <option className="bg-zinc-900" value="ALL">Todos</option>
+                <option className="bg-zinc-900" value="PENDING">Aguardando (Pendentes)</option>
                 {Object.values(LadderStage).map(stage => (
                   <option className="bg-zinc-900" key={stage} value={stage}>{stage}</option>
                 ))}
@@ -264,15 +275,20 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-8 text-center">
-                    <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border ${member.stage === LadderStage.SEND ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                      member.stage === LadderStage.DISCIPLE ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                        member.stage === LadderStage.CONSOLIDATE ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                      }`}>
-                      {member.stage}
-                    </span>
-                  </td>
+                    <div className="flex flex-col items-center gap-2">
+                      <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border ${member.stage === LadderStage.SEND ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                        member.stage === LadderStage.DISCIPLE ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          member.stage === LadderStage.CONSOLIDATE ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                            'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                        }`}>
+                        {member.stage}
+                      </span>
+                      {member.status === MemberStatus.PENDING && (
+                        <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/5 px-2 py-0.5 rounded-full border border-amber-500/10 animate-pulse">
+                          Aguardando
+                        </span>
+                      )}
+                    </div>
                   <td className="px-6 py-8 text-center text-[10px] font-black text-zinc-300 uppercase tracking-widest italic">
                     {cells.find(c => c.id === member.cellId)?.name || 'Sem Célula'}
                   </td>

@@ -14,6 +14,12 @@ export enum UserRole {
   MEMBER_VISITOR = 'MEMBRO / VISITANTE'
 }
 
+export enum MemberStatus {
+  PENDING = 'PENDENTE',
+  ACTIVE = 'ATIVO',
+  REJECTED = 'REJEITADO'
+}
+
 export enum ChurchStatus {
   ACTIVE = 'ATIVO',
   SUSPENDED = 'SUSPENSO',
@@ -64,6 +70,7 @@ export interface Member {
   phone: string;
   churchId?: string;
   role: UserRole;
+  status: MemberStatus;
   stage: LadderStage;
   cellId: string;
   disciplerId?: string;

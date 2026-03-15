@@ -36,6 +36,7 @@ import PrayerForm from './Prayer/PrayerForm';
 import MyProgress from './Member/MyProgress';
 import MyCellDetail from './Member/MyCellDetail';
 import PrayerHistory from './Member/PrayerHistory';
+import SuccessMarkers from './Member/SuccessMarkers';
 import { mergeAgendaItems } from '../utils/agendaUtils';
 
 // Componentes Auxiliares
@@ -576,6 +577,8 @@ const MemberDashboard = ({ user, prayers, events, activeTab = 'JOURNEY' }: { use
                 ))}
               </div>
             </div>
+
+            <SuccessMarkers user={user} />
 
             {/* BARRA DE MENTORES */}
             <div className="bg-white p-4 rounded-[2rem] shadow-xl flex flex-wrap items-center gap-8 px-8">
