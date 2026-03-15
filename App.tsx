@@ -45,6 +45,7 @@ const Cells = lazy(() => import('./components/Cells'));
 const Finance = lazy(() => import('./components/Finance'));
 const IAInsights = lazy(() => import('./components/IAInsights'));
 const SuccessLadder = lazy(() => import('./components/Ladder/SuccessLadder'));
+const MyM12Activities = lazy(() => import('./components/Member/MyM12Activities'));
 const ChurchesManager = lazy(() => import('./components/MasterAdmin/ChurchesManager'));
 const PlansManager = lazy(() => import('./components/MasterAdmin/PlansManager'));
 const SecurityAudit = lazy(() => import('./components/MasterAdmin/SecurityAudit'));
@@ -410,7 +411,7 @@ const App: React.FC = () => {
     if (!currentUser?.churchId) return;
     try {
       const { count, error } = await supabase
-        .from('prayer_requests')
+        .from('prayers')
         .select('id', { count: 'exact', head: true })
         .eq('church_id', currentUser.churchId)
         .eq('status', PrayerStatus.PENDING);
@@ -486,6 +487,7 @@ const App: React.FC = () => {
                         <>
                           <Route path="/cells" element={<Cells user={currentUser} />} />
                           <Route path="/ladder" element={<SuccessLadder user={currentUser} />} />
+                          <Route path="/m12-config" element={<Dashboard user={currentUser} activeTab="m12-config" />} />
                           <Route path="/ia-insights" element={<IAInsights user={currentUser} />} />
                         </>
                       )}
@@ -508,8 +510,10 @@ const App: React.FC = () => {
                       <Route path="/settings" element={<Settings user={currentUser} />} />
                       <Route path="/events" element={<Events user={currentUser} />} />
 
-                      {/* Rotas de Membro */}
-                      {currentUser?.role === UserRole.MEMBER_VISITOR && (
+                        {/* Rotas de Membro/Líder */}
+                        <Route path="/my-activities" element={<MyM12Activities user={currentUser} />} />
+
+                        {currentUser?.role === UserRole.MEMBER_VISITOR && (
                         <>
                           <Route path="/my-progress" element={<Dashboard user={currentUser} activeTab="PROGRESS" />} />
                           <Route path="/my-cell-detail" element={<Dashboard user={currentUser} activeTab="CELL" />} />

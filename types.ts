@@ -6,6 +6,30 @@ export enum LadderStage {
   SEND = 'ENVIAR'
 }
 
+export interface M12Checkpoint {
+  id: string;
+  churchId: string;
+  stage: LadderStage;
+  label: string;
+  order: number;
+  description?: string;
+  isActive: boolean;
+  isRequired: boolean;
+  dependsOnId?: string;
+  createdAt: string;
+}
+
+export interface M12Performance {
+  memberId: string;
+  stage: LadderStage;
+  startDate: string;
+  completionDate?: string;
+  totalCheckpoints: number;
+  completedCheckpoints: number;
+  daysActive: number;
+  efficiency: number; // percentage
+}
+
 export enum UserRole {
   MASTER_ADMIN = 'MASTER ADMIN',
   CHURCH_ADMIN = 'ADMINISTRADOR DA IGREJA',
@@ -77,7 +101,7 @@ export interface Member {
   avatar: string;
   stageHistory: StageHistory[];
   completedMilestones?: string[];
-  origin?: MemberOrigin;
+  origin?: string;
   baptismDate?: string;
   joinedDate: string;
   cpf?: string;

@@ -37,6 +37,7 @@ import MyProgress from './Member/MyProgress';
 import MyCellDetail from './Member/MyCellDetail';
 import PrayerHistory from './Member/PrayerHistory';
 import SuccessMarkers from './Member/SuccessMarkers';
+import CheckpointManager from './Ladder/CheckpointManager';
 import { mergeAgendaItems } from '../utils/agendaUtils';
 
 // Componentes Auxiliares
@@ -269,7 +270,10 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
   );
 };
 
-const ChurchAdminDashboard = ({ members, cells, prayers, events }: { members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[] }) => {
+const ChurchAdminDashboard = ({ members, cells, prayers, events, activeTab }: { members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[], activeTab?: string }) => {
+  if (activeTab === 'm12-config') {
+    return <CheckpointManager />;
+  }
   const planLimits = PLAN_CONFIGS[PlanType.PRO];
   const totalMembers = members.length;
   const activeCells = cells.length;
@@ -298,9 +302,7 @@ const ChurchAdminDashboard = ({ members, cells, prayers, events }: { members: Me
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
         <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5"><Zap size={100} /></div>
-          <h4 className="font-black text-white text-xl mb-12 flex items-center gap-4 uppercase tracking-tighter">
-            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Limites de Escala
-          </h4>
+            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Metas de Crescimento
           <div className="space-y-12">
             <div>
               <div className="flex justify-between mb-3 items-end">
@@ -356,7 +358,10 @@ const ChurchAdminDashboard = ({ members, cells, prayers, events }: { members: Me
   );
 };
 
-const PastorDashboard = ({ members, cells, prayers, events }: { members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[] }) => {
+const PastorDashboard = ({ members, cells, prayers, events, activeTab }: { members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[], activeTab?: string }) => {
+  if (activeTab === 'm12-config') {
+    return <CheckpointManager />;
+  }
   const ladderDist = [
     { stage: 'Ganhar', count: members.filter(m => m.stage === LadderStage.WIN).length, color: '#3b82f6' },
     { stage: 'Consolidar', count: members.filter(m => m.stage === LadderStage.CONSOLIDATE).length, color: '#10b981' },
@@ -386,7 +391,7 @@ const PastorDashboard = ({ members, cells, prayers, events }: { members: Member[
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
           <h4 className="font-black text-white text-xl mb-12 flex items-center gap-4 uppercase tracking-tighter">
-            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Pipeline da Escada do Sucesso
+            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Visão Celular M12
           </h4>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -538,7 +543,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs text-zinc-400 mb-10 font-black uppercase tracking-widest">
-                <MapPin size={16} className="text-rose-500" /> {myCell.address}
+                <MapPin size={16} className="text-rose-500 shrink-0" /> <span className="truncate">{myCell.address}</span>
               </div>
               <button 
                 onClick={handleWhatsAppNotify}
@@ -599,6 +604,8 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
         return <MyCellDetail user={user} />;
       case 'PRAYERS':
         return <PrayerHistory user={user} />;
+      case 'm12-config':
+        return <CheckpointManager />;
       default:
         return (
           <div className="space-y-10">
@@ -701,8 +708,8 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                   <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
                     <Calendar size={18} className="text-zinc-600" /> {myCell?.meetingDay || 'A definir'} {myCell?.meetingTime ? `às ${myCell.meetingTime}` : ''}
                   </div>
-                  <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest">
-                    <MapPin size={18} className="text-zinc-600" /> {myCell?.address || 'Consulte seu líder'}
+                  <div className="flex items-center gap-4 text-zinc-300 text-sm font-bold uppercase tracking-widest overflow-hidden">
+                    <MapPin size={18} className="text-zinc-600 shrink-0" /> <span className="truncate">{myCell?.address || 'Consulte seu líder'}</span>
                   </div>
                 </div>
                 {myCell?.address && (
@@ -769,9 +776,9 @@ const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTa
     case UserRole.MASTER_ADMIN:
       return <MasterDashboard />;
     case UserRole.CHURCH_ADMIN:
-      return <ChurchAdminDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} />;
+      return <ChurchAdminDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} activeTab={activeTab} />;
     case UserRole.PASTOR:
-      return <PastorDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} />;
+      return <PastorDashboard members={members} cells={cells} prayers={prayers} events={mergedEvents} activeTab={activeTab} />;
     case UserRole.CELL_LEADER_DISCIPLE:
       return <LeaderDashboard user={user} members={members} cells={cells} events={mergedEvents} />;
     case UserRole.MEMBER_VISITOR:

@@ -20,10 +20,11 @@ import {
   Plus,
   Tv,
   Users2,
-  Calendar
+  Calendar,
+  Target
 } from 'lucide-react';
 export { PlanType } from './types';
-import { Member, Cell, LadderStage, ChurchTenant, FinancialRecord, UserRole, ChurchStatus, PlanType, MeetingReport, PrayerRequest, PrayerStatus, PlanLimits } from './types';
+import { Member, Cell, LadderStage, ChurchTenant, FinancialRecord, UserRole, ChurchStatus, PlanType, MeetingReport, PrayerRequest, PrayerStatus, PlanLimits, MemberStatus } from './types';
 
 // SaaS PLAN CONFIGURATIONS
 export const PLAN_CONFIGS: Record<PlanType, PlanLimits> = {
@@ -66,7 +67,8 @@ export const PASTOR_NAV_ITEMS = [
   { id: 'dashboard', label: 'Painel Pastoral', icon: <LayoutDashboard size={20} /> },
   { id: 'members', label: 'Membros & Líderes', icon: <Users size={20} /> },
   { id: 'cells', label: 'Gestão de Células', icon: <Layers size={20} /> },
-  { id: 'ladder', label: 'Escada do Sucesso', icon: <TrendingUp size={20} /> },
+  { id: 'ladder', label: 'Visão Celular M12', icon: <TrendingUp size={20} /> },
+  { id: 'm12-config', label: 'Configurar M12', icon: <Settings size={20} /> },
   { id: 'events', label: 'Agenda & Eventos', icon: <Calendar size={20} /> },
   { id: 'prayer-moderation', label: 'Moderação de Orações', icon: <HeartHandshake size={20} /> },
   { id: 'prayer-screen-link', label: 'Abrir Telão (Demo)', icon: <Tv size={20} /> },
@@ -79,7 +81,8 @@ export const PASTOR_NAV_ITEMS = [
 export const LEADER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Meu Painel', icon: <LayoutDashboard size={20} /> },
   { id: 'cells', label: 'Minhas Células', icon: <Layers size={20} /> },
-  { id: 'ladder', label: 'Meus Discípulos', icon: <TrendingUp size={20} /> },
+  { id: 'ladder', label: 'Visão Celular M12', icon: <TrendingUp size={20} /> },
+  { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'events', label: 'Agenda da Igreja', icon: <Calendar size={20} /> },
   { id: 'prayer-moderation', label: 'Pedidos de Oração', icon: <Heart size={20} /> },
   { id: 'ia-insights', label: 'Estudo de Célula (IA)', icon: <BookOpen size={20} /> },
@@ -90,6 +93,7 @@ export const LEADER_NAV_ITEMS = [
 export const MEMBER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Minha Jornada', icon: <LayoutDashboard size={20} /> },
   { id: 'my-progress', label: 'Meu Progresso', icon: <TrendingUp size={20} /> },
+  { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'my-cell-detail', label: 'Minha Célula', icon: <MapPin size={20} /> },
   { id: 'prayer-request-new', label: 'Enviar Oração', icon: <Plus size={20} /> },
   { id: 'my-prayers', label: 'Histórico de Pedidos', icon: <Heart size={20} /> },
@@ -121,6 +125,7 @@ export const MOCK_MEMBERS: Member[] = [
     email: 'joao@email.com',
     phone: '(11) 98888-7777',
     role: UserRole.CELL_LEADER_DISCIPLE,
+    status: MemberStatus.ACTIVE,
     stage: LadderStage.SEND,
     cellId: 'c1',
     joinedDate: '2022-01-15',
@@ -138,6 +143,7 @@ export const MOCK_MEMBERS: Member[] = [
     email: 'maria@email.com',
     phone: '(11) 97777-6666',
     role: UserRole.CELL_LEADER_DISCIPLE,
+    status: MemberStatus.ACTIVE,
     stage: LadderStage.DISCIPLE,
     cellId: 'c1',
     joinedDate: '2023-03-10',
@@ -148,8 +154,8 @@ export const MOCK_MEMBERS: Member[] = [
       { stage: LadderStage.DISCIPLE, date: '2023-10-15', recordedBy: 'João Silva' }
     ]
   },
-  { id: '3', name: 'Pedro Souza', email: 'pedro@email.com', phone: '(11) 96666-5555', role: UserRole.MEMBER_VISITOR, stage: LadderStage.CONSOLIDATE, cellId: 'c2', joinedDate: '2024-05-20', avatar: 'https://i.pravatar.cc/150?u=3', stageHistory: [] },
-  { id: '4', name: 'Ana Costa', email: 'ana@email.com', phone: '(11) 95555-4444', role: UserRole.MEMBER_VISITOR, stage: LadderStage.WIN, cellId: 'c3', joinedDate: '2024-11-01', avatar: 'https://i.pravatar.cc/150?u=4', stageHistory: [] },
+  { id: 'Pedro Souza', name: 'Pedro Souza', email: 'pedro@email.com', phone: '(11) 96666-5555', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.CONSOLIDATE, cellId: 'c2', joinedDate: '2024-05-20', avatar: 'https://i.pravatar.cc/150?u=3', stageHistory: [] },
+  { id: '4', name: 'Ana Costa', email: 'ana@email.com', phone: '(11) 95555-4444', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.WIN, cellId: 'c3', joinedDate: '2024-11-01', avatar: 'https://i.pravatar.cc/150?u=4', stageHistory: [] },
 ];
 
 export const MOCK_CELLS: Cell[] = [

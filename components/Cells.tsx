@@ -1101,22 +1101,22 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
             
             <div className="mb-6 space-y-2">
               <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                <User size={14} className="text-blue-500 opacity-70" /> 
+                <User size={14} className="text-blue-500 opacity-70 shrink-0" /> 
                 <span>Líder: <b className="text-zinc-200 uppercase">{leader?.name || 'Não definido'}</b></span>
               </p>
               {spouse && (
                 <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                  <Heart size={14} className="text-rose-500 opacity-70" /> 
+                  <Heart size={14} className="text-rose-500 opacity-70 shrink-0" /> 
                   <span>Cônjuge: <b className="text-zinc-200 uppercase">{spouse.name}</b></span>
                 </p>
               )}
               <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                <Home size={14} className="text-amber-500 opacity-70" /> 
+                <Home size={14} className="text-amber-500 opacity-70 shrink-0" /> 
                 <span>Anfitrião: <b className="text-zinc-200 uppercase">{cell.hostName || 'Não definido'}</b></span>
               </p>
-              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight truncate">
-                <MapPin size={14} className="text-emerald-500 opacity-70" /> 
-                <span><b className="text-zinc-200 uppercase">{cell.address || 'Sem endereço'}</b></span>
+              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
+                <MapPin size={14} className="text-emerald-500 opacity-70 shrink-0" /> 
+                <span className="truncate"><b className="text-zinc-200 uppercase">{cell.address || 'Sem endereço'}</b></span>
               </p>
             </div>
 

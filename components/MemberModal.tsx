@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Save, User, Mail, Phone, Shield, Target, Layers, Users, Camera, MapPin, Building, Home, Map, Check, Crop as CropIcon, Heart, Lock } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
-import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus } from '../types';
+import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus, M12Checkpoint } from '../types';
 import { cellService } from '../services/cellService';
 import { memberService } from '../services/memberService';
+import { m12Service } from '../services/m12Service';
 import { MOCK_TENANT } from '../constants';
 
 interface MemberModalProps {
@@ -25,7 +26,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		cellId: '',
 		disciplerId: '',
 		avatar: '',
-		origin: MemberOrigin.OTHER_CHURCH,
+		origin: '',
 		cpf: '',
 		cep: '',
 		state: '',
@@ -59,18 +60,21 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	const [allMembers, setAllMembers] = useState<Member[]>([]);
 	const [loadingData, setLoadingData] = useState(false);
 	const [saving, setSaving] = useState(false);
+	const [gainCheckpoints, setGainCheckpoints] = useState<M12Checkpoint[]>([]);
 
 	useEffect(() => {
 		const loadData = async () => {
 			try {
 				setLoadingData(true);
 				const churchId = user?.churchId || user?.church_id;
-				const [cellsData, membersData] = await Promise.all([
+				const [cellsData, membersData, checkpointsData] = await Promise.all([
 					cellService.getAll(churchId),
-					memberService.getAll(churchId)
+					memberService.getAll(churchId),
+					m12Service.getCheckpoints(churchId)
 				]);
 				setCells(cellsData);
 				setAllMembers(membersData || []);
+				setGainCheckpoints((checkpointsData || []).filter(c => c.stage === LadderStage.WIN));
 			} catch (error) {
 				console.error('Erro ao carregar dados:', error);
 			} finally {
@@ -100,7 +104,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				cellId: '',
 				disciplerId: '',
 				avatar: '',
-				origin: MemberOrigin.OTHER_CHURCH,
+				origin: '',
 				cpf: '',
 				cep: '',
 				state: '',
@@ -503,13 +507,20 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 								<div className="relative">
 									<Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 									<select
-										value={formData.origin}
-										onChange={(e) => setFormData({ ...formData, origin: e.target.value as MemberOrigin })}
+										value={formData.origin || ''}
+										onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
-										{Object.values(MemberOrigin).map(origin => (
-											<option key={origin} value={origin} className="bg-zinc-950">{origin}</option>
-										))}
+										<option value="" className="bg-zinc-950">Selecione a Origem</option>
+										{gainCheckpoints.length > 0 ? (
+											gainCheckpoints.map(cp => (
+												<option key={cp.id} value={cp.label} className="bg-zinc-950">{cp.label}</option>
+											))
+										) : (
+											Object.values(MemberOrigin).map(origin => (
+												<option key={origin} value={origin} className="bg-zinc-950">{origin}</option>
+											))
+										)}
 									</select>
 								</div>
 							</div>

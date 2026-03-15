@@ -16,21 +16,24 @@ import {
   AlertCircle,
   ArrowUpRight,
   Filter,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Calendar,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_TENANT, PLAN_CONFIGS } from '../../constants';
-import { LadderStage, Member, Cell, MemberOrigin } from '../../types';
+import { Member, Cell, LadderStage, M12Checkpoint, MemberOrigin, UserRole } from '../../types';
 import { memberService } from '../../services/memberService';
 import { cellService } from '../../services/cellService';
+import { m12Service } from '../../services/m12Service';
 import MemberModal from '../MemberModal';
 import UpgradeModal from '../Shared/UpgradeModal';
 
-const STAGE_ACTIVITIES: Record<LadderStage, string[]> = {
-  [LadderStage.WIN]: ['Sistema de Oração', 'Evangelismo', 'Visita de Célula', 'Outra Igreja'],
-  [LadderStage.CONSOLIDATE]: ['Batismo', 'Aclamado', 'Célula', 'Encontro com Deus'],
-  [LadderStage.DISCIPLE]: ['Serviços Eclesiásticos', 'Escola de Líderes', 'Escola Bíblica do Reino', 'Cosmo Visões', 'Guerra Espiritual'],
-  [LadderStage.SEND]: ['Multiplicação', 'Mentoria']
+const DEFAULT_STAGE_ACTIVITIES: Record<LadderStage, string[]> = {
+  [LadderStage.WIN]: ['Sistema de Oração', 'Consolidação Inicial', 'Visita à Célula', 'Pré-Encontro'],
+  [LadderStage.CONSOLIDATE]: ['Encontro com Deus', 'Batismo', 'Pós-Encontro', 'Curso de Maturidade'],
+  [LadderStage.DISCIPLE]: ['Escola de Líderes (N1)', 'CTL', 'Frequência na Célula', 'Discipulado Fixo'],
+  [LadderStage.SEND]: ['Escola de Líderes (Conclusão)', 'Timóteo (Treinamento)', 'Multiplicar Célula', 'Enviar Discípulos']
 };
 
 interface LadderColumnProps {
@@ -45,13 +48,14 @@ interface LadderColumnProps {
   onAdvance: (member: Member) => void;
   onRegress: (member: Member) => void;
   isStageComplete: (member: Member) => boolean;
+  getActivitiesForStage: (stage: LadderStage) => string[];
 }
 
 const LadderColumn: React.FC<LadderColumnProps> = ({
-  title, stage, icon, color, accentColor, description, members, onSelectMember, onAdvance, onRegress, isStageComplete
+  title, stage, icon, color, accentColor, description, members, onSelectMember, onAdvance, onRegress, isStageComplete, getActivitiesForStage
 }) => {
   return (
-    <div className="flex flex-col h-full min-w-[320px] bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/5 p-5 transition-all hover:border-white/10">
+    <div className="flex flex-col h-full bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/5 p-4 transition-all hover:border-white/10">
       <div className="flex items-center justify-between mb-6 px-2">
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg shadow-${accentColor}/20`}>
@@ -82,7 +86,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-zinc-800/50 p-4 rounded-3xl border border-white/5 hover:border-white/20 hover:bg-zinc-800 transition-all cursor-pointer group relative overflow-hidden"
+              className="bg-zinc-800/50 p-3 rounded-2xl border border-white/5 hover:border-white/20 hover:bg-zinc-800 transition-all cursor-pointer group relative overflow-hidden"
               onClick={() => onSelectMember(member)}
             >
               {/* Progress Bar Background */}
@@ -95,7 +99,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                     const currentIndex = stages.indexOf(member.stage);
                     const baseProgress = (currentIndex / stages.length) * 100;
 
-                    const required = STAGE_ACTIVITIES[member.stage] || [];
+                    const required = getActivitiesForStage(member.stage);
                     const completed = (member.completedMilestones || []).filter(m => required.includes(m)).length;
                     const stageProgress = required.length > 0 ? (completed / required.length) * (100 / stages.length) : 0;
 
@@ -104,13 +108,13 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                 }}
               />
 
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <div className="relative">
                     <img 
                       src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
-                      className="w-10 h-10 rounded-full border border-white/10 object-cover aspect-square" 
+                      className="w-8 h-8 rounded-full border border-white/10 object-cover aspect-square" 
                       alt="" 
                     />
                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-zinc-900 ${color} flex items-center justify-center`}>
@@ -133,7 +137,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                       const currentIndex = stages.indexOf(member.stage);
                       const baseScore = (currentIndex / stages.length) * 100;
 
-                      const required = STAGE_ACTIVITIES[member.stage] || [];
+                      const required = getActivitiesForStage(member.stage);
                       const completed = member.completedMilestones || [];
 
                       // Lógica especial para WIN
@@ -184,8 +188,8 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                         s === LadderStage.DISCIPLE ? 'amber' : 'rose';
 
                     if (s === LadderStage.WIN) {
-                      const validOrigins = [MemberOrigin.PRAYER_REQUEST, MemberOrigin.EVANGELISM, MemberOrigin.CELL_VISIT, MemberOrigin.OTHER_CHURCH];
-                      const hasValidOrigin = validOrigins.includes(member.origin as any);
+                      const required = getActivitiesForStage(LadderStage.WIN);
+                      const hasValidOrigin = required.includes(member.origin || '');
                       if (!hasValidOrigin) return null;
                       return (
                         <div key={`win-icon-${member.id}`} className="w-6 h-6 rounded-full bg-blue-600/20 border-2 border-zinc-800 flex items-center justify-center" title={`Origem: ${member.origin}`}>
@@ -194,15 +198,15 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                       );
                     }
 
-                    const activities = STAGE_ACTIVITIES[s] || [];
+                    const activities = getActivitiesForStage(s);
                     const completed = activities.filter(act => {
                       if (act === 'Célula' && member.cellId) return true;
                       return (member.completedMilestones || []).includes(act);
                     });
 
                     return completed.map((act, i) => (
-                      <div key={`${s}-${i}-${member.id}`} className={`w-6 h-6 rounded-full bg-${sColor}-600/20 border-2 border-zinc-800 flex items-center justify-center`} title={act}>
-                        <CheckCircle2 size={10} className={`text-${sColor}-400`} />
+                      <div key={`${s}-${i}-${member.id}`} className={`w-5 h-5 rounded-full bg-${sColor}-600/20 border border-zinc-800 flex items-center justify-center`} title={act}>
+                        <CheckCircle2 size={8} className={`text-${sColor}-400`} />
                       </div>
                     ));
                   })}
@@ -212,35 +216,6 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {stage !== LadderStage.WIN && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRegress(member);
-                      }}
-                      className="p-1.5 bg-white/5 hover:bg-rose-500/20 text-zinc-500 hover:text-rose-500 rounded-xl transition-all"
-                      title="Voltar Estágio"
-                    >
-                      <ArrowUpRight size={12} className="rotate-180" />
-                    </button>
-                  )}
-
-                  {stage !== LadderStage.SEND && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAdvance(member);
-                      }}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${isStageComplete(member)
-                        ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20'
-                        : 'bg-white/5 text-zinc-500 hover:bg-white/10'
-                        }`}
-                    >
-                      Avançar <ArrowUpRight size={12} />
-                    </button>
-                  )}
-                </div>
               </div>
             </motion.div>
           ))}
@@ -267,16 +242,19 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [checkpoints, setCheckpoints] = useState<M12Checkpoint[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [membersData, cellsData] = await Promise.all([
-        memberService.getAll(MOCK_TENANT.id),
-        cellService.getAll(MOCK_TENANT.id)
+      const [membersData, cellsData, checkpointsData] = await Promise.all([
+        memberService.getAll(MOCK_TENANT.id).catch(() => []),
+        cellService.getAll(MOCK_TENANT.id).catch(() => []),
+        m12Service.getCheckpoints(MOCK_TENANT.id).catch(() => [])
       ]);
       setMembers(membersData);
       setCells(cellsData);
+      setCheckpoints(checkpointsData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -288,8 +266,29 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
     loadData();
   }, []);
 
-  const getStageMembers = (stage: LadderStage) =>
-    members.filter(m => m.stage === stage && m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const getStageMembers = (stage: LadderStage) => {
+    const isAdmin = user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN;
+    
+    return members.filter(m => {
+      // 1. Basic Filters (Stage & Search)
+      const matchesStage = m.stage === stage;
+      const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchesStage || !matchesSearch) return false;
+
+      // 2. Visibility Bypass for Admins
+      if (isAdmin) return true;
+
+      // 3. Visibility for Regular Users/Leaders
+      const isSelf = m.id === user.id;
+      const isSpouse = m.id === user.spouseId || user.id === m.spouseId;
+      
+      // Check if user is leader or host of the member's cell
+      const memberCell = cells.find(c => c.id === m.cellId);
+      const isCellLeaderOrHost = memberCell && (memberCell.leaderId === user.id || memberCell.hostId === user.id);
+
+      return isSelf || isSpouse || isCellLeaderOrHost;
+    });
+  };
 
   const planLimit = PLAN_CONFIGS[MOCK_TENANT.plan].maxMembers;
   const isLimitReached = members.length >= planLimit;
@@ -309,11 +308,8 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
         church_id: MOCK_TENANT.id,
         joinedDate: new Date().toISOString(),
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || '')}&background=random`,
-        origin: formData.origin || MemberOrigin.OTHER_CHURCH,
-        completedMilestones: formData.origin === MemberOrigin.PRAYER_REQUEST ? ['Sistema de Oração'] :
-          formData.origin === MemberOrigin.EVANGELISM ? ['Evangelismo'] :
-            formData.origin === MemberOrigin.CELL_VISIT ? ['Visita de Célula'] :
-              formData.origin === MemberOrigin.OTHER_CHURCH ? ['Outra Igreja'] : [],
+        origin: formData.origin || '',
+        completedMilestones: formData.origin ? [formData.origin] : [],
         stageHistory: [{
           stage: formData.stage || LadderStage.WIN,
           date: new Date().toISOString(),
@@ -327,15 +323,32 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
     }
   };
 
+  const getActivitiesForStage = (stage: LadderStage) => {
+    const stageCheckpoints = checkpoints.filter(c => c.stage === stage);
+    if (stageCheckpoints.length > 0) return stageCheckpoints.map(c => c.label);
+    return DEFAULT_STAGE_ACTIVITIES[stage] || [];
+  };
+
   const isStageComplete = (member: Member) => {
     if (member.stage === LadderStage.WIN) {
-      const validOrigins = [MemberOrigin.PRAYER_REQUEST, MemberOrigin.EVANGELISM, MemberOrigin.CELL_VISIT, MemberOrigin.OTHER_CHURCH];
-      return validOrigins.includes(member.origin as any);
+      const winCheckpoints = getActivitiesForStage(LadderStage.WIN);
+      const completed = member.completedMilestones || [];
+      return winCheckpoints.some(cp => completed.includes(cp));
     }
 
-    const required = STAGE_ACTIVITIES[member.stage] || [];
     const completed = member.completedMilestones || [];
+    
+    // Check dynamic checkpoints first
+    const stageCheckpoints = checkpoints.filter(c => c.stage === member.stage && c.isActive);
+    if (stageCheckpoints.length > 0) {
+      return stageCheckpoints.filter(c => c.isRequired).every(cp => {
+        if (cp.label === 'Célula' && member.cellId) return true;
+        return completed.includes(cp.label);
+      });
+    }
 
+    // Fallback to defaults
+    const required = DEFAULT_STAGE_ACTIVITIES[member.stage] || [];
     if (member.stage === LadderStage.CONSOLIDATE) {
       const hasBaptismOrAcquired = completed.includes('Batismo') || completed.includes('Aclamado');
       const otherRequired = required.filter(act => act !== 'Batismo' && act !== 'Aclamado');
@@ -357,7 +370,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
       if (member.stage === LadderStage.WIN) {
         alert("Para avançar de nível, informe pelo menos uma opção de como o discípulo foi ganho.");
       } else {
-        const required = STAGE_ACTIVITIES[member.stage] || [];
+        const required = getActivitiesForStage(member.stage);
         const completed = member.completedMilestones || [];
 
         let missing = required.filter(activity => {
@@ -434,33 +447,6 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
     }
   };
 
-  const handleToggleMilestone = async (member: Member, milestone: string) => {
-    if (member.stage === LadderStage.WIN && member.origin === MemberOrigin.PRAYER_REQUEST) {
-      if (milestone !== 'Sistema de Oração') return;
-      if ((member.completedMilestones || []).includes('Sistema de Oração')) return;
-    }
-
-    const current = member.completedMilestones || [];
-    let updatedMilestones: string[];
-
-    if (member.stage === LadderStage.WIN) {
-      updatedMilestones = current.includes(milestone) ? [] : [milestone];
-    } else {
-      updatedMilestones = current.includes(milestone)
-        ? current.filter(m => m !== milestone)
-        : [...current, milestone];
-    }
-
-    try {
-      const updated = await memberService.update(member.id, {
-        completedMilestones: updatedMilestones
-      });
-      setMembers(members.map(m => m.id === member.id ? updated : m));
-      if (selectedMember?.id === member.id) setSelectedMember(updated);
-    } catch (error) {
-      console.error('Erro ao atualizar atividade:', error);
-    }
-  };
 
   const stats = [
     { label: 'Discípulos Ativos', value: members.length.toString().padStart(2, '0'), trend: '+12%', icon: <Target className="text-blue-500" /> },
@@ -472,7 +458,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
   if (loading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center p-20 text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">
-        Sincronizando Escada...
+        Sincronizando Visão M12...
       </div>
     );
   }
@@ -487,10 +473,10 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                 <TrendingUp size={20} />
               </div>
-              <h2 className="text-3xl font-black text-white tracking-tighter">Escada do Sucesso</h2>
+              <h2 className="text-3xl font-black text-white tracking-tighter">Visão Celular M12</h2>
             </div>
             <p className="text-zinc-500 font-medium max-w-xl">
-              Gestão estratégica do crescimento espiritual. Acompanhe cada discípulo desde a conversão até a liderança reprodutora.
+              Gerenciamento estratégico de cada nível da visão. Acompanhe a evolução de cada discípulo de forma detalhada.
             </p>
           </div>
 
@@ -536,9 +522,9 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
         </div>
       </div>
 
-      {/* Ladder Columns */}
-      <div className="flex-1 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-        <div className="flex gap-6 h-full min-w-max">
+      {/* Ladder Grid */}
+      <div className="flex-1 pb-6 overflow-y-auto custom-scrollbar">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 h-full">
           <LadderColumn
             title="Ganhar"
             stage={LadderStage.WIN}
@@ -551,6 +537,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
             onAdvance={handleAdvance}
             onRegress={handleRegress}
             isStageComplete={isStageComplete}
+            getActivitiesForStage={getActivitiesForStage}
           />
           <LadderColumn
             title="Consolidar"
@@ -564,6 +551,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
             onAdvance={handleAdvance}
             onRegress={handleRegress}
             isStageComplete={isStageComplete}
+            getActivitiesForStage={getActivitiesForStage}
           />
           <LadderColumn
             title="Discipular"
@@ -577,6 +565,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
             onAdvance={handleAdvance}
             onRegress={handleRegress}
             isStageComplete={isStageComplete}
+            getActivitiesForStage={getActivitiesForStage}
           />
           <LadderColumn
             title="Enviar"
@@ -590,6 +579,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
             onAdvance={handleAdvance}
             onRegress={handleRegress}
             isStageComplete={isStageComplete}
+            getActivitiesForStage={getActivitiesForStage}
           />
         </div>
       </div>
@@ -597,200 +587,274 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
       {/* Member Details Modal */}
       <AnimatePresence>
         {selectedMember && (
-          <div className="fixed inset-0 z-[100] flex justify-end">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
               onClick={() => setSelectedMember(null)}
             />
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-xl bg-zinc-950 h-full shadow-2xl border-l border-white/10 overflow-y-auto scrollbar-hide"
+              className="relative w-full max-w-4xl bg-zinc-950 rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="sticky top-0 z-10 p-8 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-white tracking-tight">Dossiê do Discípulo</h3>
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Histórico de Evolução</p>
+              {/* Header */}
+              <div className="p-8 md:p-10 border-b border-white/5 bg-zinc-900/40 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <History size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Dossiê do Discípulo</h3>
+                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em] mt-1">Visão Celular M12 - Evolução</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedMember(null)}
-                  className="w-12 h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl flex items-center justify-center transition-all"
+                  className="w-12 h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl flex items-center justify-center transition-all border border-white/5 hover:border-white/10"
                 >
-                  <ChevronRight size={24} />
+                  <ChevronRight size={24} className="rotate-90 md:rotate-0" />
                 </button>
               </div>
 
-              <div className="p-8">
-                <div className="flex items-center gap-6 mb-12">
-                  <div className="relative">
-                    <img 
-                      src={selectedMember.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name)}&background=random`} 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || 'User')}&background=random`; }}
-                      className="w-24 h-24 rounded-full border-4 border-white/5 shadow-2xl object-cover aspect-square" 
-                      alt="" 
-                    />
-                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white border-4 border-zinc-950">
-                      <TrendingUp size={20} />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-3xl font-black text-white tracking-tighter mb-1">{selectedMember.name}</h4>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="px-3 py-1 bg-blue-600/10 text-blue-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
-                        {selectedMember.stage}
-                      </span>
-                      <span className="px-3 py-1 bg-zinc-800 text-zinc-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/5">
-                        Origem: {selectedMember.origin || 'Outros'}
-                      </span>
-                      {selectedMember.maritalStatus === 'Casado(a)' && selectedMember.spouseId && members.find(m => m.id === selectedMember.spouseId) && (
-                        <span className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-rose-500/20 flex items-center gap-1.5">
-                          Cônjuge: {members.find(m => m.id === selectedMember.spouseId)?.name}
-                        </span>
-                      )}
-                      {cells.find(c => c.leaderId === selectedMember.id) && (
-                        <span className="px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-500/20 flex items-center gap-1.5">
-                          <Target size={10} /> Líder: {cells.find(c => c.leaderId === selectedMember.id)?.name}
-                        </span>
-                      )}
-                      <span className="text-zinc-500 text-xs font-medium w-full mt-1">Desde {new Date(selectedMember.joinedDate).toLocaleDateString('pt-BR')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-12">
-                  <div className="bg-zinc-900 border border-white/5 p-5 rounded-3xl">
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Célula Atual</p>
-                    <p className="text-sm font-bold text-white">
-                      {cells.find(c => c.id === selectedMember.cellId)?.name || 'Sem Célula'}
-                    </p>
-                  </div>
-                  <div className="bg-zinc-900 border border-white/5 p-5 rounded-3xl">
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Discipulador</p>
-                    <p className="text-sm font-bold text-white">
-                      {members.find(m => m.id === selectedMember.disciplerId)?.name || 'Não atribuído'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Checkpoints Section */}
-                <div className="mb-12">
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4">Checkpoints do Estágio ({selectedMember.stage})</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {STAGE_ACTIVITIES[selectedMember.stage]?.map((activity) => {
-                      const isWinStage = selectedMember.stage === LadderStage.WIN;
-                      let isChecked = false;
-
-                      if (isWinStage) {
-                        if (activity === 'Sistema de Oração') isChecked = selectedMember.origin === MemberOrigin.PRAYER_REQUEST;
-                        if (activity === 'Evangelismo') isChecked = selectedMember.origin === MemberOrigin.EVANGELISM;
-                        if (activity === 'Visita de Célula') isChecked = selectedMember.origin === MemberOrigin.CELL_VISIT;
-                        if (activity === 'Outra Igreja') isChecked = selectedMember.origin === MemberOrigin.OTHER_CHURCH;
-                      } else if (activity === 'Célula' && selectedMember.cellId) {
-                        isChecked = true;
-                      } else {
-                        isChecked = selectedMember.completedMilestones?.includes(activity) || false;
-                      }
-
-                      return (
-                        <button
-                          key={activity}
-                          disabled={isWinStage || (activity === 'Célula' && selectedMember.cellId)}
-                          onClick={() => !isWinStage && !(activity === 'Célula' && selectedMember.cellId) && handleToggleMilestone(selectedMember, activity)}
-                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isChecked
-                            ? 'bg-blue-600/10 border-blue-500/30 text-white'
-                            : 'bg-zinc-900 border-white/5 text-zinc-500 hover:border-white/10'
-                            } ${isWinStage || (activity === 'Célula' && selectedMember.cellId) ? 'cursor-default' : ''}`}
-                        >
-                          <span className="text-xs font-bold">{activity}</span>
-                          {isChecked ? (
-                            <CheckCircle2 size={16} className="text-blue-500" />
-                          ) : (
-                            <div className="w-4 h-4 rounded-full border-2 border-zinc-700" />
+              <div className="p-8 md:p-12 overflow-y-auto custom-scrollbar flex-1">
+                {/* Top Section with Performance and Main Info */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
+                  {/* Left Column: Profile and Badges */}
+                  <div className="lg:col-span-8 space-y-8">
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+                      <div className="relative shrink-0">
+                        <img 
+                          src={selectedMember.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name)}&background=random`} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || 'User')}&background=random`; }}
+                          className="w-32 h-32 rounded-full border-4 border-white/5 shadow-2xl object-cover" 
+                          alt="" 
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white border-4 border-zinc-950 shadow-xl">
+                          <Zap size={24} />
+                        </div>
+                      </div>
+                      <div className="flex-1 text-center md:text-left pt-2">
+                        <h4 className="text-4xl font-black text-white tracking-tighter uppercase mb-4 leading-none">{selectedMember.name}</h4>
+                        <div className="flex flex-wrap justify-center md:justify-start items-center gap-3">
+                          <span className="px-4 py-1.5 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
+                            Fase: {selectedMember.stage}
+                          </span>
+                          {selectedMember.origin && (
+                            <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                              ORIGEM: {selectedMember.origin}
+                            </span>
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-8 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-px before:bg-white/5">
-                  {selectedMember.stageHistory.map((entry, i) => (
-                    <div key={i} className="relative flex gap-8 pl-12">
-                      <div className={`absolute left-0 top-1 w-10 h-10 rounded-2xl border-4 border-zinc-950 shadow-xl flex items-center justify-center z-10 ${entry.stage === LadderStage.SEND ? 'bg-rose-600' :
-                        entry.stage === LadderStage.DISCIPLE ? 'bg-amber-600' :
-                          entry.stage === LadderStage.CONSOLIDATE ? 'bg-emerald-600' :
-                            'bg-blue-600'
-                        }`}>
-                        {entry.stage === LadderStage.SEND ? <Send size={16} className="text-white" /> :
-                          entry.stage === LadderStage.DISCIPLE ? <Zap size={16} className="text-white" /> :
-                            entry.stage === LadderStage.CONSOLIDATE ? <UserCheck size={16} className="text-white" /> :
-                              <Target size={16} className="text-white" />}
-                      </div>
-                      <div className="flex-1 bg-zinc-900/50 border border-white/5 p-6 rounded-[2rem] hover:border-white/10 transition-all">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm font-black text-white uppercase tracking-wider">{entry.stage}</span>
-                          <span className="text-[10px] text-zinc-500 font-bold">{new Date(entry.date).toLocaleDateString('pt-BR')}</span>
+                          <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 bg-zinc-900 rounded-full border border-white/5 flex items-center gap-2">
+                            <Calendar size={12} className="text-zinc-700" /> Ativo desde {new Date(selectedMember.joinedDate).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
-                        <p className="text-sm text-zinc-400 leading-relaxed mb-4">{entry.notes || 'Progresso registrado automaticamente pelo sistema de visão celular.'}</p>
+                      </div>
+                    </div>
+                  </div>
 
-                        {entry.milestones && entry.milestones.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {entry.milestones.map((m, idx) => (
-                              <span key={idx} className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-[9px] font-bold border border-blue-500/20 flex items-center gap-1">
-                                <CheckCircle2 size={10} /> {m}
-                              </span>
-                            ))}
+                  {/* Right Column: Performance Mini-Card */}
+                  <div className="lg:col-span-4">
+                    {(() => {
+                      const stageCheckpoints = getActivitiesForStage(selectedMember.stage);
+                      const total = stageCheckpoints.length;
+                      const completed = (selectedMember.completedMilestones || []).filter(m => 
+                        stageCheckpoints.includes(m)
+                      ).length;
+                      const percentage = total > 0 ? (completed / total) * 100 : 0;
+                      
+                      return (
+                        <div className="bg-gradient-to-br from-blue-600/10 to-indigo-600/5 border border-blue-500/20 p-8 rounded-[2.5rem] h-full flex flex-col justify-center">
+                          <div className="flex items-center justify-between mb-6">
+                            <p className="text-[11px] font-black text-blue-400 uppercase tracking-widest">Performance M12</p>
+                            <span className="text-2xl font-black text-white">{Math.round(percentage)}%</span>
                           </div>
-                        )}
+                          <div className="w-full bg-zinc-950 h-3 rounded-full border border-white/5 overflow-hidden mb-4 shadow-inner">
+                            <div className="h-full bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.5)] transition-all duration-1000" style={{ width: `${percentage}%` }} />
+                          </div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">
+                            {completed} de {total} Checkpoints
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
 
-                        <div className="flex items-center gap-2 text-[10px] text-zinc-500 bg-white/5 w-fit px-3 py-1.5 rounded-xl font-bold uppercase tracking-widest">
-                          <UserCheck size={12} className="text-blue-500" /> {entry.recordedBy}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                  {/* Left Column: Info Cards and Checkpoints */}
+                  <div className="lg:col-span-4 space-y-6">
+                    <div className="space-y-4">
+                      {/* Cell Card */}
+                      <div className="bg-zinc-900/50 p-6 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all">
+                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Célula Atual</p>
+                        <div className="flex items-center gap-4 text-white">
+                          <div className="w-12 h-12 bg-blue-600/10 rounded-full flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform overflow-hidden border border-white/10">
+                            {(() => {
+                              const cell = cells.find(c => c.id === selectedMember.cellId);
+                              return cell?.logo ? (
+                                <img src={cell.logo} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                <Layers size={24} />
+                              );
+                            })()}
+                          </div>
+                          <span className="text-sm font-black uppercase truncate">
+                            {cells.find(c => c.id === selectedMember.cellId)?.name || 'Sem Célula'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Discipler Card */}
+                      <div className="bg-zinc-900/50 p-6 rounded-[2rem] border border-white/5 group hover:border-amber-500/30 transition-all">
+                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Discipulador</p>
+                        <div className="flex items-center gap-4">
+                          {(() => {
+                            const discipler = members.find(m => m.id === selectedMember.disciplerId);
+                            return (
+                              <>
+                                <img 
+                                  src={discipler?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(discipler?.name || 'D')}&background=random`}
+                                  className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
+                                  alt=""
+                                />
+                                <span className="text-sm font-black text-white uppercase truncate">
+                                  {discipler?.name || 'Não atribuído'}
+                                </span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Pastor Card */}
+                      <div className="bg-zinc-900/50 p-6 rounded-[2rem] border border-white/5 group hover:border-emerald-500/30 transition-all">
+                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Pastor Direto</p>
+                        <div className="flex items-center gap-4">
+                          {(() => {
+                            const pastor = members.find(m => m.id === selectedMember.pastorId);
+                            return (
+                              <>
+                                <img 
+                                  src={pastor?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(pastor?.name || 'P')}&background=random`}
+                                  className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
+                                  alt=""
+                                />
+                                <span className="text-sm font-black text-white uppercase truncate">
+                                  {pastor?.name || 'Não atribuído'}
+                                </span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                <div className="mt-12 p-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] shadow-2xl shadow-blue-500/20 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-700">
-                    <Zap size={120} />
+                    <div className="pt-6 border-t border-white/5">
+                      <h4 className="text-xs font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 flex items-center gap-3">
+                        <AlertCircle size={14} /> Checkpoints ({selectedMember.stage})
+                      </h4>
+                      <div className="space-y-3">
+                        {getActivitiesForStage(selectedMember.stage).map((activity) => {
+                          const isChecked = selectedMember.completedMilestones?.includes(activity) || false;
+                          return (
+                            <div
+                              key={activity}
+                              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${isChecked
+                                ? 'bg-blue-600/10 border-blue-500/20 text-white'
+                                : 'bg-zinc-950 border-white/5 text-zinc-500'
+                                }`}
+                            >
+                              {isChecked ? <CheckCircle2 size={14} className="text-blue-500" /> : <div className="w-3.5 h-3.5 border-2 border-zinc-800 rounded-full" />}
+                              <span className="text-[11px] font-bold uppercase tracking-tight">{activity}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <div className="relative z-10">
-                    <h5 className="text-lg font-black text-white mb-2 flex items-center gap-3">
-                      <Zap size={24} /> Próximo Nível
-                    </h5>
-                    <p className="text-sm text-blue-100/80 mb-8 font-medium leading-relaxed">
-                      {selectedMember.stage === LadderStage.WIN ? 'O discípulo está pronto para iniciar o processo de consolidação e integração na vida da igreja.' :
-                        selectedMember.stage === LadderStage.CONSOLIDATE ? 'Maturidade identificada. Recomendado para o próximo ciclo da Escola de Líderes.' :
-                          selectedMember.stage === LadderStage.DISCIPLE ? 'Potencial de liderança confirmado. Preparar para o envio e multiplicação da célula.' :
-                            'Líder em plena operação. Focar em mentoria para formação de novos discipuladores.'}
-                    </p>
-                    <div className="flex gap-4">
-                      {selectedMember.stage !== LadderStage.WIN && (
-                        <button
-                          onClick={() => handleRegress(selectedMember)}
-                          className="flex-1 py-4 bg-white/5 text-zinc-400 border border-white/5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95"
-                        >
-                          Voltar Nível
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleAdvance(selectedMember)}
-                        className={`flex-[2] py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${isStageComplete(selectedMember)
-                          ? 'bg-white text-blue-600 hover:bg-zinc-100 shadow-blue-500/10'
-                          : 'bg-white/10 text-white/30 cursor-not-allowed'
-                          }`}
-                      >
-                        {isStageComplete(selectedMember) ? 'Efetivar Transição' : 'Conclua os Itens do Nível'}
-                      </button>
+
+                  {/* Right Column: Evolution Journey with own scroll */}
+                  <div className="lg:col-span-8 flex flex-col gap-8">
+                    <div className="flex-1 flex flex-col min-h-0">
+                      <h4 className="text-xs font-black text-amber-500 uppercase tracking-[0.4em] mb-6 flex items-center gap-3">
+                        <History size={14} /> Jornada de Evolução
+                      </h4>
+                      
+                      <div className="flex-1 overflow-y-auto max-h-[500px] pr-4 custom-scrollbar">
+                        <div className="space-y-6 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-px before:bg-white/5">
+                          {selectedMember.stageHistory.slice().reverse().map((entry, i) => (
+                            <div key={i} className="relative flex gap-6 pl-12">
+                              <div className={`absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-zinc-950 shadow-xl flex items-center justify-center z-10 transition-transform hover:scale-110 ${
+                                entry.stage === LadderStage.SEND ? 'bg-rose-600' :
+                                entry.stage === LadderStage.DISCIPLE ? 'bg-amber-600' :
+                                entry.stage === LadderStage.CONSOLIDATE ? 'bg-emerald-600' :
+                                'bg-blue-600'
+                              }`}>
+                                {entry.stage === LadderStage.SEND ? <Send size={16} className="text-white" /> :
+                                  entry.stage === LadderStage.DISCIPLE ? <Zap size={16} className="text-white" /> :
+                                    entry.stage === LadderStage.CONSOLIDATE ? <UserCheck size={16} className="text-white" /> :
+                                      <Target size={16} className="text-white" />}
+                              </div>
+                              <div className="flex-1 bg-zinc-950 border border-white/5 p-6 rounded-[2rem] hover:border-white/10 transition-all group">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-[11px] font-black text-white uppercase tracking-wider">{entry.stage}</span>
+                                  <span className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">{new Date(entry.date).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                                <p className="text-xs text-zinc-500 leading-relaxed italic mb-4">"{entry.notes || 'Progresso registrado automaticamente.'}"</p>
+
+                                {entry.milestones && entry.milestones.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {entry.milestones.map((m, idx) => (
+                                      <span key={idx} className="px-2.5 py-1 bg-white/5 text-[9px] font-black uppercase tracking-tighter text-zinc-400 rounded-full border border-white/5 flex items-center gap-1.5">
+                                        <CheckCircle2 size={10} className="text-blue-500" /> {m}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Transition Card */}
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/20 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-700">
+                        <Zap size={120} />
+                      </div>
+                      <div className="relative z-10">
+                        <h5 className="text-xl font-black text-white mb-3 flex items-center gap-3 uppercase tracking-tighter">
+                          <Zap size={24} /> Transição de Nível
+                        </h5>
+                        <p className="text-xs text-blue-100/70 mb-2 font-medium leading-relaxed">
+                          {selectedMember.stage === LadderStage.WIN ? 'Pronto para iniciar a consolidação?' :
+                            selectedMember.stage === LadderStage.CONSOLIDATE ? 'Maturidade identificada para Escola de Líderes.' :
+                              selectedMember.stage === LadderStage.DISCIPLE ? 'Potencial de liderança confirmado para envio.' :
+                                'Foco em mentoria e formação de novos líderes.'}
+                        </p>
+                        <p className="text-[9px] bg-black/20 text-white/50 px-4 py-2 rounded-xl font-black uppercase tracking-widest inline-block italic">
+                          O avanço é automático ao concluir as atividades no menu "Minhas Atividades M12"
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-8 border-t border-white/5 bg-zinc-950 flex justify-end shrink-0">
+                <button 
+                  onClick={() => setSelectedMember(null)}
+                  className="px-10 py-4 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95"
+                >
+                  Fechar Dossiê
+                </button>
               </div>
             </motion.div>
           </div>

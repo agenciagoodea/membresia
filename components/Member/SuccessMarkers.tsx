@@ -1,43 +1,72 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Circle, Trophy, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Circle, Trophy, Sparkles, Lock } from 'lucide-react';
 import { memberService } from '../../services/memberService';
+import { m12Service } from '../../services/m12Service';
+import { LadderStage, M12Checkpoint } from '../../types';
+import { MOCK_TENANT } from '../../constants';
 
-const MILESTONES = [
-  { id: 'ACCEPT_JESUS', label: 'Aceitar Jesus como Salvador', stage: 'GANHAR' },
-  { id: 'CELL_VISIT', label: 'Primeira Visita à Célula', stage: 'GANHAR' },
-  { id: 'ALTAR_DECISION', label: 'Consolidar decisão no altar', stage: 'GANHAR' },
-  { id: 'REGULAR_CELL', label: 'Frequência regular na Célula', stage: 'CONSOLIDAR' },
-  { id: 'PRE_ENCOUNTER', label: 'Cursar o Pré-Encontro', stage: 'CONSOLIDAR' },
-  { id: 'ENCOUNTER', label: 'Ir ao Encontro com Deus', stage: 'CONSOLIDAR' },
-  { id: 'POST_ENCOUNTER', label: 'Cursar o Pós-Encontro', stage: 'DISCIPULAR' },
-  { id: 'CTL_START', label: 'Iniciar o CTL', stage: 'DISCIPULAR' },
-  { id: 'LEAD_CELL', label: 'Liderar uma Célula', stage: 'ENVIAR' }
-];
+const DEFAULT_STAGE_ACTIVITIES: Record<LadderStage, string[]> = {
+  [LadderStage.WIN]: ['Sistema de Oração', 'Consolidação Inicial', 'Visita à Célula', 'Pré-Encontro'],
+  [LadderStage.CONSOLIDATE]: ['Encontro com Deus', 'Batismo', 'Pós-Encontro', 'Curso de Maturidade'],
+  [LadderStage.DISCIPLE]: ['Escola de Líderes (N1)', 'CTL', 'Frequência na Célula', 'Discipulado Fixo'],
+  [LadderStage.SEND]: ['Escola de Líderes (Conclusão)', 'Timóteo (Treinamento)', 'Multiplicar Célula', 'Enviar Discípulos']
+};
 
 const SuccessMarkers: React.FC<{ user: any }> = ({ user }) => {
   const [completed, setCompleted] = useState<string[]>(user.completedMilestones || []);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [checkpoints, setCheckpoints] = useState<M12Checkpoint[]>([]);
 
-  const toggleMilestone = async (id: string) => {
-    const newCompleted = completed.includes(id)
-      ? completed.filter(m => m !== id)
-      : [...completed, id];
+  useEffect(() => {
+    const fetchCheckpoints = async () => {
+      try {
+        const data = await m12Service.getCheckpoints(MOCK_TENANT.id);
+        setCheckpoints(data);
+      } catch (error) {
+        console.error('Error fetching checkpoints:', error);
+      }
+    };
+    fetchCheckpoints();
+  }, []);
+
+  const getActivitiesForStage = (stage: LadderStage) => {
+    const stageCheckpoints = checkpoints.filter(c => c.stage === stage);
+    if (stageCheckpoints.length > 0) return stageCheckpoints.map(c => ({ label: c.label, stage }));
+    return (DEFAULT_STAGE_ACTIVITIES[stage] || []).map(label => ({ label, stage }));
+  };
+
+  const toggleMilestone = async (activity: string) => {
+    // Check dependencies
+    const cp = checkpoints.find(c => c.label === activity);
+    if (cp?.dependsOnId) {
+      const dependency = checkpoints.find(c => c.id === cp.dependsOnId);
+      if (dependency && !completed.includes(dependency.label)) {
+        alert(`Esta atividade depende de "${dependency.label}". Complete-a primeiro.`);
+        return;
+      }
+    }
+
+    const isDone = completed.includes(activity);
+    const newCompleted = isDone
+      ? completed.filter(m => m !== activity)
+      : [...completed, activity];
     
     setCompleted(newCompleted);
-    setSaving(true);
+    setSaving(activity);
     try {
       await memberService.update(user.id, { completedMilestones: newCompleted });
     } catch (error) {
       console.error('Erro ao salvar milestone:', error);
-      // Revert on error
       setCompleted(completed);
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
+  const allActivities = Object.values(LadderStage).flatMap(stage => getActivitiesForStage(stage));
+
   const currentCount = completed.length;
-  const totalCount = MILESTONES.length;
+  const totalCount = allActivities.length;
   const progressPercent = Math.round((currentCount / totalCount) * 100);
 
   return (
@@ -50,32 +79,46 @@ const SuccessMarkers: React.FC<{ user: any }> = ({ user }) => {
         <div className="flex items-center gap-3 text-blue-400 font-black text-[10px] uppercase tracking-[0.4em] mb-4">
           <Sparkles size={16} /> Indicadores de Progresso
         </div>
-        <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-2">Sua Escada do Sucesso</h3>
-        <p className="text-zinc-500 text-sm font-medium">Marque abaixo os passos que você já realizou para acompanhar seu crescimento.</p>
+        <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-2">Visão Celular M12</h3>
+        <p className="text-zinc-500 text-sm font-medium">Ative cada passo para acompanhar sua evolução ministerial.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MILESTONES.map((m) => {
-          const isDone = completed.includes(m.id);
+        {allActivities.map((m, idx) => {
+          const isDone = completed.includes(m.label);
+          const isSaving = saving === m.label;
+          const cp = checkpoints.find(c => c.label === m.label && c.stage === m.stage);
+          const isLocked = cp?.dependsOnId && !completed.includes(checkpoints.find(c => c.id === cp.dependsOnId)?.label || '');
+          
           return (
             <button
-              key={m.id}
-              disabled={saving}
-              onClick={() => toggleMilestone(m.id)}
+              key={idx}
+              disabled={!!saving || isLocked}
+              onClick={() => toggleMilestone(m.label)}
               className={`flex items-center gap-4 p-5 rounded-2xl border transition-all text-left group ${
                 isDone 
                   ? 'bg-blue-600/10 border-blue-600/30 text-white' 
                   : 'bg-zinc-950/40 border-white/5 text-zinc-500 hover:border-blue-500/30 hover:bg-zinc-900'
-              }`}
+              } ${isSaving ? 'opacity-50 cursor-wait' : ''} ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
             >
               <div className={`shrink-0 transition-transform group-hover:scale-110 ${isDone ? 'text-blue-500' : 'text-zinc-700'}`}>
-                {isDone ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                {isLocked ? <Lock size={24} /> : isDone ? <CheckCircle2 size={24} /> : <Circle size={24} />}
               </div>
               <div className="min-w-0">
-                <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1.5 ${isDone ? 'text-blue-400' : 'text-zinc-600'}`}>
-                  {m.stage}
-                </p>
+                <div className="flex items-center gap-2 mb-1.5 ">
+                  <p className={`text-[9px] font-black uppercase tracking-widest leading-none ${isDone ? 'text-blue-400' : 'text-zinc-600'}`}>
+                    {m.stage}
+                  </p>
+                  {cp?.isRequired && (
+                    <span className="text-[7px] px-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md font-black uppercase tracking-widest">
+                      Obrigatório
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs font-bold truncate">{m.label}</p>
+                {isLocked && (
+                   <p className="text-[8px] text-zinc-600 mt-1 font-bold italic truncate">Bloqueado por {checkpoints.find(c => c.id === cp?.dependsOnId)?.label}</p>
+                )}
               </div>
             </button>
           );
@@ -96,7 +139,7 @@ const SuccessMarkers: React.FC<{ user: any }> = ({ user }) => {
         </div>
         <div className="hidden sm:block ml-8">
            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right">
-             {currentCount} de {totalCount} Concluídos
+             {currentCount} de {totalCount} Passos
            </p>
         </div>
       </div>

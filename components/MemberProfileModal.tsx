@@ -1,7 +1,9 @@
 
 import React from 'react';
-import { X, User, Mail, Phone, MapPin, Target, Calendar, CheckCircle2, TrendingUp, Award, Briefcase, Heart, Users } from 'lucide-react';
-import { Member, MeetingReport, LadderStage, UserRole } from '../types';
+import { X, User, Mail, Phone, MapPin, Target, Calendar, CheckCircle2, TrendingUp, Award, Briefcase, Heart, Users, Zap } from 'lucide-react';
+import { Member, MeetingReport, LadderStage, UserRole, M12Checkpoint } from '../types';
+import { m12Service } from '../services/m12Service';
+import { MOCK_TENANT } from '../constants';
 
 interface MemberProfileModalProps {
   isOpen: boolean;
@@ -22,6 +24,37 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
   const frequency = relevantReports.length > 0 ? (presentCount / relevantReports.length) * 100 : 0;
 
   const spouse = member.spouseId ? allMembers.find(m => m.id === member.spouseId) : null;
+
+  const [checkpoints, setCheckpoints] = React.useState<M12Checkpoint[]>([]);
+  
+  React.useEffect(() => {
+    const fetchCheckpoints = async () => {
+      try {
+        const data = await m12Service.getCheckpoints(MOCK_TENANT.id);
+        setCheckpoints(data);
+      } catch (error) {
+        console.error('Error fetching checkpoints:', error);
+      }
+    };
+    if (isOpen) fetchCheckpoints();
+  }, [isOpen]);
+
+  const getPerformanceData = () => {
+    const stageCheckpoints = checkpoints.filter(c => c.stage === member.stage);
+    const total = stageCheckpoints.length;
+    const completed = (member.completedMilestones || []).filter(m => 
+      stageCheckpoints.some(cp => cp.label === m)
+    ).length;
+    const percentage = total > 0 ? (completed / total) * 100 : 0;
+    
+    // Calcular tempo no estágio atual
+    const lastStageChange = member.stageHistory?.filter(h => h.stage === member.stage).sort((a,b) => b.date.localeCompare(a.date))[0];
+    const daysInStage = lastStageChange ? Math.floor((new Date().getTime() - new Date(lastStageChange.date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+    return { total, completed, percentage, daysInStage };
+  };
+
+  const performance = getPerformanceData();
 
   const getStageColor = (stage: LadderStage) => {
     switch (stage) {
@@ -173,22 +206,57 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
             </div>
           </div>
 
-          {/* Achievements Section */}
-          <div className="space-y-6">
-            <h4 className="text-xs font-black text-amber-500 uppercase tracking-[0.3em] flex items-center gap-2">
-              <Award size={14} /> Conquistas na Escada do Sucesso
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {(member.completedMilestones || []).length > 0 ? (
-                member.completedMilestones?.map((milestone, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                    <CheckCircle2 size={12} className="text-amber-500" />
-                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">{milestone}</span>
+          {/* Achievements Section & Performance Analysis */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="space-y-6">
+              <h4 className="text-xs font-black text-amber-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                <Award size={14} /> Conquistas na Visão M12
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {(member.completedMilestones || []).length > 0 ? (
+                  member.completedMilestones?.map((milestone, i) => {
+                    const cp = checkpoints.find(c => c.label === milestone);
+                    return (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
+                        <CheckCircle2 size={12} className="text-amber-500" />
+                        <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">{milestone}</span>
+                        {cp?.isRequired && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" title="Obrigatório" />
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-[10px] text-zinc-600 uppercase font-black italic">Nenhuma conquista registrada ainda.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h4 className="text-xs font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                <Zap size={14} /> Análise de Performance
+              </h4>
+              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-4">
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Conclusão do Nível</span>
+                    <span className="text-xs font-black text-white">{Math.round(performance.percentage)}%</span>
                   </div>
-                ))
-              ) : (
-                <p className="text-[10px] text-zinc-600 uppercase font-black italic">Nenhuma conquista registrada ainda.</p>
-              )}
+                  <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden">
+                    <div className="bg-blue-600 h-full rounded-full transition-all duration-1000" style={{ width: `${performance.percentage}%` }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="bg-zinc-950/50 p-3 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Tempo no Nível</p>
+                    <p className="text-sm font-black text-white">{performance.daysInStage} dias</p>
+                  </div>
+                  <div className="bg-zinc-950/50 p-3 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Checkpoints</p>
+                    <p className="text-sm font-black text-white">{performance.completed}/{performance.total}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
