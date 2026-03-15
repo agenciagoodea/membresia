@@ -18,6 +18,14 @@ const Login: React.FC = () => {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const response = await authService.signIn(trimmedEmail, password);
+      
+      if (response.profile?.status === 'PENDENTE' || response.profile?.status === 'PENDING') {
+        await authService.signOut();
+        setError('Desculpe, não foi possivel fazer o login, entre em contato com o seu Líder ou Pastor para aprovação do cadastro');
+        setLoading(false);
+        return;
+      }
+
       console.log('Login realizado:', response);
       if (!response.profile) {
           // Se autenticou mas não tem perfil de membro, talvez seja um erro de cadastro

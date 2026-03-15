@@ -918,6 +918,20 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
   const planLimits = PLAN_CONFIGS[user.church_plan || 'PRO'];
   const isLimitReached = cells.length >= planLimits.maxCells;
 
+  // Filtro de visibilidade baseado no cargo
+  const visibleCells = cells.filter(cell => {
+    if (user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN || user.role === UserRole.PASTOR) {
+      return true; // Admin e Pastores veem tudo
+    }
+    if (user.role === UserRole.CELL_LEADER_DISCIPLE) {
+      // Líder vê a célula que lidera OU a célula que ele é membro
+      const isLeaderOfThisCell = cell.leaderId === user.id || cell.leaderId === user.profile?.id;
+      const isMemberOfThisCell = (user.profile?.cellId === cell.id);
+      return isLeaderOfThisCell || isMemberOfThisCell;
+    }
+    return false; // Outros cargos não veem rede de células (geralmente nem chegam aqui)
+  });
+
   const handleCreateCell = () => {
     if (isLimitReached) {
       setIsUpgradeModalOpen(true);
@@ -969,6 +983,12 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
     return <CellDetailView cell={selectedCell} members={members} onBack={() => setSelectedCell(null)} user={user} />;
   }
 
+  const canEditCell = (cell: Cell) => {
+    if (user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN) return true;
+    // Pastor e Líder só editam se forem o líder da célula
+    return cell.leaderId === user.profile?.id || cell.leaderId === user.id;
+  };
+
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
       <PageHeader
@@ -990,12 +1010,17 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {cells.map((cell) => (
-          <div
-            key={cell.id}
-            onClick={() => setSelectedCell(cell)}
-            className="group bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl hover:bg-zinc-800 transition-all cursor-pointer relative overflow-hidden"
-          >
+        {visibleCells.map((cell) => {
+          const leader = members.find(m => m.id === cell.leaderId);
+          const spouse = leader?.spouseId ? members.find(m => m.id === leader.spouseId) : null;
+          const userCanEdit = canEditCell(cell);
+
+          return (
+            <div
+              key={cell.id}
+              onClick={() => setSelectedCell(cell)}
+              className="group bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl hover:bg-zinc-800 transition-all cursor-pointer relative overflow-hidden"
+            >
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
               <Layers size={100} />
             </div>
@@ -1009,29 +1034,45 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
                 )}
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingCell(cell);
-                    setIsCellModalOpen(true);
-                  }}
-                  className="p-3 bg-zinc-950 text-zinc-500 hover:text-amber-400 rounded-xl border border-white/5 transition-colors"
-                >
-                  <Edit2 size={16} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCell(cell.id);
-                  }}
-                  className="p-3 bg-zinc-950 text-zinc-500 hover:text-rose-500 rounded-xl border border-white/5 transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {userCanEdit && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCell(cell);
+                        setIsCellModalOpen(true);
+                      }}
+                      className="p-3 bg-zinc-950 text-zinc-500 hover:text-amber-400 rounded-xl border border-white/5 transition-colors"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCell(cell.id);
+                      }}
+                      className="p-3 bg-zinc-950 text-zinc-500 hover:text-rose-500 rounded-xl border border-white/5 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
             <h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-2">{cell.name}</h3>
+            
+            <div className="mb-6 space-y-1">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                <User size={12} className="text-blue-500" /> Líder: {leader?.name || 'Não definido'}
+              </p>
+              {spouse && (
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                  <Heart size={12} className="text-rose-500" /> Cônjuge: {spouse.name}
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center gap-4 text-xs font-bold text-zinc-500 mb-8 uppercase tracking-widest">
               <div className="flex items-center gap-2">
                 <Users size={14} className="text-zinc-600" /> {members.filter(m => m.cellId === cell.id).length} Membros
@@ -1059,7 +1100,8 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
               GERENCIAR CÉLULA <ChevronRight size={14} />
             </button>
           </div>
-        ))}
+        );
+      })}
 
         {cells.length === 0 && (
           <div className="col-span-full py-32 text-center border-2 border-dashed border-white/5 rounded-[3rem] bg-zinc-900/50">
