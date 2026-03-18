@@ -442,33 +442,57 @@ const PastorDashboard = ({ user, members, cells, prayers, events, activeTab }: {
 };
 
 const LeaderDashboard = ({ user, members, cells, events }: { user: any, members: Member[], cells: Cell[], events: any[] }) => {
-  const myCell = cells.find(c => c.leaderId === user.id || c.hostId === user.id) || (cells.length > 0 ? cells[0] : null);
+  // Célula que o usuário PARTICIPA (para o Cabeçalho)
+  const participatingCell = cells.find(c => c.id === user.cellId);
   
-  if (!myCell) return (
+  // Célula(s) que o usuário LIDERA (para o painel de discípulos e relatórios)
+  const leadingCells = cells.filter(c => c.leaderId === user.id || c.leaderIds?.includes(user.id));
+  const primaryLeadingCell = leadingCells.length > 0 ? leadingCells[0] : null;
+
+  if (!participatingCell && !primaryLeadingCell) return (
     <div className="py-20 text-center text-zinc-500 font-black uppercase tracking-[0.5em] animate-pulse">
       Nenhuma célula vinculada ou encontrada.
     </div>
   );
 
-  const cellMembers = members.filter(m => m.cellId === myCell.id);
+  const getMemberName = (id?: string) => {
+    if (!id) return '';
+    const m = members.find(member => member.id === id);
+    return m ? m.name : '';
+  };
 
-  // Encontrar a próxima ocorrência real da reunião desta célula
-  const cellMeetings = events.filter(e => e.id.startsWith(`cell-${myCell.id}`));
+  const headerTitle = participatingCell ? participatingCell.name : 'Painel do Líder';
+  const headerSubtitle = participatingCell 
+    ? `Discipulador(a): ${getMemberName(user.disciplerId) || 'Não definido'} | Pastor(a): ${getMemberName(user.pastorId) || 'Não definido'}`
+    : 'Líder de Célula Ativo.';
+
+  const leadingCellIds = leadingCells.map(c => c.id);
+
+  // Considera discípulo quem estiver nas células LIDERADAS
+  // Excluindo os próprios líderes
+  const cellMembers = members.filter(m => 
+    m.cellId && leadingCellIds.includes(m.cellId) && 
+    m.id !== user.id &&
+    !leadingCells.some(c => c.leaderId === m.id || c.leaderIds?.includes(m.id))
+  );
+
+  // Encontrar a próxima ocorrência real da reunião da primeira célula liderada
+  const cellMeetings = primaryLeadingCell ? events.filter(e => e.id.startsWith(`cell-${primaryLeadingCell.id}`)) : [];
   const nextMeeting = cellMeetings.length > 0 ? cellMeetings[0] : null;
 
   const handleWhatsAppNotify = () => {
-    if (!nextMeeting) return;
+    if (!nextMeeting || !primaryLeadingCell) return;
     const dateObj = new Date(nextMeeting.date + 'T12:00:00');
     const dayName = dateObj.toLocaleString('pt-BR', { weekday: 'long' });
     const dayNum = dateObj.getDate();
     const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });
     
-    const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${myCell.name}*!
+    const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${primaryLeadingCell.name}*!
     
 🗓️ *Data:* ${dayName}, ${dayNum} de ${monthName}
-⏰ *Horário:* ${myCell.meetingTime}
-🏠 *Local:* Casa do(a) ${myCell.hostName}
-📍 *Endereço:* ${myCell.address}
+⏰ *Horário:* ${primaryLeadingCell.meetingTime}
+🏠 *Local:* Casa do(a) ${primaryLeadingCell.hostName}
+📍 *Endereço:* ${primaryLeadingCell.address}
 
 Esperamos por você! Vai ser um tempo precioso! 🔥`;
 
@@ -478,8 +502,8 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
       <PageHeader
-        title={myCell.name}
-        subtitle="Cuidado e pastoreio local."
+        title={headerTitle}
+        subtitle={headerSubtitle}
         actions={
           <button className="w-full md:w-auto px-8 py-3 md:py-4 bg-blue-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-[10px] md:text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 transition-all">
             Lançar Relatório
@@ -487,10 +511,36 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <StatCard title="Presença Média" value="88%" trend={2} icon={<Users className="text-emerald-400" />} color="bg-emerald-500/10" />
         <StatCard title="Visitantes" value="3" trend={50} icon={<TrendingUp className="text-blue-400" />} color="bg-blue-500/10" />
         <StatCard title="Transições" value="2" subValue="estágios" icon={<Target className="text-amber-400" />} color="bg-amber-500/10" />
+        
+        {primaryLeadingCell ? (
+          <div className="bg-zinc-900/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden flex flex-col justify-between group">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/20 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="flex justify-between items-start mb-4 relative">
+              <div className="p-4 rounded-2xl bg-rose-500/10 text-rose-500">
+                <Activity size={24} />
+              </div>
+              <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-500 uppercase tracking-widest text-right max-w-[120px] leading-tight flex-shrink-0">
+                {primaryLeadingCell.name}
+              </span>
+            </div>
+            <div className="relative">
+              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">CÉLULA LIDERADA</p>
+              <h3 className="text-xl font-black text-white tracking-tighter mb-1 truncate leading-none">
+                Líderes Atuais
+              </h3>
+              <p className="text-zinc-400 text-[9px] font-bold uppercase tracking-widest leading-relaxed mt-2 line-clamp-2">
+                {getMemberName(primaryLeadingCell.leaderId)}
+                {primaryLeadingCell.leaderIds?.filter(id => id !== primaryLeadingCell.leaderId).map(id => ` & ${getMemberName(id)}`).join('')}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <StatCard title="Células Lideradas" value="0" subValue="" icon={<Activity className="text-zinc-400" />} color="bg-zinc-800" />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -500,7 +550,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
           </h4>
           <div className="space-y-5">
             {cellMembers.length === 0 ? (
-               <div className="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado</div>
+               <div className="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado às suas células</div>
             ) : cellMembers.map(m => (
               <div key={m.id} className="flex items-center justify-between p-4 hover:bg-white/5 rounded-[1.5rem] transition-all border border-transparent hover:border-white/5 group">
                 <div className="flex items-center gap-4">
@@ -522,7 +572,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
           <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
             <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Próxima Reunião
           </h4>
-          {nextMeeting ? (
+          {nextMeeting && primaryLeadingCell ? (
             <div className="bg-zinc-900 p-8 rounded-[2rem] border border-white/5 shadow-2xl relative group overflow-hidden">
               <div className="absolute -right-5 -top-5 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={120} /></div>
               <div className="flex items-center gap-6 mb-8">
@@ -538,12 +588,12 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
                   </p>
                 </div>
                 <div>
-                  <p className="text-xl font-black text-white uppercase tracking-tight">{myCell.name}</p>
-                  <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest">{myCell.meetingTime} • {myCell.hostName}</p>
+                  <p className="text-xl font-black text-white uppercase tracking-tight">{primaryLeadingCell.name}</p>
+                  <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest">{primaryLeadingCell.meetingTime} • {primaryLeadingCell.hostName}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs text-zinc-400 mb-10 font-black uppercase tracking-widest">
-                <MapPin size={16} className="text-rose-500 shrink-0" /> <span className="truncate">{myCell.address}</span>
+                <MapPin size={16} className="text-rose-500 shrink-0" /> <span className="truncate">{primaryLeadingCell.address}</span>
               </div>
               <button 
                 onClick={handleWhatsAppNotify}
