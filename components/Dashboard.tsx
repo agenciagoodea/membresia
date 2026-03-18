@@ -39,6 +39,7 @@ import PrayerHistory from './Member/PrayerHistory';
 import SuccessMarkers from './Member/SuccessMarkers';
 import CheckpointManager from './Ladder/CheckpointManager';
 import { mergeAgendaItems } from '../utils/agendaUtils';
+import MemberProfileModal from './MemberProfileModal';
 
 // Componentes Auxiliares
 const PageHeader = React.memo(({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -442,6 +443,9 @@ const PastorDashboard = ({ user, members, cells, prayers, events, activeTab }: {
 };
 
 const LeaderDashboard = ({ user, members, cells, events }: { user: any, members: Member[], cells: Cell[], events: any[] }) => {
+  const [selectedDisciple, setSelectedDisciple] = React.useState<Member | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
+
   // Célula que o usuário PARTICIPA (para o Cabeçalho)
   const participatingCell = cells.find(c => c.id === user.cellId);
   
@@ -480,23 +484,65 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
   const cellMeetings = primaryLeadingCell ? events.filter(e => e.id.startsWith(`cell-${primaryLeadingCell.id}`)) : [];
   const nextMeeting = cellMeetings.length > 0 ? cellMeetings[0] : null;
 
-  const handleWhatsAppNotify = () => {
-    if (!nextMeeting || !primaryLeadingCell) return;
-    const dateObj = new Date(nextMeeting.date + 'T12:00:00');
+  const handleWhatsAppNotify = (cellToNotify: Cell, meeting: any) => {
+    if (!meeting || !cellToNotify) return;
+    const dateObj = new Date(meeting.date + 'T12:00:00');
     const dayName = dateObj.toLocaleString('pt-BR', { weekday: 'long' });
     const dayNum = dateObj.getDate();
     const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });
     
-    const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${primaryLeadingCell.name}*!
+    const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${cellToNotify.name}*!
     
 🗓️ *Data:* ${dayName}, ${dayNum} de ${monthName}
-⏰ *Horário:* ${primaryLeadingCell.meetingTime}
-🏠 *Local:* Casa do(a) ${primaryLeadingCell.hostName}
-📍 *Endereço:* ${primaryLeadingCell.address}
+⏰ *Horário:* ${cellToNotify.meetingTime}
+🏠 *Local:* Casa do(a) ${cellToNotify.hostName}
+📍 *Endereço:* ${cellToNotify.address}
 
 Esperamos por você! Vai ser um tempo precioso! 🔥`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const CellEventWidget = ({ title, cell, eventsList, onNotify, theme }: { title: string, cell: Cell | undefined, eventsList: any[], onNotify?: () => void, theme: { dot: string, bg: string, text: string } }) => {
+    if (!cell) return null;
+    const meetings = eventsList.filter(e => e.id.startsWith(`cell-${cell.id}`));
+    const meeting = meetings.length > 0 ? meetings[0] : null;
+
+    if (!meeting) return null;
+
+    return (
+      <div className="bg-zinc-900 border border-white/5 p-6 rounded-[2rem] relative group overflow-hidden shadow-2xl">
+        <div className="absolute -right-5 -top-5 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={80} /></div>
+        <h4 className="font-black text-white text-sm mb-6 flex items-center gap-3 uppercase tracking-tighter">
+          <div className={`w-1.5 h-4 ${theme.dot} rounded-full`} /> {title}
+        </h4>
+        <div className="flex items-center gap-4 mb-6">
+          <div className={`${theme.bg} ${theme.text} w-16 h-20 rounded-[1.25rem] font-black flex flex-col items-center justify-center p-2 text-center border border-white/5`}>
+            <p className="text-[8px] uppercase tracking-widest mb-1 border-b border-current/20 pb-1 w-full text-center">
+              {new Date(meeting.date + 'T12:00:00').toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}
+            </p>
+            <p className="text-2xl tracking-tighter leading-none mt-1">
+              {meeting.date.split('-')[2]}
+            </p>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-black text-white uppercase tracking-tight truncate">{cell.name}</p>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{cell.meetingTime} • {cell.hostName}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-black uppercase tracking-widest mb-4 bg-white/5 p-3 rounded-xl border border-white/5">
+          <MapPin size={12} className={theme.text} /> <span className="truncate">{cell.address}</span>
+        </div>
+        {onNotify && (
+          <button 
+            onClick={onNotify}
+            className="w-full py-4 bg-white text-zinc-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5 text-center flex items-center justify-center gap-2"
+          >
+            <MessageSquare size={14} /> Notificar Discipulos
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -523,19 +569,22 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
               <div className="p-4 rounded-2xl bg-rose-500/10 text-rose-500">
                 <Activity size={24} />
               </div>
-              <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-500 uppercase tracking-widest text-right max-w-[120px] leading-tight flex-shrink-0">
-                {primaryLeadingCell.name}
+              <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-500 uppercase tracking-widest flex-shrink-0 border border-rose-500/20">
+                Liderança
               </span>
             </div>
             <div className="relative">
-              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">CÉLULA LIDERADA</p>
-              <h3 className="text-xl font-black text-white tracking-tighter mb-1 truncate leading-none">
-                Líderes Atuais
+              <p className="text-rose-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Célula Liderada</p>
+              <h3 className="text-2xl md:text-3xl font-black text-white tracking-tighter mb-4 truncate leading-none">
+                {primaryLeadingCell.name}
               </h3>
-              <p className="text-zinc-400 text-[9px] font-bold uppercase tracking-widest leading-relaxed mt-2 line-clamp-2">
-                {getMemberName(primaryLeadingCell.leaderId)}
-                {primaryLeadingCell.leaderIds?.filter(id => id !== primaryLeadingCell.leaderId).map(id => ` & ${getMemberName(id)}`).join('')}
-              </p>
+              <div className="bg-black/20 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em] mb-1.5">Líderes Atuais</p>
+                <p className="text-zinc-300 text-[10px] font-bold uppercase tracking-widest leading-relaxed line-clamp-2">
+                  {getMemberName(primaryLeadingCell.leaderId)}
+                  {primaryLeadingCell.leaderIds?.filter(id => id !== primaryLeadingCell.leaderId).map(id => ` & ${getMemberName(id)}`).join('')}
+                </p>
+              </div>
             </div>
           </div>
         ) : (
@@ -543,72 +592,66 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl">
-          <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <div className="xl:col-span-2 bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl h-full flex flex-col">
+          <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter shrink-0">
             <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Meus Discípulos
           </h4>
-          <div className="space-y-5">
+          <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide">
             {cellMembers.length === 0 ? (
-               <div className="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado às suas células</div>
+               <div className="py-20 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado às suas células</div>
             ) : cellMembers.map(m => (
-              <div key={m.id} className="flex items-center justify-between p-4 hover:bg-white/5 rounded-[1.5rem] transition-all border border-transparent hover:border-white/5 group">
+              <div key={m.id} className="flex items-center justify-between p-5 bg-white/5 rounded-[1.5rem] transition-all border border-white/5 hover:border-white/10 group">
                 <div className="flex items-center gap-4">
                   <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=fff`} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
                   <div>
                     <p className="text-sm font-black text-white uppercase">{m.name}</p>
-                    <p className="text-[10px] text-zinc-500 font-black uppercase tracking-tighter">{m.stage}</p>
+                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage}</p>
                   </div>
                 </div>
-                <button className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:text-white transition-colors">Ver Perfil</button>
+                <button 
+                  onClick={() => { setSelectedDisciple(m); setIsProfileModalOpen(true); }} 
+                  className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hover:text-white transition-colors bg-zinc-950 px-4 py-2 rounded-xl border border-white/5">Ver Perfil</button>
               </div>
             ))}
           </div>
         </div>
 
-        <DashboardEventsWidget events={events} />
+        <div className="space-y-8">
+          <CellEventWidget 
+            title="Próxima Reunião" 
+            cell={participatingCell} 
+            eventsList={events} 
+            theme={{ dot: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-500' }} 
+          />
 
-        <div className="bg-zinc-950 p-10 rounded-[3rem] border border-white/5 border-dashed relative">
-          <h4 className="font-black text-white text-xl mb-10 flex items-center gap-4 uppercase tracking-tighter">
-            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Próxima Reunião
-          </h4>
-          {nextMeeting && primaryLeadingCell ? (
-            <div className="bg-zinc-900 p-8 rounded-[2rem] border border-white/5 shadow-2xl relative group overflow-hidden">
-              <div className="absolute -right-5 -top-5 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={120} /></div>
-              <div className="flex items-center gap-6 mb-8">
-                <div className="bg-blue-600 text-white w-20 h-24 rounded-[1.5rem] font-black flex flex-col items-center justify-center p-2 text-center shadow-xl shadow-blue-500/20">
-                  <p className="text-[10px] uppercase tracking-widest mb-1">
-                    {new Date(nextMeeting.date + 'T12:00:00').toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}
-                  </p>
-                  <p className="text-3xl tracking-tighter leading-none">
-                    {nextMeeting.date.split('-')[2]}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-widest mt-1">
-                    {new Date(nextMeeting.date + 'T12:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xl font-black text-white uppercase tracking-tight">{primaryLeadingCell.name}</p>
-                  <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest">{primaryLeadingCell.meetingTime} • {primaryLeadingCell.hostName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-zinc-400 mb-10 font-black uppercase tracking-widest">
-                <MapPin size={16} className="text-rose-500 shrink-0" /> <span className="truncate">{primaryLeadingCell.address}</span>
-              </div>
-              <button 
-                onClick={handleWhatsAppNotify}
-                className="w-full py-5 bg-white text-zinc-950 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5 text-center"
-              >
-                Notificar via WhatsApp
-              </button>
-            </div>
-          ) : (
-            <div className="py-20 bg-zinc-900/50 rounded-[2rem] border border-white/5 border-dashed flex flex-col items-center justify-center text-zinc-600 font-black uppercase tracking-widest text-xs">
-              Nenhuma reunião agendada
-            </div>
-          )}
+          <CellEventWidget 
+            title="Próximo Encontro" 
+            cell={primaryLeadingCell} 
+            eventsList={events} 
+            onNotify={nextMeeting && primaryLeadingCell ? () => handleWhatsAppNotify(primaryLeadingCell, nextMeeting) : undefined} 
+            theme={{ dot: 'bg-blue-600', bg: 'bg-blue-500/20', text: 'text-blue-500' }} 
+          />
+
+          <div className="bg-zinc-900 border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
+             <h4 className="font-black text-white text-sm mb-6 flex items-center gap-3 uppercase tracking-tighter">
+                <div className="w-1.5 h-4 bg-emerald-500 rounded-full" /> Eventos Gerais
+             </h4>
+             <div className="scale-[0.9] origin-top-left w-[111%] -mb-4">
+                <DashboardEventsWidget events={events.filter(e => !e.id.startsWith('cell-'))} />
+             </div>
+          </div>
         </div>
       </div>
+
+      <MemberProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => { setIsProfileModalOpen(false); setSelectedDisciple(null); }} 
+        member={selectedDisciple}
+        cellReports={[]}
+        allMembers={members}
+        cellName={primaryLeadingCell?.name}
+      />
     </div>
   );
 };
