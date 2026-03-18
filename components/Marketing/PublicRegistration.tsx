@@ -4,6 +4,7 @@ import { ChurchTenant, UserRole, LadderStage, MemberOrigin, Cell, Member, Member
 import { churchService } from '../../services/churchService';
 import { memberService } from '../../services/memberService';
 import { cellService } from '../../services/cellService';
+import { m12Service } from '../../services/m12Service';
 import { CheckCircle2, UserPlus, Phone, Mail, User, ShieldCheck, Lock, Upload, MapPin, Map, Home, Building, Camera, X, Crop as CropIcon } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../Shared/cropImage';
@@ -19,13 +20,14 @@ const PublicRegistration = () => {
 
 	const [cells, setCells] = useState<Cell[]>([]);
 	const [members, setMembers] = useState<Member[]>([]);
+	const [winCheckpoints, setWinCheckpoints] = useState<any[]>([]);
 	const [fetchingCep, setFetchingCep] = useState(false);
 	const [invitedCellName, setInvitedCellName] = useState<string>('');
 
 	const [formData, setFormData] = useState({
 		name: '', email: '', phone: '', cpf: '', password: '', confirmPassword: '',
 		cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
-		origin: MemberOrigin.EVANGELISM as MemberOrigin, role: UserRole.MEMBER_VISITOR as UserRole,
+		origin: MemberOrigin.EVANGELISM as string, role: UserRole.MEMBER_VISITOR as UserRole,
 		cellId: '', disciplerId: '', pastorId: '', maritalStatus: '', spouseId: '', avatar: '',
 		newCellName: '', isCreatingCell: false
 	});
@@ -47,12 +49,20 @@ const PublicRegistration = () => {
 				setChurch(found);
 
 				if (found) {
-					const [fetchedCells, fetchedMembers] = await Promise.all([
+					const [fetchedCells, fetchedMembers, fetchedCheckpoints] = await Promise.all([
 						cellService.getAll(found.id),
-						memberService.getAll(found.id)
+						memberService.getAll(found.id),
+						m12Service.getCheckpoints(found.id)
 					]);
 					setCells(fetchedCells);
 					setMembers(fetchedMembers);
+					
+					const winStage = fetchedCheckpoints.filter(c => c.stage === LadderStage.WIN);
+					setWinCheckpoints(winStage);
+
+					if (winStage.length > 0) {
+						setFormData(prev => ({ ...prev, origin: winStage[0].label }));
+					}
 
 					// Pre-fill cell, leader, and pastor if coming from invite link
 					const queryParams = new URLSearchParams(search);
@@ -107,6 +117,18 @@ const PublicRegistration = () => {
 				setFetchingCep(false);
 			}
 		}
+	};
+
+	const getCoupledName = (memberId: string) => {
+		const m = members.find(x => x.id === memberId);
+		if (!m) return '';
+		if (m.spouseId) {
+			const spouse = members.find(s => s.id === m.spouseId);
+			if (spouse) {
+				return `${m.name} & ${spouse.name}`;
+			}
+		}
+		return m.name;
 	};
 
 	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -516,11 +538,19 @@ const PublicRegistration = () => {
 
 								<div className="space-y-3">
 									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Origem / Indicação</label>
-									<select value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value as MemberOrigin })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-										<option value={MemberOrigin.EVANGELISM} className="bg-zinc-900">Evangelismo / Ganho</option>
-										<option value={MemberOrigin.CELL_VISIT} className="bg-zinc-900">Visita na Célula</option>
-										<option value={MemberOrigin.PRAYER_REQUEST} className="bg-zinc-900">Pedido de Oração (Telão)</option>
-										<option value={MemberOrigin.OTHER_CHURCH} className="bg-zinc-900">Transmissão de Outra Igreja</option>
+									<select value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
+										{winCheckpoints.length > 0 ? (
+											winCheckpoints.map(c => (
+												<option key={c.id} value={c.label} className="bg-zinc-900">{c.label}</option>
+											))
+										) : (
+											<>
+												<option value={MemberOrigin.PRAYER_REQUEST} className="bg-zinc-900">Sistema de Oração</option>
+												<option value={MemberOrigin.EVANGELISM} className="bg-zinc-900">Evangelismo</option>
+												<option value={MemberOrigin.CELL_VISIT} className="bg-zinc-900">Visita de Célula</option>
+												<option value={MemberOrigin.OTHER_CHURCH} className="bg-zinc-900">Outra Igreja</option>
+											</>
+										)}
 									</select>
 								</div>
 
@@ -553,7 +583,7 @@ const PublicRegistration = () => {
 												if (formData.role === UserRole.CELL_LEADER_DISCIPLE) return m.role === UserRole.PASTOR;
 												return m.role === UserRole.CELL_LEADER_DISCIPLE;
 											})
-											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)}
+											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{getCoupledName(m.id)}</option>)}
 									</select>
 								</div>
 
@@ -563,7 +593,7 @@ const PublicRegistration = () => {
 										<option value="" className="bg-zinc-900">Não tenho / Não sei</option>
 										{members
 											.filter(m => m.role === UserRole.PASTOR)
-											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)}
+											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{getCoupledName(m.id)}</option>)}
 									</select>
 								</div>
 							</div>
