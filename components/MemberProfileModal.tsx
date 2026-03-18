@@ -151,6 +151,14 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-zinc-400">
+                  <User size={18} className="text-zinc-600" />
+                  <span className="text-sm font-medium uppercase">{member.sex || 'Gênero não informado'}</span>
+                </div>
+                <div className="flex items-center gap-4 text-zinc-400">
+                  <Calendar size={18} className="text-zinc-600" />
+                  <span className="text-sm font-medium">Nasc: {member.birthDate ? new Date(member.birthDate).toLocaleDateString('pt-BR') : 'Não informada'}</span>
+                </div>
+                <div className="flex items-center gap-4 text-zinc-400">
                   <Heart size={18} className="text-zinc-600" />
                   <span className="text-sm font-medium">
                     {member.maritalStatus} {spouse ? `(${spouse.name})` : ''}
@@ -284,6 +292,31 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
               )}
             </div>
           </div>
+
+          {/* Children Section */}
+          {member.hasChildren && (member.children || []).length > 0 && (
+            <div className="space-y-6">
+              <h4 className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                <Users size={14} /> Núcleo Familiar (Filhos)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(member.children || []).map((child) => (
+                  <div key={child.id} className="p-4 bg-zinc-900/50 border border-white/5 rounded-2xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-zinc-500">
+                      <User size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-white uppercase truncate">{child.name}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        Nasc: {new Date(child.birthDate).toLocaleDateString('pt-BR')}
+                      </p>
+                      {child.cpf && <p className="text-[8px] text-zinc-600 font-black">CPF: {child.cpf}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

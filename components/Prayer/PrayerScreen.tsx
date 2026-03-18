@@ -62,7 +62,7 @@ const PrayerScreen: React.FC = () => {
             .filter(r =>
               (r.status === PrayerStatus.APPROVED ||
                 r.status === PrayerStatus.IN_PRAYER) &&
-              r.showOnScreen !== false
+              r.allowScreenBroadcast !== false
             )
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

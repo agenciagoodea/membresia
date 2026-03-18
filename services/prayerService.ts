@@ -14,7 +14,7 @@ const mapToFrontend = (p: any): PrayerRequest => ({
 	isAnonymous: p.is_anonymous,
 	targetPerson: p.target_person,
 	targetName: p.target_name,
-	showOnScreen: p.show_on_screen,
+	allowScreenBroadcast: p.show_on_screen,
 	requestPastoralCall: p.request_pastoral_call,
 	addressDetails: p.address_details,
 });
@@ -34,7 +34,7 @@ const mapToDb = (p: Partial<PrayerRequest> & { church_id?: string }) => {
 	if (p.isAnonymous !== undefined) db.is_anonymous = p.isAnonymous;
 	if (p.targetPerson !== undefined) db.target_person = p.targetPerson;
 	if (p.targetName !== undefined) db.target_name = p.targetName;
-	if (p.showOnScreen !== undefined) db.show_on_screen = p.showOnScreen;
+	if (p.allowScreenBroadcast !== undefined) db.show_on_screen = p.allowScreenBroadcast;
 	if (p.requestPastoralCall !== undefined) db.request_pastoral_call = p.requestPastoralCall;
 	if (p.addressDetails !== undefined) db.address_details = p.addressDetails;
 	return db;

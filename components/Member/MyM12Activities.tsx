@@ -82,6 +82,12 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
   const handleToggleActivity = async (activity: string) => {
     if (!selectedMember || !activeStage) return;
 
+    // Bloquear edição do nível 'GANHAR' (Travar apenas no dashboard M12)
+    if (activeStage === LadderStage.WIN && !(user.role === UserRole.PASTOR || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN)) {
+      alert('A fase "GANHAR" é definida pela origem do membro e só pode ser alterada por lideranças autorizadas.');
+      return; 
+    }
+
     // Check dependencies
     const cp = checkpoints.find(c => c.label === activity && c.stage === activeStage);
     if (cp?.dependsOnId) {
@@ -345,9 +351,16 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
                         </div>
                       </div>
                       
-                      <div className={`w-10 h-5 rounded-full relative transition-all duration-300 shrink-0 ${isDone ? 'bg-blue-600' : 'bg-zinc-800'}`}>
-                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 ${isDone ? 'left-6' : 'left-1'}`} />
-                      </div>
+                      {isDone && cp.type === 'DATE' ? (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <Calendar size={12} className="text-emerald-500" />
+                          <span className="text-[9px] font-black text-emerald-500 uppercase">Concluído</span>
+                        </div>
+                      ) : (
+                        <div className={`w-10 h-5 rounded-full relative transition-all duration-300 shrink-0 ${isDone ? 'bg-blue-600' : 'bg-zinc-800'}`}>
+                          <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 ${isDone ? 'left-6' : 'left-1'}`} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

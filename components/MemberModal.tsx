@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Save, User, Mail, Phone, Shield, Target, Layers, Users, Camera, MapPin, Building, Home, Map, Check, Crop as CropIcon, Heart, Lock } from 'lucide-react';
+import { X, Save, User, Mail, Phone, Shield, Target, Layers, Users, Camera, MapPin, Building, Home, Map, Check, Crop as CropIcon, Heart, Lock, Plus, Calendar } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus, M12Checkpoint } from '../types';
@@ -39,7 +39,12 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		pastorId: '',
 		login: '',
 		password: '',
-		status: MemberStatus.ACTIVE
+		status: MemberStatus.ACTIVE,
+		sex: 'MASCULINO',
+		hasChildren: false,
+		children: [],
+		leadingCellIds: [],
+		birthDate: ''
 	});
 	const [originalPassword, setOriginalPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
@@ -117,7 +122,12 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				pastorId: '',
 				login: '',
 				password: '',
-				status: MemberStatus.ACTIVE
+				status: MemberStatus.ACTIVE,
+				sex: 'MASCULINO',
+				hasChildren: false,
+				children: [],
+				leadingCellIds: [],
+				birthDate: ''
 			});
 			setOriginalPassword('');
 			setConfirmPassword('');
@@ -205,6 +215,11 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 
 		if (formData.password !== confirmPassword) {
 			alert('As senhas digitadas não conferem.');
+			return;
+		}
+
+		if (!formData.birthDate) {
+			alert('A data de nascimento é obrigatória para todos os cadastros.');
 			return;
 		}
 
@@ -367,6 +382,35 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 							</div>
 
 							<div className="space-y-2">
+								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Gênero</label>
+								<div className="relative">
+									<Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+									<select
+										value={formData.sex}
+										onChange={(e) => setFormData({ ...formData, sex: e.target.value as any })}
+										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
+									>
+										<option value="MASCULINO" className="bg-zinc-950">Masculino</option>
+										<option value="FEMININO" className="bg-zinc-950">Feminino</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="space-y-2">
+								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Data de Nascimento *</label>
+								<div className="relative">
+									<Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+									<input
+										required
+										type="date"
+										value={formData.birthDate || ''}
+										onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+									/>
+								</div>
+							</div>
+
+							<div className="space-y-2">
 								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Telefone / WhatsApp</label>
 								<div className="relative">
 									<Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
@@ -414,7 +458,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 							</div>
 
 							<div className="space-y-2">
-								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Célula</label>
+								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Célula que Participa</label>
 								<div className="relative">
 									<Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 									<select
@@ -429,6 +473,34 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									</select>
 								</div>
 							</div>
+
+							{(formData.role === UserRole.CELL_LEADER_DISCIPLE || formData.role === UserRole.PASTOR || formData.role === UserRole.CHURCH_ADMIN) && (
+								<div className="space-y-2 md:col-span-2">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Células que Lidera (Eco-sistema)</label>
+									<div className="grid grid-cols-2 gap-2 mt-2">
+										{cells.map(cell => {
+											const isLeading = (formData.leadingCellIds || []).includes(cell.id);
+											return (
+												<button
+													key={cell.id}
+													type="button"
+													onClick={() => {
+														const current = formData.leadingCellIds || [];
+														const nextList = current.includes(cell.id) 
+															? current.filter(id => id !== cell.id)
+															: [...current, cell.id];
+														setFormData({ ...formData, leadingCellIds: nextList });
+													}}
+													className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all text-left flex items-center justify-between ${isLeading ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-white/20'}`}
+												>
+													{cell.name}
+													{isLeading && <Check size={12} />}
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							)}
 
 							<div className="space-y-2">
 								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Discipulador</label>
@@ -460,7 +532,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 							</div>
 
 							<div className="space-y-2">
-								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Pastor Direto</label>
+								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Pastores</label>
 								<div className="relative">
 									<Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 									<select
@@ -468,22 +540,21 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										onChange={(e) => setFormData({ ...formData, pastorId: e.target.value })}
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
-										<option value="" className="bg-zinc-950">Sem Pastor</option>
+										<option value="" className="bg-zinc-950">Selecione os Pastores</option>
 										{allMembers
 											.filter(m => {
 												if (m.id === member?.id) return false;
-												// Regra: Ocultar admin para membros e líderes de célula
-												const hideAdmin = formData.role === UserRole.MEMBER_VISITOR || formData.role === UserRole.CELL_LEADER_DISCIPLE;
-												if (hideAdmin && m.role === UserRole.CHURCH_ADMIN) return false;
-
-												if (formData.role === UserRole.PASTOR) {
-													return m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR;
-												}
 												return m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN;
 											})
-											.map(m => (
-												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
-											))}
+											.map(m => {
+												const spouse = allMembers.find(s => s.id === m.spouseId);
+												const label = m.maritalStatus === 'Casado(a)' && spouse 
+													? `${m.name} e ${spouse.name}` 
+													: m.name;
+												return (
+													<option key={m.id} value={m.id} className="bg-zinc-950">{label}</option>
+												);
+											})}
 									</select>
 								</div>
 							</div>
@@ -567,6 +638,94 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									</div>
 								</div>
 							)}
+
+							<div className="space-y-4 md:col-span-2">
+								<div className="flex items-center justify-between p-4 bg-zinc-900 border border-white/5 rounded-[1.5rem]">
+									<div>
+										<p className="text-sm font-black text-white uppercase tracking-tight">Possui Filhos?</p>
+										<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Gestão de Núcleo Familiar</p>
+									</div>
+									<button 
+										type="button"
+										onClick={() => setFormData({ ...formData, hasChildren: !formData.hasChildren, children: !formData.hasChildren ? formData.children : [] })}
+										className={`w-14 h-7 rounded-full relative transition-all duration-300 ${formData.hasChildren ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : 'bg-zinc-800'}`}
+									>
+										<div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-md ${formData.hasChildren ? 'left-8' : 'left-1'}`} />
+									</button>
+								</div>
+
+								{formData.hasChildren && (
+									<div className="space-y-4 pt-4">
+										{formData.children?.map((child, index) => (
+											<div key={child.id} className="p-6 bg-zinc-900 border border-white/5 rounded-[2rem] relative group animate-in slide-in-from-top-4">
+												<button 
+													type="button"
+													onClick={() => {
+														const newChildren = (formData.children || []).filter((_, i) => i !== index);
+														setFormData({ ...formData, children: newChildren });
+													}}
+													className="absolute -top-3 -right-3 w-8 h-8 bg-zinc-800 border border-white/10 rounded-full flex items-center justify-center text-zinc-500 hover:text-rose-500 transition-all shadow-xl"
+												>
+													<X size={14} />
+												</button>
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+													<div className="space-y-2">
+														<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Nome do Filho(a)</label>
+														<input
+															type="text"
+															value={child.name}
+															onChange={(e) => {
+																const newChildren = [...(formData.children || [])];
+																newChildren[index].name = e.target.value;
+																setFormData({ ...formData, children: newChildren });
+															}}
+															className="w-full bg-zinc-950 border border-white/5 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+															placeholder="Nome completo"
+														/>
+													</div>
+													<div className="space-y-2">
+														<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Data de Nascimento</label>
+														<input
+															type="date"
+															value={child.birthDate}
+															onChange={(e) => {
+																const newChildren = [...(formData.children || [])];
+																newChildren[index].birthDate = e.target.value;
+																setFormData({ ...formData, children: newChildren });
+															}}
+															className="w-full bg-zinc-950 border border-white/5 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+														/>
+													</div>
+													<div className="space-y-2">
+														<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">CPF (Opcional)</label>
+														<input
+															type="text"
+															value={child.cpf || ''}
+															onChange={(e) => {
+																const newChildren = [...(formData.children || [])];
+																newChildren[index].cpf = e.target.value;
+																setFormData({ ...formData, children: newChildren });
+															}}
+															className="w-full bg-zinc-950 border border-white/5 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+															placeholder="000.000.000-00"
+														/>
+													</div>
+												</div>
+											</div>
+										))}
+										<button
+											type="button"
+											onClick={() => {
+												const newChild = { id: Math.random().toString(36).substr(2, 9), name: '', birthDate: '', cpf: '' };
+												setFormData({ ...formData, children: [...(formData.children || []), newChild] });
+											}}
+											className="w-full py-4 bg-zinc-900 border border-dashed border-white/10 rounded-2xl text-[10px] font-black uppercase text-zinc-500 hover:text-blue-500 hover:border-blue-500/50 transition-all flex items-center justify-center gap-3"
+										>
+											<Plus size={16} /> Adicionar Filho(a)
+										</button>
+									</div>
+								)}
+							</div>
 						</div>
 
 						<div className="pt-6 border-t border-white/5 space-y-6">

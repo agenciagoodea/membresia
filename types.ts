@@ -16,6 +16,7 @@ export interface M12Checkpoint {
   isActive: boolean;
   isRequired: boolean;
   dependsOnId?: string;
+  type?: 'TOGGLE' | 'DATE' | 'NUMBER';
   createdAt: string;
 }
 
@@ -79,6 +80,14 @@ export enum MemberOrigin {
   OTHER_CHURCH = 'OUTRA IGREJA'
 }
 
+export interface Child {
+  id: string;
+  name: string;
+  birthDate: string;
+  photo?: string;
+  cpf?: string; // Only if adult/needed
+}
+
 export interface StageHistory {
   stage: LadderStage;
   date: string;
@@ -96,7 +105,8 @@ export interface Member {
   role: UserRole;
   status: MemberStatus;
   stage: LadderStage;
-  cellId: string;
+  cellId: string; // "Célula que Participa"
+  leadingCellIds?: string[]; // "Células que Lidera" (Multiple allowed)
   disciplerId?: string;
   avatar: string;
   stageHistory: StageHistory[];
@@ -105,6 +115,10 @@ export interface Member {
   baptismDate?: string;
   joinedDate: string;
   cpf?: string;
+
+  sex?: 'MASCULINO' | 'FEMININO';
+  hasChildren?: boolean;
+  children?: Child[];
 
   cep?: string;
   state?: string;
@@ -118,7 +132,7 @@ export interface Member {
   pastorId?: string;
   login?: string;
   password?: string;
-  birthDate?: string;
+  birthDate: string; // Now mandatory
 }
 
 export interface MeetingReport {
@@ -128,6 +142,7 @@ export interface MeetingReport {
   presentMemberIds: string[];
   visitorCount: number;
   childrenCount: number;
+  children?: Child[]; // Repeater for children in report
   photoUrl?: string;
   offeringAmount: number;
   report: string;
@@ -138,7 +153,8 @@ export interface Cell {
   id: string;
   churchId?: string;
   name: string;
-  leaderId: string;
+  leaderId: string; // Primary leader or legacy
+  leaderIds?: string[]; // Multiple leaders support
   hostId?: string;
   hostName: string;
   address: string;
@@ -179,11 +195,11 @@ export interface PrayerRequest {
   status: PrayerStatus;
   createdAt: string;
   consentLGPD: boolean;
-  isAnonymous: boolean;
+  isAnonymous: boolean; // Legacy
+  allowScreenBroadcast: boolean; // "Transmitir no telão?"
   targetPerson: 'SELF' | 'OTHER';
   targetName?: string;
-  showOnScreen: boolean;
-  requestPastoralCall: boolean;
+  requestPastoralCall: boolean; // Rename label in UI to "Acompanhamento Pastoral"
   addressDetails?: {
     cep: string;
     street: string;

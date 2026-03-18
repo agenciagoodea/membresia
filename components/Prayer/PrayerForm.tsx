@@ -41,7 +41,7 @@ const PrayerForm: React.FC = () => {
     isAnonymous: false,
     targetPerson: 'SELF' as 'SELF' | 'OTHER',
     targetName: '',
-    showOnScreen: true,
+    allowScreenBroadcast: true,
     requestPastoralCall: false,
     addressDetails: {
       cep: '',
@@ -155,7 +155,7 @@ const PrayerForm: React.FC = () => {
         isAnonymous: formData.isAnonymous,
         targetPerson: formData.targetPerson,
         targetName: formData.targetName,
-        showOnScreen: formData.showOnScreen,
+        allowScreenBroadcast: formData.allowScreenBroadcast,
         requestPastoralCall: formData.requestPastoralCall,
         addressDetails: formData.addressDetails,
         createdAt: new Date().toISOString()
@@ -335,19 +335,19 @@ const PrayerForm: React.FC = () => {
           <div className="space-y-6 pt-8 border-t border-white/5">
             <div className="grid grid-cols-1 gap-4">
               <div
-                onClick={() => setFormData({ ...formData, isAnonymous: !formData.isAnonymous })}
+                onClick={() => setFormData({ ...formData, allowScreenBroadcast: !formData.allowScreenBroadcast })}
                 className="flex items-center justify-between p-6 bg-zinc-950 rounded-[2rem] border border-white/5 cursor-pointer hover:bg-zinc-800/50 transition-all group"
               >
                 <div className="flex items-center gap-5">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${formData.isAnonymous ? 'bg-zinc-800 border-white/5 text-zinc-500' : 'bg-blue-600/10 border-blue-500/20 text-blue-500'}`}>
-                    {formData.isAnonymous ? <EyeOff size={22} /> : <Eye size={22} />}
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${formData.allowScreenBroadcast ? 'bg-blue-600 border-blue-500/20 text-white shadow-lg' : 'bg-zinc-800 border-white/5 text-zinc-500'}`}>
+                    {formData.allowScreenBroadcast ? <Monitor size={22} /> : <EyeOff size={22} />}
                   </div>
                   <div>
-                    <p className="text-sm font-black text-white uppercase tracking-tight">Manter Sigilo (Anônimo)</p>
-                    <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Somente os pastores verão seu nome</p>
+                    <p className="text-sm font-black text-white uppercase tracking-tight">Transmitir no telão?</p>
+                    <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest">Seu pedido aparecerá nos monitores de oração</p>
                   </div>
                 </div>
-                <Switch active={formData.isAnonymous} onChange={() => setFormData({ ...formData, isAnonymous: !formData.isAnonymous })} />
+                <Switch active={formData.allowScreenBroadcast} onChange={() => setFormData({ ...formData, allowScreenBroadcast: !formData.allowScreenBroadcast })} />
               </div>
 
               <div
@@ -357,8 +357,8 @@ const PrayerForm: React.FC = () => {
                 <div className="flex items-center gap-5">
                   <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20"><UserPlus size={22} /></div>
                   <div>
-                    <p className="text-sm font-black text-white uppercase tracking-tight">Visita Pastoral</p>
-                    <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest italic">Desejo que um pastor entre em contato</p>
+                    <p className="text-sm font-black text-white uppercase tracking-tight">Acompanhamento Pastoral</p>
+                    <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest italic">Desejo ser acompanhado por um pastor</p>
                   </div>
                 </div>
                 <Switch active={formData.requestPastoralCall} onChange={() => setFormData({ ...formData, requestPastoralCall: !formData.requestPastoralCall })} />

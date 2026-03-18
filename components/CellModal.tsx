@@ -17,7 +17,7 @@ interface CellModalProps {
 const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, availableLeaders, allMembers }) => {
 	const [formData, setFormData] = useState<Partial<Cell>>({
 		name: '',
-		leaderId: '',
+		leaderIds: [],
 		hostId: '',
 		hostName: '',
 		address: '',
@@ -327,20 +327,28 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 							</div>
 
 							<div className="space-y-2">
-								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Líder Responsável</label>
+								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Líderes Responsáveis</label>
 								<div className="relative">
 									<User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-									<select
-										required
-										value={formData.leaderId}
-										onChange={(e) => setFormData({ ...formData, leaderId: e.target.value })}
-										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
-									>
-										<option value="" className="bg-zinc-950">Selecionar Líder</option>
+									<div className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 pl-12 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
 										{(availableLeaders || []).map(leader => (
-											<option key={leader.id} value={leader.id} className="bg-zinc-950">{leader.name}</option>
+											<label key={leader.id} className="flex items-center gap-3 cursor-pointer group">
+												<input
+													type="checkbox"
+													checked={(formData.leaderIds || []).includes(leader.id) || formData.leaderId === leader.id}
+													onChange={(e) => {
+														const current = formData.leaderIds || (formData.leaderId ? [formData.leaderId] : []);
+														const next = e.target.checked 
+															? [...current, leader.id]
+															: current.filter(id => id !== leader.id);
+														setFormData({ ...formData, leaderIds: next, leaderId: next[0] || '' });
+													}}
+													className="w-4 h-4 rounded border-white/10 bg-zinc-950 text-blue-600 focus:ring-blue-500 transition-all"
+												/>
+												<span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{leader.name}</span>
+											</label>
 										))}
-									</select>
+									</div>
 								</div>
 							</div>
 

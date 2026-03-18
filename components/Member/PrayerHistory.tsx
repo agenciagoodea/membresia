@@ -10,7 +10,8 @@ import {
   MessageCircle,
   MoreVertical,
   X,
-  Plus
+  Plus,
+  Monitor
 } from 'lucide-react';
 import { PrayerRequest, PrayerStatus } from '../../types';
 import { prayerService } from '../../services/prayerService';
@@ -99,9 +100,16 @@ const PrayerHistory: React.FC<{ user: any }> = ({ user }) => {
             <div className={`absolute top-0 right-0 p-8 opacity-5 transition-opacity group-hover:opacity-10`}><Heart size={120} /></div>
             
             <div className="flex justify-between items-start mb-6">
-              <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(p.status)}`}>
-                {p.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(p.status)}`}>
+                  {p.status}
+                </span>
+                {p.allowScreenBroadcast && (
+                   <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-lg shadow-blue-500/10" title="Transmitir no Telão">
+                      <Monitor size={14} />
+                   </div>
+                )}
+              </div>
               <button className="text-zinc-600 hover:text-zinc-300 transition-colors">
                 <MoreVertical size={18} />
               </button>

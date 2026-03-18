@@ -56,11 +56,27 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
   const [presentMemberIds, setPresentMemberIds] = useState<Set<string>>(new Set());
   const [selectedReport, setSelectedReport] = useState<MeetingReport | null>(null);
   const [isEditingReport, setIsEditingReport] = useState(false);
+  const [reportChildren, setReportChildren] = useState<any[]>([]);
 
   const { cells, meetingExceptions, refreshData } = useChurch();
   const [isExceptionModalOpen, setIsExceptionModalOpen] = useState(false);
   const [exceptionType, setExceptionType] = useState<'CANCELLED' | 'RESCHEDULED'>('CANCELLED');
   const [selectedOccurrence, setSelectedOccurrence] = useState<any>(null);
+
+  const handleCreateReport = () => {
+    setPresentMemberIds(new Set());
+    setReportChildren([]);
+    setIsEditingReport(false);
+    setShowReportForm(true);
+  };
+
+  const handleEditReport = (report: MeetingReport) => {
+    setSelectedReport(report);
+    setPresentMemberIds(new Set(report.presentMemberIds));
+    setReportChildren(report.children || []);
+    setIsEditingReport(true);
+    setShowReportForm(true);
+  };
 
   const cellMembers = membersList.filter(m => m.cellId === cell.id);
   const leaderId = cell.leaderId;
@@ -135,7 +151,8 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
           childrenCount: Number(formData.get('children')),
           photoUrl: photoUrl || selectedReport.photoUrl,
           report: formData.get('report') as string,
-          presentMemberIds: Array.from(presentMemberIds)
+          presentMemberIds: Array.from(presentMemberIds),
+          children: reportChildren
         });
         setReports(reports.map(r => r.id === selectedReport.id ? updatedReport : r));
         setSelectedReport(updatedReport);
@@ -150,6 +167,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
           photoUrl: photoUrl || undefined,
           report: formData.get('report') as string,
           presentMemberIds: Array.from(presentMemberIds),
+          children: reportChildren,
           recordedBy: currentUser.name
         });
         setReports([newReport, ...reports]);
@@ -227,7 +245,8 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
     ...reports.map(r => ({ ...r, type: 'REPORT' as const })),
     ...meetingExceptions
       .filter(e => e.cell_id === cell.id)
-      .map(e => ({ ...e, type: 'EXCEPTION' as const }))
+      .map(e => ({ ...e, type: 'EXCEPTION' as const })),
+    ...upcomingMeetings.map(m => ({ ...m, type: 'UPCOMING' as const }))
   ].sort((a, b) => b.date?.localeCompare(a.date || b.original_date) || b.original_date?.localeCompare(a.original_date));
 
 
@@ -512,6 +531,50 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                       </div>
                     </div>
                   );
+                } else if ('type' in item && item.type === 'UPCOMING') {
+                  const meeting = item as any;
+                  const alreadyReported = reports.some(r => r.date === meeting.date);
+                  if (alreadyReported) return null;
+
+                  return (
+                    <div key={meeting.date} className="p-8 hover:bg-white/5 transition-all group overflow-hidden border-l-4 border-blue-500 bg-blue-500/5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-500 flex items-center justify-center">
+                            <Clock size={16} />
+                          </div>
+                          <div>
+                            <span className="text-lg font-black text-zinc-100 tracking-tight">
+                              {new Date(meeting.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </span>
+                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Reunião Programada</p>
+                          </div>
+                        </div>
+                        {isLeader && (
+                          <button 
+                            onClick={() => {
+                              setSelectedReport(null);
+                              // Pre-preencher a data na modal de novo relatório
+                              const dialog = document.querySelector('form') as HTMLFormElement;
+                              if (dialog) {
+                                const dateInput = dialog.querySelector('input[name="date"]') as HTMLInputElement;
+                                if (dateInput) dateInput.value = meeting.date;
+                              }
+                              handleCreateReport();
+                              // Pequeno timeout para garantir que a modal abriu e a data foi setada se usássemos state, 
+                              // mas aqui vamos usar um truque simples via Ref ou passar a data pro handler
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
+                          >
+                            Lançar Relatório
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                        <MapPin size={12} /> {cell.neighborhood || 'Local da Célula'} • {cell.meetingTime}
+                      </div>
+                    </div>
+                  );
                 } else {
                   const exception = item as any;
                   return (
@@ -729,6 +792,62 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                 </div>
               </div>
 
+              {/* Children Repeater in Report */}
+              <div className="space-y-4 pt-4 border-t border-white/5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center justify-between">
+                  Presença de Crianças
+                  <button 
+                    type="button" 
+                    onClick={() => setReportChildren([...reportChildren, { id: crypto.randomUUID(), name: '', birthDate: '' }])}
+                    className="text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-1"
+                  >
+                    <Plus size={14} /> ADICIONAR
+                  </button>
+                </label>
+                
+                {reportChildren.length > 0 ? (
+                  <div className="space-y-3 font-medium">
+                    {reportChildren.map((child, index) => (
+                      <div key={child.id} className="bg-zinc-950 border border-white/5 rounded-2xl p-4 flex flex-col gap-4 relative group">
+                        <button 
+                          type="button"
+                          onClick={() => setReportChildren(reportChildren.filter((_, i) => i !== index))}
+                          className="absolute -top-2 -right-2 p-1.5 bg-rose-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
+                        >
+                          <X size={12} />
+                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <input 
+                            placeholder="Nome da Criança"
+                            value={child.name}
+                            onChange={e => {
+                              const next = [...reportChildren];
+                              next[index].name = e.target.value;
+                              setReportChildren(next);
+                            }}
+                            className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-blue-500 transition-all"
+                          />
+                          <input 
+                            type="date"
+                            value={child.birthDate}
+                            onChange={e => {
+                              const next = [...reportChildren];
+                              next[index].birthDate = e.target.value;
+                              setReportChildren(next);
+                            }}
+                            className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-blue-500 transition-all uppercase"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-zinc-950/50 border border-dashed border-white/5 rounded-2xl p-8 text-center">
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Nenhuma criança registrada</p>
+                  </div>
+                )}
+              </div>
+
               {cellMembers.length > 0 && (
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center justify-between">
@@ -875,6 +994,24 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser }
                   })}
                 </div>
               </div>
+
+              {selectedReport.children && selectedReport.children.length > 0 && (
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Crianças Presentes ({selectedReport.children.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReport.children.map(child => (
+                      <div key={child.id} className="flex flex-col gap-1 px-4 py-2 bg-zinc-950 border border-white/5 rounded-2xl">
+                        <span className="text-[10px] font-black text-zinc-200 uppercase tracking-tight">{child.name}</span>
+                        {child.birthDate && (
+                          <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
+                            Nascto: {new Date(child.birthDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-8 border-t border-white/5 bg-zinc-950/50 shrink-0 flex items-center justify-between">
@@ -1054,116 +1191,80 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
       />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {visibleCells.map((cell) => {
-          const leader = members.find(m => m.id === cell.leaderId);
-          const spouse = leader?.spouseId ? members.find(m => m.id === leader.spouseId) : null;
-          const userCanEdit = canEditCell(cell);
+      {/* VIEW DE LISTA (Novo Layout) */}
+      <div className="bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden relative">
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="w-full text-left">
+            <thead className="bg-zinc-950/50 text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">
+              <tr>
+                <th className="px-10 py-6">Célula / Logo</th>
+                <th className="px-6 py-6 font-black uppercase tracking-widest">Líderes</th>
+                <th className="px-6 py-6 text-center font-black uppercase tracking-widest">Integrantes</th>
+                <th className="px-6 py-6 text-center font-black uppercase tracking-widest">Status</th>
+                <th className="px-6 py-6 text-center font-black uppercase tracking-widest">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {cells.map((cell) => {
+                const leader = members.find(m => m.id === cell.leaderId);
+                const isLeader = canEditCell(cell);
 
-          return (
-            <div
-              key={cell.id}
-              onClick={() => setSelectedCell(cell)}
-              className="group bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl hover:bg-zinc-800 transition-all cursor-pointer relative overflow-hidden"
-            >
-            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Layers size={100} />
+                return (
+                  <tr key={cell.id} className="hover:bg-white/5 transition-all group cursor-pointer" onClick={() => setSelectedCell(cell)}>
+                    <td className="px-10 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-500 overflow-hidden border border-white/5">
+                          {cell.logo ? <img src={cell.logo} className="w-full h-full object-cover" alt="" /> : <Layers size={20} />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-white uppercase tracking-tight">{cell.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{cell.neighborhood || 'Sem endereço'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-xs font-black text-zinc-300 uppercase leading-none">
+                          {leader?.name || 'Sem Líder'}
+                        </p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest leading-none">Líder Principal</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-6 text-center text-sm font-black text-white">
+                      {members.filter(m => m.cellId === cell.id).length}
+                    </td>
+                    <td className="px-6 py-6 text-center">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${cell.status === 'ACTIVE' || cell.status === 'MULTIPLYING' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border-white/5'}`}>
+                        {cell.status === 'ACTIVE' || cell.status === 'MULTIPLYING' ? 'Ativa' : 'Inativa'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-6 text-center">
+                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                        {isLeader && (
+                          <>
+                            <button onClick={() => { setEditingCell(cell); setIsCellModalOpen(true); }} className="p-2.5 text-zinc-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-xl transition-all border border-transparent hover:border-white/5">
+                              <Edit2 size={16} />
+                            </button>
+                            <button onClick={() => handleDeleteCell(cell.id)} className="p-2.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                        <ChevronRight size={18} className="text-zinc-700" />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {cells.length === 0 && (
+            <div className="py-32 text-center text-zinc-600">
+              <Layers size={64} className="mx-auto mb-6 opacity-10" />
+              <p className="text-sm font-black uppercase tracking-widest">Nenhuma célula encontrada</p>
             </div>
-
-            <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 text-blue-500 group-hover:scale-110 transition-transform overflow-hidden">
-                {cell.logo ? (
-                  <img src={cell.logo} alt={cell.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Layers size={32} />
-                )}
-              </div>
-              <div className="flex gap-2">
-                {userCanEdit && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCell(cell);
-                        setIsCellModalOpen(true);
-                      }}
-                      className="p-3 bg-zinc-950 text-zinc-500 hover:text-amber-400 rounded-xl border border-white/5 transition-colors"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCell(cell.id);
-                      }}
-                      className="p-3 bg-zinc-950 text-zinc-500 hover:text-rose-500 rounded-xl border border-white/5 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-2">{cell.name}</h3>
-            
-            <div className="mb-6 space-y-2">
-              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                <User size={14} className="text-blue-500 opacity-70 shrink-0" /> 
-                <span>Líder: <b className="text-zinc-200 uppercase">{leader?.name || 'Não definido'}</b></span>
-              </p>
-              {spouse && (
-                <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                  <Heart size={14} className="text-rose-500 opacity-70 shrink-0" /> 
-                  <span>Cônjuge: <b className="text-zinc-200 uppercase">{spouse.name}</b></span>
-                </p>
-              )}
-              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                <Home size={14} className="text-amber-500 opacity-70 shrink-0" /> 
-                <span>Anfitrião: <b className="text-zinc-200 uppercase">{cell.hostName || 'Não definido'}</b></span>
-              </p>
-              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-3 tracking-tight">
-                <MapPin size={14} className="text-emerald-500 opacity-70 shrink-0" /> 
-                <span className="truncate"><b className="text-zinc-200 uppercase">{cell.address || 'Sem endereço'}</b></span>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4 text-xs font-bold text-zinc-500 mb-8 uppercase tracking-widest">
-              <div className="flex items-center gap-2">
-                <Users size={14} className="text-zinc-600" /> {members.filter(m => m.cellId === cell.id).length} Membros
-              </div>
-              <div className="w-1 h-1 bg-zinc-700 rounded-full" />
-              <div className="flex items-center gap-2">
-                <TrendingUp size={14} className="text-emerald-500" /> {cell.averageAttendance || 0} p.
-              </div>
-            </div>
-
-            <div className="space-y-4 relative z-10">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-600">
-                <span>Saúde da Célula</span>
-                <span className="text-emerald-500">{(cell.averageAttendance || 0) > 10 ? 'Excelente' : 'Estável'}</span>
-              </div>
-              <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-white/5">
-                <div
-                  className={`h-full rounded-full transition-all duration-1000 ${cell.status === 'MULTIPLYING' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-blue-600 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`}
-                  style={{ width: `${Math.min(100, ((cell.averageAttendance || 0) / 15) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <button className="mt-10 w-full py-4 bg-zinc-950 text-zinc-400 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center gap-3">
-              GERENCIAR CÉLULA <ChevronRight size={14} />
-            </button>
-          </div>
-        );
-      })}
-
-        {cells.length === 0 && (
-          <div className="col-span-full py-32 text-center border-2 border-dashed border-white/5 rounded-[3rem] bg-zinc-900/50">
-            <Layers size={64} className="mx-auto mb-6 opacity-10" />
-            <p className="text-zinc-600 font-black uppercase tracking-[0.3em]">Nenhuma célula estruturada</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <UpgradeModal

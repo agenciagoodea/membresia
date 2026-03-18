@@ -101,8 +101,10 @@ const QuickActionsMenu = ({ user }: { user: any }) => {
   ] : [
     { label: 'Novo Membro', icon: <User size={16} />, path: '/app/members', state: { openNewMember: true } },
     { label: 'Moderador Orações', icon: <Heart size={16} />, path: '/app/prayer-moderation' },
-    { label: 'Enviar Oração', icon: <Plus size={16} />, path: '/prayer/new' },
-    { label: 'Abrir Telão', icon: <Monitor size={16} />, path: '/prayer-screen' },
+    { label: 'Solicitar Oração', icon: <Plus size={16} />, path: '/prayer/new' },
+    ...((user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN) ? [
+      { label: 'Abrir Telão', icon: <Monitor size={16} />, path: '/prayer-screen' }
+    ] : [])
   ];
 
   return (
@@ -199,11 +201,14 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
               <Link
                 key={item.id}
                 to={path}
+                onClick={() => {
+                  if (window.innerWidth < 1024) toggle();
+                }}
                 className={`flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className={isActive ? 'text-white' : 'text-zinc-500 transition-colors'}>{item.icon}</span>
-                  {item.label}
+                  {item.label === 'Enviar Oração' ? 'Solicitar Oração' : item.label}
                 </div>
                 {isActive && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
               </Link>

@@ -113,6 +113,7 @@ const PrayerModeration: React.FC<{ user: any }> = ({ user }) => {
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(request.name)}&background=random`,
         origin: MemberOrigin.PRAYER_REQUEST,
         status: MemberStatus.ACTIVE,
+        birthDate: '1900-01-01', // Data padrão obrigatória para importação
         stageHistory: [{
           stage: LadderStage.WIN,
           date: new Date().toISOString(),
@@ -246,8 +247,8 @@ const PrayerModeration: React.FC<{ user: any }> = ({ user }) => {
                   <ShieldAlert size={16} className="text-emerald-500/50" /> Protocolo LGPD Ativo
                 </div>
                 <div className="flex items-center gap-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-widest">
-                  {req.showOnScreen ? <Eye size={16} className="text-blue-500" /> : <EyeOff size={16} className="text-zinc-700" />}
-                  {req.showOnScreen ? 'Público no Telão' : 'Sigilo Ministerial'}
+                  {req.allowScreenBroadcast ? <Monitor size={16} className="text-blue-500" /> : <EyeOff size={16} className="text-zinc-700" />}
+                  {req.allowScreenBroadcast ? 'Visível no Telão' : 'Sigilo Ministerial'}
                 </div>
                 {req.requestPastoralCall && (
                   (() => {
@@ -283,7 +284,9 @@ const PrayerModeration: React.FC<{ user: any }> = ({ user }) => {
                   </button>
                 )}
 
-                {req.status === PrayerStatus.APPROVED && (
+                {(req.status === PrayerStatus.APPROVED ||
+                req.status === PrayerStatus.IN_PRAYER) &&
+              req.allowScreenBroadcast !== false && (
                   <button
                     onClick={() => updateStatus(req.id, PrayerStatus.IN_PRAYER)}
                     className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase shadow-xl shadow-indigo-500/20 hover:scale-[1.02] transition-all"

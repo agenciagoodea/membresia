@@ -6,6 +6,7 @@ const mapToFrontend = (c: any): Cell => ({
 	churchId: c.church_id,
 	name: c.name,
 	leaderId: c.leader_id,
+	leaderIds: c.leader_ids || [],
 	hostId: c.host_id,
 	hostName: c.host_name,
 	address: c.address,
@@ -30,6 +31,7 @@ const mapToDb = (c: Partial<Cell> & { church_id?: string }) => {
 	if (c.church_id) db.church_id = c.church_id;
 	if (c.name !== undefined) db.name = c.name;
 	if (c.leaderId !== undefined) db.leader_id = c.leaderId || null;
+	if (c.leaderIds !== undefined) db.leader_ids = c.leaderIds;
 	if (c.hostId !== undefined) db.host_id = c.hostId || null;
 	if (c.hostName !== undefined) db.host_name = c.hostName;
 	if (c.address !== undefined) db.address = c.address;
@@ -50,7 +52,7 @@ const mapToDb = (c: Partial<Cell> & { church_id?: string }) => {
 };
 
 // Colunas para listagem (remove dados pesados se houver)
-const CELL_LIST_COLUMNS = 'id, name, leader_id, host_name, address, meeting_day, meeting_time, members_count, status, logo, church_id';
+const CELL_LIST_COLUMNS = 'id, name, leader_id, leader_ids, host_name, address, meeting_day, meeting_time, members_count, status, logo, church_id';
 
 export const cellService = {
 	async getAll(churchId: string) {
