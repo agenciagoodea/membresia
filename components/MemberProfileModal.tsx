@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { X, User, Mail, Phone, MapPin, Target, Calendar, CheckCircle2, TrendingUp, Award, Briefcase, Heart, Users, Zap } from 'lucide-react';
-import { Member, MeetingReport, LadderStage, UserRole, M12Checkpoint } from '../types';
+import { Member, MeetingReport, LadderStage, UserRole, M12Activity } from '../types';
 import { m12Service } from '../services/m12Service';
 
 interface MemberProfileModalProps {
@@ -24,27 +24,27 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
 
   const spouse = member.spouseId ? allMembers.find(m => m.id === member.spouseId) : null;
 
-  const [checkpoints, setCheckpoints] = React.useState<M12Checkpoint[]>([]);
+  const [activities, setActivities] = React.useState<M12Activity[]>([]);
   
   React.useEffect(() => {
-    const fetchCheckpoints = async () => {
+    const fetchActivities = async () => {
       try {
         const churchId = member.churchId || member.church_id;
         if (!churchId) return;
-        const data = await m12Service.getCheckpoints(churchId);
-        setCheckpoints(data);
+        const data = await m12Service.getActivities(churchId);
+        setActivities(data);
       } catch (error) {
-        console.error('Error fetching checkpoints:', error);
+        console.error('Error fetching activities:', error);
       }
     };
-    if (isOpen) fetchCheckpoints();
+    if (isOpen) fetchActivities();
   }, [isOpen, member.churchId, member.church_id]);
 
   const getPerformanceData = () => {
-    const stageCheckpoints = checkpoints.filter(c => c.stage === member.stage);
-    const total = stageCheckpoints.length;
+    const stageActivities = activities.filter(a => a.stage === member.stage);
+    const total = stageActivities.length;
     const completed = (member.completedMilestones || []).filter(m => 
-      stageCheckpoints.some(cp => cp.label === m)
+      stageActivities.some(a => a.label === m)
     ).length;
     const percentage = total > 0 ? (completed / total) * 100 : 0;
     
@@ -224,12 +224,12 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
               <div className="flex flex-wrap gap-2">
                 {(member.completedMilestones || []).length > 0 ? (
                   member.completedMilestones?.map((milestone, i) => {
-                    const cp = checkpoints.find(c => c.label === milestone);
+                    const act = activities.find(a => a.label === milestone);
                     return (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
                         <CheckCircle2 size={12} className="text-amber-500" />
                         <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">{milestone}</span>
-                        {cp?.isRequired && (
+                        {act?.isRequired && (
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" title="Obrigatório" />
                         )}
                       </div>
@@ -261,7 +261,7 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
                     <p className="text-sm font-black text-white">{performance.daysInStage} dias</p>
                   </div>
                   <div className="bg-zinc-950/50 p-3 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Checkpoints</p>
+                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Atividades</p>
                     <p className="text-sm font-black text-white">{performance.completed}/{performance.total}</p>
                   </div>
                 </div>

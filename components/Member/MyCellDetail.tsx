@@ -72,7 +72,7 @@ const MyCellDetail: React.FC<{ user: any }> = ({ user }) => {
         <div className="absolute -top-10 -right-10 opacity-10"><Users size={300} /></div>
         
         <div className="relative flex flex-col md:flex-row items-center gap-10">
-          <div className="w-40 h-40 bg-white/20 rounded-[2.5rem] flex items-center justify-center backdrop-blur-md shadow-2xl ring-4 ring-white/10 shrink-0">
+          <div className="w-40 h-40 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl ring-4 ring-white/10 shrink-0">
             {cell.logo ? (
               <img src={cell.logo} className="w-full h-full object-contain p-4" alt="Cell Logo" />
             ) : (

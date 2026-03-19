@@ -19,7 +19,7 @@ const Switch = ({ active, onChange }: { active: boolean; onChange: () => void })
   </div>
 );
 
-const PrayerForm: React.FC = () => {
+const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void }> = ({ isInline, onComplete }) => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [submitted, setSubmitted] = useState(false);
@@ -184,8 +184,11 @@ const PrayerForm: React.FC = () => {
   };
 
   if (submitted) {
+    if (isInline && onComplete) {
+      onComplete();
+    }
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-500">
+      <div className={`${isInline ? 'py-12' : 'min-h-screen'} bg-zinc-950 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-500`}>
         <div className="w-24 h-24 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(16,185,129,0.2)] border border-emerald-500/20">
           <CheckCircle2 size={48} />
         </div>
@@ -197,9 +200,11 @@ const PrayerForm: React.FC = () => {
           <button onClick={() => setSubmitted(false)} className="flex-1 px-8 py-5 bg-zinc-900 text-zinc-300 rounded-2xl font-black text-xs uppercase tracking-widest hover:text-white transition-all border border-white/5">
             Novo Pedido
           </button>
-          <button onClick={() => navigate('/app')} className="flex-1 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 transition-all">
-            Painel Geral
-          </button>
+          {!isInline && (
+            <button onClick={() => navigate('/app')} className="flex-1 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 transition-all">
+              Painel Geral
+            </button>
+          )}
         </div>
       </div>
     );
@@ -214,12 +219,14 @@ const PrayerForm: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-20 px-6 relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-600/10 rounded-full blur-[150px] -z-10" />
+    <div className={`${isInline ? 'pb-10 pt-4 px-0' : 'min-h-screen py-20 px-6'} bg-zinc-950 flex flex-col items-center relative overflow-hidden`}>
+      {!isInline && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-600/10 rounded-full blur-[150px] -z-10" />
+      )}
 
       {/* Loading Overlay */}
       {isSubmitting && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+        <div className={`${isInline ? 'absolute rounded-[3.5rem]' : 'fixed'} inset-0 bg-black/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300`}>
           <div className="w-full max-w-md space-y-8 text-center">
             <div className="relative w-32 h-32 mx-auto">
               <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
@@ -246,24 +253,37 @@ const PrayerForm: React.FC = () => {
         </div>
       )}
 
-      <button onClick={() => navigate(-1)} className="fixed top-8 left-8 p-4 bg-zinc-900/50 backdrop-blur-md border border-white/10 rounded-2xl text-zinc-500 hover:text-white shadow-2xl transition-all z-50 flex items-center gap-3 font-black text-xs uppercase tracking-widest">
-        <ChevronLeft size={18} /> Voltar
-      </button>
+      {!isInline && (
+        <button onClick={() => navigate(-1)} className="fixed top-8 left-8 p-4 bg-zinc-900/50 backdrop-blur-md border border-white/10 rounded-2xl text-zinc-500 hover:text-white shadow-2xl transition-all z-50 flex items-center gap-3 font-black text-xs uppercase tracking-widest">
+          <ChevronLeft size={18} /> Voltar
+        </button>
+      )}
 
-      <div className="w-full max-w-2xl relative z-10">
-        <div className="text-center mb-16">
-          {tenant?.logo ? (
-            <img src={tenant.logo} className="w-24 h-24 rounded-3xl mx-auto mb-8 shadow-2xl object-contain bg-zinc-900 p-3 border border-white/10" alt="" />
-          ) : (
-            <div className="w-24 h-24 rounded-3xl mx-auto mb-8 bg-blue-600 flex items-center justify-center text-white font-black text-4xl shadow-2xl border border-white/10 italic">
-              {tenant?.name?.substring(0, 1) || '?'}
-            </div>
-          )}
-          <h1 className="text-5xl font-black text-white mb-3 tracking-tighter uppercase leading-none text-center">Clamor Coletivo</h1>
-          <p className="text-zinc-500 font-bold italic text-lg text-center">Central de Pedidos de Clamor — {tenant?.name || 'Comunidade'}</p>
-        </div>
+      <div className="w-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
+        {!isInline && (
+          <div className="text-center mb-16">
+            {tenant?.logo ? (
+              <img src={tenant.logo} className="w-24 h-24 rounded-3xl mx-auto mb-8 shadow-2xl object-contain bg-zinc-900 p-3 border border-white/10" alt="" />
+            ) : (
+              <div className="w-24 h-24 rounded-3xl mx-auto mb-8 bg-blue-600 flex items-center justify-center text-white font-black text-4xl shadow-2xl border border-white/10 italic">
+                {tenant?.name?.substring(0, 1) || '?'}
+              </div>
+            )}
+            <h1 className="text-5xl font-black text-white mb-3 tracking-tighter uppercase leading-none text-center">Clamor Coletivo</h1>
+            <p className="text-zinc-500 font-bold italic text-lg text-center">Central de Pedidos de Clamor — {tenant?.name || 'Comunidade'}</p>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="bg-zinc-900 p-10 md:p-16 rounded-[4rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.5)] space-y-12">
+        {isInline && (
+          <div className="mb-10 animate-in slide-in-from-left-4">
+            <h1 className="font-black text-white text-3xl mb-2 flex items-center gap-4 uppercase tracking-tighter">
+              <div className="w-2 h-8 bg-blue-600 rounded-full" /> Novo Pedido de Fé
+            </h1>
+            <p className="text-zinc-500 font-bold italic text-sm">Conecte seu clamor ao altar da igreja.</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className={`${isInline ? 'bg-zinc-900/50 p-8 md:p-12 border-white/5 rounded-[3.5rem]' : 'bg-zinc-900 p-10 md:p-16 border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.5)] rounded-[4rem]'} border space-y-12 transition-all`}>
 
           <div className="space-y-8">
             <div className="flex items-center gap-4 text-blue-500 font-black text-[10px] uppercase tracking-[0.3em]">

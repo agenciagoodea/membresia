@@ -92,7 +92,6 @@ export const LEADER_NAV_ITEMS = [
 // MEMBER LEVEL (Regular user / Visitor)
 export const MEMBER_NAV_ITEMS = [
   { id: 'dashboard', label: 'Minha Jornada', icon: <LayoutDashboard size={20} /> },
-  { id: 'my-progress', label: 'Meu Progresso', icon: <TrendingUp size={20} /> },
   { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'my-cell-detail', label: 'Minha Célula', icon: <MapPin size={20} /> },
   { id: 'prayer-request-new', label: 'Enviar Oração', icon: <Plus size={20} /> },
@@ -130,6 +129,7 @@ export const MOCK_MEMBERS: Member[] = [
     cellId: 'c1',
     joinedDate: '2022-01-15',
     avatar: 'https://i.pravatar.cc/150?u=1',
+    birthDate: '1990-05-15',
     stageHistory: [
       { stage: LadderStage.WIN, date: '2022-01-15', recordedBy: 'Admin', notes: 'Aceitou a Jesus no culto de jovens.' },
       { stage: LadderStage.CONSOLIDATE, date: '2022-02-10', recordedBy: 'Admin' },
@@ -148,14 +148,15 @@ export const MOCK_MEMBERS: Member[] = [
     cellId: 'c1',
     joinedDate: '2023-03-10',
     avatar: 'https://i.pravatar.cc/150?u=2',
+    birthDate: '1995-08-20',
     stageHistory: [
       { stage: LadderStage.WIN, date: '2023-03-10', recordedBy: 'João Silva' },
       { stage: LadderStage.CONSOLIDATE, date: '2023-04-10', recordedBy: 'João Silva' },
       { stage: LadderStage.DISCIPLE, date: '2023-10-15', recordedBy: 'João Silva' }
     ]
   },
-  { id: 'Pedro Souza', name: 'Pedro Souza', email: 'pedro@email.com', phone: '(11) 96666-5555', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.CONSOLIDATE, cellId: 'c2', joinedDate: '2024-05-20', avatar: 'https://i.pravatar.cc/150?u=3', stageHistory: [] },
-  { id: '4', name: 'Ana Costa', email: 'ana@email.com', phone: '(11) 95555-4444', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.WIN, cellId: 'c3', joinedDate: '2024-11-01', avatar: 'https://i.pravatar.cc/150?u=4', stageHistory: [] },
+  { id: 'Pedro Souza', name: 'Pedro Souza', email: 'pedro@email.com', phone: '(11) 96666-5555', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.CONSOLIDATE, cellId: 'c2', joinedDate: '2024-05-20', avatar: 'https://i.pravatar.cc/150?u=3', birthDate: '1988-12-05', stageHistory: [] },
+  { id: '4', name: 'Ana Costa', email: 'ana@email.com', phone: '(11) 95555-4444', role: UserRole.MEMBER_VISITOR, status: MemberStatus.ACTIVE, stage: LadderStage.WIN, cellId: 'c3', joinedDate: '2024-11-01', avatar: 'https://i.pravatar.cc/150?u=4', birthDate: '1992-03-25', stageHistory: [] },
 ];
 
 export const MOCK_CELLS: Cell[] = [
@@ -177,7 +178,7 @@ export const MOCK_PRAYER_REQUESTS: PrayerRequest[] = [
     isAnonymous: false,
     targetPerson: 'OTHER',
     targetName: 'Maria Almeida',
-    showOnScreen: true,
+    allowScreenBroadcast: true,
     requestPastoralCall: false
   },
   {
@@ -191,7 +192,7 @@ export const MOCK_PRAYER_REQUESTS: PrayerRequest[] = [
     consentLGPD: true,
     isAnonymous: false,
     targetPerson: 'SELF',
-    showOnScreen: true,
+    allowScreenBroadcast: true,
     requestPastoralCall: false
   },
   {
@@ -205,7 +206,7 @@ export const MOCK_PRAYER_REQUESTS: PrayerRequest[] = [
     consentLGPD: true,
     isAnonymous: false,
     targetPerson: 'SELF',
-    showOnScreen: false,
+    allowScreenBroadcast: false,
     requestPastoralCall: true
   }
 ];

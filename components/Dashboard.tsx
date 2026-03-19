@@ -31,15 +31,16 @@ import { useChurch } from '../contexts/ChurchContext';
 import { UserRole, LadderStage, PrayerStatus, Member, Cell, PrayerRequest } from '../types';
 import { PLAN_CONFIGS, PlanType } from '../constants';
 import { memberService } from '../services/memberService';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PrayerForm from './Prayer/PrayerForm';
 import MyProgress from './Member/MyProgress';
 import MyCellDetail from './Member/MyCellDetail';
 import PrayerHistory from './Member/PrayerHistory';
-import SuccessMarkers from './Member/SuccessMarkers';
-import CheckpointManager from './Ladder/CheckpointManager';
+import MonthlyAgenda from './Member/MonthlyAgenda';
+import ActivityManager from './Ladder/ActivityManager';
 import { mergeAgendaItems } from '../utils/agendaUtils';
 import MemberProfileModal from './MemberProfileModal';
+import { supabase } from '../services/supabaseClient';
 
 // Componentes Auxiliares
 const PageHeader = React.memo(({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -273,7 +274,7 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
 
 const ChurchAdminDashboard = ({ user, members, cells, prayers, events, activeTab }: { user: any, members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[], activeTab?: string }) => {
   if (activeTab === 'm12-config') {
-    return <CheckpointManager user={user} />;
+    return <ActivityManager user={user} />;
   }
   const planLimits = PLAN_CONFIGS[PlanType.PRO];
   const totalMembers = members.length;
@@ -361,7 +362,7 @@ const ChurchAdminDashboard = ({ user, members, cells, prayers, events, activeTab
 
 const PastorDashboard = ({ user, members, cells, prayers, events, activeTab }: { user: any, members: Member[], cells: Cell[], prayers: PrayerRequest[], events: any[], activeTab?: string }) => {
   if (activeTab === 'm12-config') {
-    return <CheckpointManager user={user} />;
+    return <ActivityManager user={user} />;
   }
   const ladderDist = [
     { stage: 'Ganhar', count: members.filter(m => m.stage === LadderStage.WIN).length, color: '#3b82f6' },
@@ -658,28 +659,64 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
 
 const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }: { user: any, prayers: PrayerRequest[], events: any[], cells: Cell[], activeTab?: string }) => {
   const [mentors, setMentors] = useState<{ leader?: Member, pastor?: Member }>({});
-  const [isPrayerModalOpen, setIsPrayerModalOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Exibir popup se for o primeiro acesso
+    if (user.role === UserRole.MEMBER_VISITOR && user.firstAccessCompleted === false) {
+      setShowWelcome(true);
+    }
+  }, [user]);
+
+  const handleContinue = async () => {
+    try {
+      // 1. Atualizar no banco de dados (tabela members)
+      await memberService.update(user.id, { firstAccessCompleted: true });
+      
+      // 2. Importante: Atualizar metadados do Auth para refletir imediatamente no App.tsx
+      // Isso disparará o evento USER_UPDATED no onAuthStateChange do App.tsx
+      await supabase.auth.updateUser({ 
+        data: { profile: { ...user, firstAccessCompleted: true } } 
+      });
+
+      setShowWelcome(false);
+      navigate('/app/my-activities');
+    } catch (e) {
+      console.error("Erro ao atualizar primeiro acesso:", e);
+      // Mesmo com erro no update, redirecionar para não travar o usuário
+      navigate('/app/my-activities');
+    }
+  };
 
   const myCellId = user.cellId || user.profile?.cellId;
   const myCell = cells.find(c => c.id === myCellId);
   const myNextMeeting = events.find(e => e.id.startsWith(`cell-${myCellId}`));
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.get('action') === 'new-prayer') {
-      setIsPrayerModalOpen(true);
-    }
-  }, [location]);
-
-  useEffect(() => {
     const loadMentors = async () => {
       if (user.disciplerId || user.pastorId) {
         try {
+          const fetchMentorWithGenderLogic = async (mentorId: string) => {
+            const primaryMentor = await memberService.getById(mentorId);
+            if (!primaryMentor) return undefined;
+
+            // Se o gênero do mentor for diferente do usuário e ele tiver um cônjuge, tenta buscar o cônjuge
+            if (user.sex && primaryMentor.sex && user.sex !== primaryMentor.sex && primaryMentor.spouseId) {
+              const spouseMentor = await memberService.getById(primaryMentor.spouseId);
+              if (spouseMentor && spouseMentor.sex === user.sex) {
+                return spouseMentor;
+              }
+            }
+            return primaryMentor;
+          };
+
           const [leader, pastor] = await Promise.all([
-            user.disciplerId ? memberService.getById(user.disciplerId) : Promise.resolve(undefined),
-            user.pastorId ? memberService.getById(user.pastorId) : Promise.resolve(undefined)
+            user.disciplerId ? fetchMentorWithGenderLogic(user.disciplerId) : Promise.resolve(undefined),
+            user.pastorId ? fetchMentorWithGenderLogic(user.pastorId) : Promise.resolve(undefined)
           ]);
+
           setMentors({ leader: leader as any, pastor: pastor as any });
         } catch (e) {
           console.error("Erro ao carregar mentores:", e);
@@ -697,37 +734,47 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
         return <MyCellDetail user={user} />;
       case 'PRAYERS':
         return <PrayerHistory user={user} />;
+      case 'prayer-request-new':
+        return <PrayerForm isInline={true} />;
       case 'm12-config':
-        return <CheckpointManager />;
+        return <ActivityManager user={user} />;
       default:
         return (
           <div className="space-y-10">
             <div className="bg-zinc-100 p-12 md:p-16 rounded-[3.5rem] text-zinc-950 shadow-2xl relative overflow-hidden">
               <div className="absolute -top-10 -right-10 opacity-5"><Zap size={300} /></div>
-              <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Paz do Senhor, <br />{user.name.split(' ')[0]}!</h2>
-              <p className="text-zinc-600 max-w-lg mb-12 font-bold text-lg leading-relaxed italic">Sua caminhada é preciosa para nós. <br />Veja seu progresso na Escada do Sucesso.</p>
+              <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Shalom <br />Graça e Paz, <br />{user.name.split(' ')[0]}!</h2>
+              <p className="text-zinc-600 max-w-lg mb-12 font-bold text-lg leading-relaxed italic">Sua caminhada é preciosa para nós. <br />Veja sua evolução espiritual em Minhas Atividades M12.</p>
 
               <div className="flex items-center gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide">
                 {[
-                  { stage: LadderStage.WIN, icon: <CheckCircle2 size={40} />, color: 'bg-emerald-600', active: user.stage === LadderStage.WIN || true },
-                  { stage: LadderStage.CONSOLIDATE, icon: <Clock size={40} />, color: 'bg-blue-600', active: user.stage === LadderStage.CONSOLIDATE },
-                  { stage: LadderStage.DISCIPLE, icon: <Target size={40} />, color: 'bg-amber-500', active: user.stage === LadderStage.DISCIPLE },
-                  { stage: LadderStage.SEND, icon: <Zap size={40} />, color: 'bg-indigo-600', active: user.stage === LadderStage.SEND },
-                ].map((s, i) => (
-                  <React.Fragment key={s.stage}>
-                    <div className={`flex flex-col items-center shrink-0 ${!s.active ? 'opacity-30' : ''}`}>
-                      <div className={`w-20 h-20 ${s.color} text-white rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl ${s.active ? 'ring-4 ring-white animate-pulse' : ''}`}>
-                        {s.icon}
+                  { stage: LadderStage.WIN, icon: <CheckCircle2 size={40} />, color: 'bg-emerald-600' },
+                  { stage: LadderStage.CONSOLIDATE, icon: <Clock size={40} />, color: 'bg-blue-600' },
+                  { stage: LadderStage.DISCIPLE, icon: <Target size={40} />, color: 'bg-amber-500' },
+                  { stage: LadderStage.SEND, icon: <Zap size={40} />, color: 'bg-indigo-600' },
+                ].map((s, i) => {
+                  const stages_arr = [LadderStage.WIN, LadderStage.CONSOLIDATE, LadderStage.DISCIPLE, LadderStage.SEND];
+                  const currentStageIndex = stages_arr.indexOf(user.stage || LadderStage.WIN);
+                  const stepIndex = stages_arr.indexOf(s.stage);
+                  const isActive = stepIndex <= currentStageIndex;
+                  const isCurrent = stepIndex === currentStageIndex;
+
+                  return (
+                    <React.Fragment key={s.stage}>
+                      <div className={`flex flex-col items-center shrink-0 ${!isActive ? 'opacity-30' : ''}`}>
+                        <div className={`w-20 h-20 ${s.color} text-white rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl ${isCurrent ? 'ring-4 ring-white animate-pulse' : ''}`}>
+                          {s.icon}
+                        </div>
+                        <span className="text-[10px] font-black text-zinc-950 uppercase tracking-[0.3em]">{s.stage}</span>
                       </div>
-                      <span className="text-[10px] font-black text-zinc-950 uppercase tracking-[0.3em]">{s.stage}</span>
-                    </div>
-                    {i < 3 && <div className="h-0.5 w-16 bg-zinc-300 shrink-0"></div>}
-                  </React.Fragment>
-                ))}
+                      {i < 3 && <div className={`h-0.5 w-16 shrink-0 ${isActive && i < currentStageIndex ? 'bg-emerald-500' : 'bg-zinc-300'}`}></div>}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
 
-            <SuccessMarkers user={user} />
+            <MonthlyAgenda events={events} user={user} />
 
             {/* BARRA DE MENTORES */}
             <div className="bg-white p-4 rounded-[2rem] shadow-xl flex flex-wrap items-center gap-8 px-8">
@@ -777,7 +824,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                   )}
                 </div>
                 <button 
-                  onClick={() => setIsPrayerModalOpen(true)}
+                  onClick={() => navigate('/app/prayer-request-new')}
                   className="w-full py-5 bg-zinc-800 border border-white/5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all mt-4"
                 >
                   Novo Pedido de Fé
@@ -820,22 +867,30 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
               <DashboardEventsWidget events={events} />
             </div>
 
-            {isPrayerModalOpen && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsPrayerModalOpen(false)} />
-                <div className="relative w-full max-w-4xl bg-zinc-950 rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-                   <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
-                      <div>
-                        <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Enviar Pedido de Oração</h3>
-                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Conecte seu clamor ao altar da igreja.</p>
-                      </div>
-                      <button onClick={() => setIsPrayerModalOpen(false)} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl">
-                        <X size={20} />
-                      </button>
-                   </div>
-                   <div className="max-h-[80vh] overflow-y-auto p-4 scrollbar-hide">
-                      <PrayerForm isInline onComplete={() => setIsPrayerModalOpen(false)} />
-                   </div>
+            {/* Popup de Boas-vindas (Primeiro Acesso) */}
+            {showWelcome && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-500" />
+                <div className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-[3rem] shadow-3xl p-10 text-center overflow-hidden animate-in zoom-in-95 duration-500">
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 rounded-full blur-[80px]" />
+                  <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-600/10 rounded-full blur-[80px]" />
+                  
+                  <div className="w-24 h-24 bg-blue-600/10 border border-blue-500/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-blue-500 shadow-inner relative z-10">
+                    <Sparkles size={48} className="animate-pulse" />
+                  </div>
+                  
+                  <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4 relative z-10 leading-none">Seja bem-vindo!</h3>
+                  <p className="text-zinc-400 text-sm font-medium mb-10 leading-relaxed relative z-10 italic">
+                    Continue o seu cadastro nos informando todas as atividades que você já fez na igreja.
+                  </p>
+                  
+                  <button 
+                    onClick={handleContinue}
+                    className="w-full py-5 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5 relative z-10 group"
+                  >
+                    Clique aqui para Continuar
+                    <ChevronRight size={16} className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               </div>
             )}

@@ -25,7 +25,10 @@ import {
   Phone,
   Target,
   Users,
-  Check
+  Check,
+  Baby,
+  Heart as HeartIcon,
+  Smartphone
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
@@ -47,6 +50,18 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [fetchingCep, setFetchingCep] = useState(false);
+
+  const calculateAge = (dateString: string) => {
+    if (!dateString) return 0;
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   // Cropper states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -106,6 +121,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         avatar: user.avatar || user.user_metadata?.avatar_url || '',
         cpf: user.cpf || user.user_metadata?.cpf || '',
         birthDate: user.birthDate || user.user_metadata?.birth_date || '',
+        sex: user.sex || user.user_metadata?.sex || '',
+        maritalStatus: user.maritalStatus || user.user_metadata?.marital_status || '',
+        spouseId: user.spouseId || user.user_metadata?.spouse_id || '',
+        hasChildren: user.hasChildren || user.user_metadata?.has_children || false,
+        children: user.children || user.user_metadata?.children || [],
         // Garantir campos de endereço iniciais do cache
         cep: user.cep || user.user_metadata?.cep || '',
         street: user.street || user.user_metadata?.street || '',
@@ -192,7 +212,13 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           setMember(updated);
           // Importante: Manter o cache local do Auth atualizado para a UI global (Sidebar/TopBar)
           await supabase.auth.updateUser({
-            data: { profile: { ...user, ...updated } }
+            data: { profile: { ...user, ...updated, 
+              maritalStatus: updated.maritalStatus,
+              spouseId: updated.spouseId,
+              hasChildren: updated.hasChildren,
+              children: updated.children,
+              sex: updated.sex
+            } }
           });
         } else {
           // Para MASTER_ADMIN ou usuários sem registro na tabela: salvar no Auth metadata
@@ -202,6 +228,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               phone: profileData.phone,
               cpf: profileData.cpf,
               birth_date: profileData.birthDate,
+              sex: profileData.sex,
+              marital_status: profileData.maritalStatus,
+              spouse_id: profileData.spouseId,
+              has_children: profileData.hasChildren,
+              children: profileData.children,
             }
           });
           if (authError) throw authError;
@@ -426,6 +457,31 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                         <input type="date" value={profileData.birthDate || ''} onChange={e => setProfileData({ ...profileData, birthDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
                       </div>
                     </div>
+                    <div className="space-y-4 md:col-span-2 pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos & Família</h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Gênero</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Users size={16} className="text-zinc-600" />
+                        </div>
+                        <select
+                          value={profileData.sex || ''}
+                          onChange={e => setProfileData({ ...profileData, sex: e.target.value as any })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-zinc-900">Selecionar Gênero</option>
+                          <option value="MASCULINO" className="bg-zinc-900">MASCULINO</option>
+                          <option value="FEMININO" className="bg-zinc-900">FEMININO</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Estado Civil</label>
                       <div className="relative">
@@ -433,32 +489,34 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                           <Heart size={16} className="text-zinc-600" />
                         </div>
                         <select
-                          value={profileData.maritalStatus || 'Solteiro(a)'}
+                          value={profileData.maritalStatus || ''}
                           onChange={(e) => {
                             const newStatus = e.target.value;
-                            setProfileData({ ...profileData, maritalStatus: newStatus, spouseId: newStatus === 'Casado(a)' ? profileData.spouseId : '' });
+                            setProfileData({ ...profileData, maritalStatus: newStatus, spouseId: (['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(newStatus)) ? profileData.spouseId : '' });
                           }}
                           className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
                         >
-                          {['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)'].map(status => (
+                          <option value="" className="bg-zinc-900">Selecionar Estado Civil</option>
+                          {['Solteiro(a)', 'Casado(a)', 'Noivo(a)', 'Moram Juntos', 'Divorciado(a)', 'Viúvo(a)'].map(status => (
                             <option key={status} value={status} className="bg-zinc-900">{status}</option>
                           ))}
                         </select>
                       </div>
                     </div>
-                    {profileData.maritalStatus === 'Casado(a)' && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cônjuge</label>
+
+                    {(['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(profileData.maritalStatus || '')) && (
+                      <div className="space-y-2 animate-in slide-in-from-top-2">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cônjuge / Parceiro(a)</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Users size={16} className="text-zinc-600" />
+                            <User size={16} className="text-zinc-600" />
                           </div>
                           <select
                             value={profileData.spouseId || ''}
                             onChange={(e) => setProfileData({ ...profileData, spouseId: e.target.value })}
                             className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
                           >
-                            <option value="" className="bg-zinc-900">Selecione o Cônjuge</option>
+                            <option value="" className="bg-zinc-900">Selecione o Parceiro</option>
                             {allMembers.filter(m => m.id !== member?.id).map(m => (
                               <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
                             ))}
@@ -467,9 +525,152 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                       </div>
                     )}
 
+                    <div className="md:col-span-2">
+                      <div className="p-6 bg-zinc-950 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500">
+                            <Baby size={24} />
+                          </div>
+                          <div>
+                            <p className="text-white font-black uppercase tracking-tight">Possui Filhos?</p>
+                            <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Habilite para cadastrar dependentes.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setProfileData({ ...profileData, hasChildren: !profileData.hasChildren })}
+                          className={`w-14 h-7 rounded-full relative transition-all duration-300 ${profileData.hasChildren ? 'bg-blue-600' : 'bg-zinc-800'}`}
+                        >
+                          <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${profileData.hasChildren ? 'left-8' : 'left-1'}`} />
+                        </button>
+                      </div>
+
+                        <div className="mt-6 p-8 bg-zinc-950/50 border border-white/5 rounded-[2.5rem] space-y-8 animate-in slide-in-from-top-4">
+                           <div className="flex items-center justify-between">
+                              <h5 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dependentes / Filhos</h5>
+                              <button 
+                                onClick={() => {
+                                  const newChild = { id: Math.random().toString(36).substr(2, 9), name: '', birthDate: '', photo: '', cpf: '' };
+                                  setProfileData({ ...profileData, children: [...(profileData.children || []), newChild] });
+                                }}
+                                className="px-5 py-2.5 bg-blue-600/10 text-blue-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-500/10"
+                              >
+                                + Adicionar Dependente
+                              </button>
+                           </div>
+                           
+                           <div className="space-y-8">
+                              {(profileData.children || []).map((child: any, idx: number) => (
+                                <div key={child.id} className="p-8 bg-zinc-900/50 rounded-[2rem] border border-white/5 relative group overflow-hidden">
+                                   <button 
+                                      onClick={() => {
+                                        const next = (profileData.children || []).filter((_: any, i: number) => i !== idx);
+                                        setProfileData({ ...profileData, children: next });
+                                      }}
+                                      className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                                   >
+                                      <X size={18} />
+                                   </button>
+
+                                   <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                                      {/* Foto do Filho */}
+                                      <div className="md:col-span-3 flex flex-col items-center gap-3">
+                                         <div 
+                                           onClick={() => document.getElementById(`avatar-child-${idx}`)?.click()}
+                                           className="relative w-28 h-28 rounded-[2rem] bg-zinc-950 border-2 border-dashed border-white/5 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-all overflow-hidden"
+                                         >
+                                            {child.photo ? (
+                                              <img src={child.photo} className="w-full h-full object-cover" alt="" />
+                                            ) : (
+                                              <div className="text-center">
+                                                <Camera size={20} className="text-zinc-800 mb-1 mx-auto" />
+                                                <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Subir Foto</span>
+                                              </div>
+                                            )}
+                                            <input 
+                                              id={`avatar-child-${idx}`} 
+                                              type="file" 
+                                              className="hidden" 
+                                              accept="image/*" 
+                                              onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  try {
+                                                    const url = await memberService.uploadAvatar(file);
+                                                    const next = [...(profileData.children || [])];
+                                                    next[idx].photo = url;
+                                                    setProfileData({ ...profileData, children: next });
+                                                  } catch (error) { console.error(error); }
+                                                }
+                                              }} 
+                                            />
+                                         </div>
+                                         <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Foto</p>
+                                      </div>
+
+                                      {/* Dados do Filho */}
+                                      <div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                         <div className="md:col-span-2 space-y-1">
+                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">Nome Completo</label>
+                                            <input 
+                                              value={child.name} 
+                                              onChange={e => {
+                                                const next = [...(profileData.children || [])];
+                                                next[idx].name = e.target.value;
+                                                setProfileData({ ...profileData, children: next });
+                                              }}
+                                              placeholder="Nome completo do dependente"
+                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                                            />
+                                         </div>
+                                         <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">Nascimento</label>
+                                            <input 
+                                              type="date"
+                                              value={child.birthDate} 
+                                              onChange={e => {
+                                                const next = [...(profileData.children || [])];
+                                                next[idx].birthDate = e.target.value;
+                                                setProfileData({ ...profileData, children: next });
+                                              }}
+                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 appearance-none"
+                                            />
+                                         </div>
+                                         <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">CPF / Identidade</label>
+                                            <input 
+                                              value={child.cpf || ''} 
+                                              onChange={e => {
+                                                const next = [...(profileData.children || [])];
+                                                next[idx].cpf = e.target.value;
+                                                setProfileData({ ...profileData, children: next });
+                                              }}
+                                              placeholder="000.000.000-00"
+                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                                            />
+                                         </div>
+                                         <div className="md:col-span-2">
+                                            <div className="inline-flex items-center gap-2 bg-blue-600/10 px-3 py-1 rounded-full">
+                                               <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
+                                               <span className="text-[8px] font-black text-blue-500/80 uppercase tracking-[0.2em] pt-0.5">
+                                                  {child.birthDate ? `${calculateAge(child.birthDate)} ANOS` : 'AGUARDANDO DATA'}
+                                               </span>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                    </div>
+
                     {/* Endereço Residencial */}
                     <div className="space-y-4 md:col-span-2 pt-6">
-                      <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Endereço Residencial</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Endereço Residencial</h4>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>

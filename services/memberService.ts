@@ -38,6 +38,9 @@ const mapToFrontend = (m: any): Member => ({
 	hasChildren: m.has_children,
 	children: m.children || [],
 	leadingCellIds: m.leading_cell_ids || [],
+	conversionDate: m.conversion_date,
+	firstAccessCompleted: m.first_access_completed || false,
+	milestoneValues: m.milestone_values || {},
 });
 
 const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
@@ -80,11 +83,14 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.hasChildren !== undefined) db.has_children = m.hasChildren;
 	if (m.children !== undefined) db.children = m.children;
 	if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
+	if (m.conversionDate !== undefined) db.conversion_date = m.conversionDate;
+	if (m.firstAccessCompleted !== undefined) db.first_access_completed = m.firstAccessCompleted;
+	if (m.milestoneValues !== undefined) db.milestone_values = m.milestoneValues;
 	return db;
 };
 
 // Colunas essenciais para listagem e dashboard (evita payloads pesados mas mantém progresso M12 e hierarquia)
-const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login';
+const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed';
 
 export const memberService = {
 	async getAll(churchId: string, range?: { from: number; to: number }) {
@@ -207,12 +213,32 @@ export const memberService = {
 	},
 
 	async delete(id: string) {
-		const { error } = await supabase
-			.from('members')
-			.delete()
-			.eq('id', id);
+		try {
+			// 1. Desvincular de cônjuges e ajustar estado civil deles
+			await supabase.from('members').update({ spouse_id: null, marital_status: 'Solteiro(a)' }).eq('spouse_id', id);
 
-		if (error) throw error;
+			// 2. Desvincular liderados (onde este membro era pastor ou discipulador)
+			await supabase.from('members').update({ pastor_id: null }).eq('pastor_id', id);
+			await supabase.from('members').update({ discipler_id: null }).eq('discipler_id', id);
+
+			// 3. Desvincular de células (onde este membro era líder)
+			await supabase.from('cells').update({ leader_id: null }).eq('leader_id', id);
+
+			// 4. Limpar histórico do membro na M12
+			await supabase.from('m12_members_activities').delete().eq('member_id', id);
+			await supabase.from('m12_performances').delete().eq('member_id', id);
+
+			// 5. Excluir o registro principal de membro
+			const { error } = await supabase
+				.from('members')
+				.delete()
+				.eq('id', id);
+
+			if (error) throw error;
+		} catch (error) {
+			console.error('Falha completa na deleção em cascata:', error);
+			throw error;
+		}
 	},
 
 	async getByEmail(email: string) {

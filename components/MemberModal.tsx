@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Save, User, Mail, Phone, Shield, Target, Layers, Users, Camera, MapPin, Building, Home, Map, Check, Crop as CropIcon, Heart, Lock, Plus, Calendar } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
-import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus, M12Checkpoint } from '../types';
+import { Member, UserRole, LadderStage, Cell, MemberOrigin, MemberStatus, M12Activity } from '../types';
 import { cellService } from '../services/cellService';
 import { memberService } from '../services/memberService';
 import { m12Service } from '../services/m12Service';
+import DynamicForm from './Shared/DynamicForm';
 
 interface MemberModalProps {
 	isOpen: boolean;
@@ -64,21 +65,23 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	const [allMembers, setAllMembers] = useState<Member[]>([]);
 	const [loadingData, setLoadingData] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const [gainCheckpoints, setGainCheckpoints] = useState<M12Checkpoint[]>([]);
+	const [allActivities, setAllActivities] = useState<M12Activity[]>([]);
+	const [gainActivities, setGainActivities] = useState<M12Activity[]>([]);
 
 	useEffect(() => {
 		const loadData = async () => {
 			try {
 				setLoadingData(true);
 				const churchId = user?.churchId || user?.church_id;
-				const [cellsData, membersData, checkpointsData] = await Promise.all([
+				const [cellsData, membersData, activitiesData] = await Promise.all([
 					cellService.getAll(churchId),
 					memberService.getAll(churchId),
-					m12Service.getCheckpoints(churchId)
+					m12Service.getActivities(churchId)
 				]);
 				setCells(cellsData);
 				setAllMembers(membersData || []);
-				setGainCheckpoints((checkpointsData || []).filter(c => c.stage === LadderStage.WIN));
+				setAllActivities(activitiesData || []);
+				setGainActivities((activitiesData || []).filter(c => c.stage === LadderStage.WIN));
 			} catch (error) {
 				console.error('Erro ao carregar dados:', error);
 			} finally {
@@ -583,8 +586,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
 										<option value="" className="bg-zinc-950">Selecione a Origem</option>
-										{gainCheckpoints.length > 0 ? (
-											gainCheckpoints.map(cp => (
+										{gainActivities.length > 0 ? (
+											gainActivities.map(cp => (
 												<option key={cp.id} value={cp.label} className="bg-zinc-950">{cp.label}</option>
 											))
 										) : (
@@ -593,10 +596,57 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 											))
 										)}
 										{/* Fallback para valores históricos que não estão no checkpoint nem no enum */}
-										{formData.origin && !Object.values(MemberOrigin).includes(formData.origin as any) && !gainCheckpoints.some(c => c.label === formData.origin) && (
+										{formData.origin && !Object.values(MemberOrigin).includes(formData.origin as any) && !gainActivities.some(c => c.label === formData.origin) && (
 											<option value={formData.origin} className="bg-zinc-950">{formData.origin}</option>
 										)}
 									</select>
+								</div>
+							</div>
+
+							{/* Nova Seção de Atividades Dinâmicas */}
+							<div className="md:col-span-2 space-y-4 pt-4">
+								<div className="flex items-center gap-4 text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] mb-4">
+									<div className="w-8 h-px bg-white/10" />
+									<span className="flex items-center gap-2"><Target size={14} className="text-blue-500" /> Ficha Ministerial ({formData.stage})</span>
+									<div className="w-full h-px bg-white/10 flex-1" />
+								</div>
+								<div className="bg-zinc-900/40 border border-white/5 p-8 rounded-[2rem]">
+									<DynamicForm
+										fields={(allActivities || []).filter(a => a.stage === formData.stage && a.isActive)}
+										values={formData.milestoneValues || {}}
+										onChange={async (fieldId, value) => {
+											const field = allActivities.find(f => f.id === fieldId);
+											if (!field) return;
+
+											const newValues = { ...(formData.milestoneValues || {}), [field.label]: value };
+											
+											// Sincronizar campo de origem se for do estágio GANHAR
+											let extraData: any = {};
+											if (formData.stage === LadderStage.WIN && field.label.toLowerCase().includes('origem')) {
+												extraData.origin = value;
+											}
+
+											// Lógica simplificada de conclusão para o MemberModal (salvamento principal é no Submit)
+											const isNowDone = 
+												(field.logicType === 'BOOLEAN' && value === true) ||
+												(field.logicType === 'STATUS' && value === 'Concluído') ||
+												(['SELECT', 'MULTI_SELECT', 'DATE', 'TEXT', 'NUMBER', 'UPLOAD', 'RELATIONAL'].includes(field.logicType) && !!value && (Array.isArray(value) ? value.length > 0 : value !== ''));
+
+											const newMilestones = isNowDone 
+												? Array.from(new Set([...(formData.completedMilestones || []), field.label]))
+												: (formData.completedMilestones || []).filter(m => m !== field.label);
+
+											setFormData({ 
+												...formData, 
+												...extraData,
+												milestoneValues: newValues, 
+												completedMilestones: newMilestones 
+											});
+										}}
+										members={allMembers}
+										currentUser={user}
+										isAdmin={user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN || user.role === UserRole.PASTOR}
+									/>
 								</div>
 							</div>
 

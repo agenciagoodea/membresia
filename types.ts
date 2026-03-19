@@ -6,7 +6,22 @@ export enum LadderStage {
   SEND = 'ENVIAR'
 }
 
-export interface M12Checkpoint {
+export type FormLogicType = 
+  | 'BOOLEAN' 
+  | 'STATUS' 
+  | 'SELECT' 
+  | 'MULTI_SELECT' 
+  | 'TEXT' 
+  | 'DATE' 
+  | 'NUMBER' 
+  | 'UPLOAD' 
+  | 'RELATIONAL' 
+  | 'CALCULATED' 
+  | 'HIDDEN';
+
+export type DataSource = 'MANUAL' | 'AUTO' | 'RELATIONAL';
+
+export interface M12Activity {
   id: string;
   churchId: string;
   stage: LadderStage;
@@ -15,8 +30,16 @@ export interface M12Checkpoint {
   description?: string;
   isActive: boolean;
   isRequired: boolean;
+  isEditable: boolean;
+  isVisible: boolean;
+  defaultValue?: any;
+  configOptions?: string[]; // Para SELECT e MULTI_SELECT
+  isMultipleChoice: boolean;
   dependsOnId?: string;
-  type?: 'TOGGLE' | 'DATE' | 'NUMBER';
+  logicalCondition?: string; // Regra para exibição condicional
+  isCalculated: boolean;
+  dataSource: DataSource;
+  logicType: FormLogicType;
   createdAt: string;
 }
 
@@ -25,8 +48,8 @@ export interface M12Performance {
   stage: LadderStage;
   startDate: string;
   completionDate?: string;
-  totalCheckpoints: number;
-  completedCheckpoints: number;
+  totalActivities: number;
+  completedActivities: number;
   daysActive: number;
   efficiency: number; // percentage
 }
@@ -133,6 +156,9 @@ export interface Member {
   login?: string;
   password?: string;
   birthDate: string; // Now mandatory
+  conversionDate?: string;
+  firstAccessCompleted?: boolean;
+  milestoneValues?: { [key: string]: any };
 }
 
 export interface MeetingReport {

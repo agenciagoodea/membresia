@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
@@ -12,7 +11,7 @@ import {
   MessageSquare,
   Lock
 } from 'lucide-react';
-import { LadderStage, Member, M12Checkpoint } from '../../types';
+import { LadderStage, Member, M12Activity } from '../../types';
 import { memberService } from '../../services/memberService';
 import { m12Service } from '../../services/m12Service';
 
@@ -26,25 +25,25 @@ const DEFAULT_STAGE_ACTIVITIES: Record<LadderStage, string[]> = {
 const MyProgress: React.FC<{ user: any }> = ({ user }) => {
   const [currentUser, setCurrentUser] = useState<Member>(user);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [checkpoints, setCheckpoints] = useState<M12Checkpoint[]>([]);
+  const [activities, setActivities] = useState<M12Activity[]>([]);
 
   useEffect(() => {
-    const fetchCheckpoints = async () => {
+    const fetchActivities = async () => {
       try {
         const churchId = user.churchId || user.church_id;
         if (!churchId) return;
-        const data = await m12Service.getCheckpoints(churchId);
-        setCheckpoints(data);
+        const data = await m12Service.getActivities(churchId);
+        setActivities(data);
       } catch (error) {
-        console.error('Erro ao buscar checkpoints:', error);
+        console.error('Erro ao buscar atividades:', error);
       }
     };
-    fetchCheckpoints();
+    fetchActivities();
   }, [user.churchId, user.church_id]);
 
   const getActivitiesForStage = (stage: LadderStage) => {
-    const stageCheckpoints = checkpoints.filter(c => c.stage === stage);
-    if (stageCheckpoints.length > 0) return stageCheckpoints.map(c => c.label);
+    const stageActivities = activities.filter(c => c.stage === stage);
+    if (stageActivities.length > 0) return stageActivities.map(c => c.label);
     return DEFAULT_STAGE_ACTIVITIES[stage] || [];
   };
 
@@ -85,9 +84,9 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
 
   const handleToggleActivity = async (activity: string) => {
     // Check dependencies
-    const cp = checkpoints.find(c => c.label === activity && c.stage === currentUser.stage);
-    if (cp?.dependsOnId) {
-      const dependency = checkpoints.find(c => c.id === cp?.dependsOnId);
+    const act = activities.find(c => c.label === activity && c.stage === currentUser.stage);
+    if (act?.dependsOnId) {
+      const dependency = activities.find(c => c.id === act?.dependsOnId);
       if (dependency && !(currentUser.completedMilestones || []).includes(dependency.label)) {
         alert(`Esta atividade depende de "${dependency.label}". Complete-a primeiro.`);
         return;
@@ -115,7 +114,7 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
   };
 
   const currentStageIndex = stages.findIndex(s => s.id === currentUser.stage);
-  const totalActivities = stages.reduce((acc, s) => acc + s.activities.length, 0);
+  const totalActivitiesCount = stages.reduce((acc, s) => acc + s.activities.length, 0);
   const completedTotal = (currentUser.completedMilestones || []).length;
 
   return (
@@ -137,8 +136,8 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
                 <BookOpen size={28} />
               </div>
               <div>
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Passos Concluídos</p>
-                <p className="text-xl font-black text-white">{completedTotal} de {totalActivities}</p>
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Passos Concluidos</p>
+                <p className="text-xl font-black text-white">{completedTotal} de {totalActivitiesCount}</p>
               </div>
             </div>
             <div className="bg-zinc-950 p-8 rounded-3xl border border-white/5 flex items-center gap-6 group hover:border-emerald-500/30 transition-all">
@@ -146,7 +145,7 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
                 <Target size={28} />
               </div>
               <div>
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Nível de Visão</p>
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Nivel de Visão</p>
                 <p className="text-xl font-black text-white uppercase tracking-tighter">{currentUser.stage}</p>
               </div>
             </div>
@@ -176,8 +175,8 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
                 {stage.activities.map((activity, tidx) => {
                   const isDone = (currentUser.completedMilestones || []).includes(activity);
                   const isPending = updating === activity;
-                  const cp = checkpoints.find(c => c.label === activity && c.stage === stage.id);
-                  const isLocked = cp?.dependsOnId && !(currentUser.completedMilestones || []).includes(checkpoints.find(c => c.id === cp.dependsOnId)?.label || '');
+                  const act = activities.find(c => c.label === activity && c.stage === stage.id);
+                  const isLocked = act?.dependsOnId && !(currentUser.completedMilestones || []).includes(activities.find(c => c.id === act.dependsOnId)?.label || '');
 
                   return (
                     <div key={tidx} className={`flex items-center justify-between p-3 bg-zinc-950/50 rounded-2xl border ${isLocked ? 'border-white/5 opacity-50' : 'border-white/5'}`}>
@@ -186,16 +185,16 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
                           <span className={`text-[10px] font-bold uppercase tracking-tight ${isDone ? 'text-zinc-300' : 'text-zinc-600'}`}>
                             {activity}
                           </span>
-                          {cp?.isRequired && (
+                          {act?.isRequired && (
                             <span className="text-[7px] px-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md font-black uppercase tracking-widest">
-                              Obrigatório
+                              Obrigatorio
                             </span>
                           )}
                         </div>
                         {isLocked && (
                           <div className="flex items-center gap-1 mt-1 text-zinc-600">
                             <Lock size={8} />
-                            <span className="text-[8px] font-bold uppercase italic tracking-tighter">Depende de {checkpoints.find(c => c.id === cp?.dependsOnId)?.label}</span>
+                            <span className="text-[8px] font-bold uppercase italic tracking-tighter">Depende de {activities.find(c => c.id === act?.dependsOnId)?.label}</span>
                           </div>
                         )}
                       </div>
@@ -214,7 +213,7 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
               {isCurrent && (
                 <div className="mt-10 pt-6 border-t border-white/5">
                   <div className="flex items-center justify-between text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] group/btn">
-                    Estágio Ativo <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                    Estagio Ativo <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                   </div>
                 </div>
               )}
@@ -229,12 +228,12 @@ const MyProgress: React.FC<{ user: any }> = ({ user }) => {
             <MessageSquare size={32} className="text-amber-500" />
           </div>
           <div>
-            <h4 className="text-xl font-black text-white uppercase tracking-tighter">Dúvidas sobre o M12?</h4>
-            <p className="text-zinc-500 text-sm font-medium">Sua jornada é acompanhada por líderes que se importam com você.</p>
+            <h4 className="text-xl font-black text-white uppercase tracking-tighter">Duvidas sobre o M12?</h4>
+            <p className="text-zinc-500 text-sm font-medium">Sua jornada é acompanhada por lideres que se importam com você.</p>
           </div>
         </div>
         <button className="px-10 py-5 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all">
-          Falar com Líder
+          Falar com Lider
         </button>
       </div>
     </div>

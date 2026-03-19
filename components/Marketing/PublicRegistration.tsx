@@ -5,9 +5,10 @@ import { churchService } from '../../services/churchService';
 import { memberService } from '../../services/memberService';
 import { cellService } from '../../services/cellService';
 import { m12Service } from '../../services/m12Service';
-import { CheckCircle2, UserPlus, Phone, Mail, User, ShieldCheck, Lock, Upload, MapPin, Map, Home, Building, Camera, X, Crop as CropIcon } from 'lucide-react';
+import { CheckCircle2, UserPlus, Phone, Mail, User, Users, ShieldCheck, Lock, Upload, MapPin, Map, Home, Building, Camera, X, Crop as CropIcon } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../Shared/cropImage';
+import DynamicForm from '../Shared/DynamicForm';
 
 const PublicRegistration = () => {
 	const { slug } = useParams<{ slug: string }>();
@@ -20,18 +21,33 @@ const PublicRegistration = () => {
 
 	const [cells, setCells] = useState<Cell[]>([]);
 	const [members, setMembers] = useState<Member[]>([]);
-	const [winCheckpoints, setWinCheckpoints] = useState<any[]>([]);
+	const [winActivities, setWinActivities] = useState<any[]>([]);
 	const [fetchingCep, setFetchingCep] = useState(false);
 	const [invitedCellName, setInvitedCellName] = useState<string>('');
+	const [invitedCellLeadersLabel, setInvitedCellLeadersLabel] = useState<string>('');
+	const [invitedCell, setInvitedCell] = useState<Cell | null>(null);
+
+	const calculateAge = (birthDate: string) => {
+		if (!birthDate) return '';
+		const today = new Date();
+		const birth = new Date(birthDate);
+		let age = today.getFullYear() - birth.getFullYear();
+		const m = today.getMonth() - birth.getMonth();
+		if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+			age--;
+		}
+		return age.toString();
+	};
 
 	const [formData, setFormData] = useState({
 		name: '', email: '', phone: '', cpf: '', password: '', confirmPassword: '',
 		cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
 		birthDate: '', sex: '' as 'MASCULINO' | 'FEMININO' | '', hasChildren: false,
-		children: [] as { id: string, name: string, birthDate: string, photo?: string }[],
+		children: [] as { id: string, name: string, birthDate: string, photo?: string, cpf?: string }[],
 		origin: MemberOrigin.EVANGELISM as string, role: UserRole.MEMBER_VISITOR as UserRole,
 		cellId: '', disciplerId: '', pastorId: '', maritalStatus: '', spouseId: '', avatar: '',
-		newCellName: '', isCreatingCell: false
+		newCellName: '', isCreatingCell: false, conversionDate: '',
+		milestoneValues: {} as Record<string, any>
 	});
 
 	// Cropper State
@@ -51,16 +67,16 @@ const PublicRegistration = () => {
 				setChurch(found);
 
 				if (found) {
-					const [fetchedCells, fetchedMembers, fetchedCheckpoints] = await Promise.all([
+					const [fetchedCells, fetchedMembers, fetchedActivities] = await Promise.all([
 						cellService.getAll(found.id),
 						memberService.getAll(found.id),
-						m12Service.getCheckpoints(found.id)
+						m12Service.getActivities(found.id)
 					]);
 					setCells(fetchedCells);
 					setMembers(fetchedMembers);
 					
-					const winStage = fetchedCheckpoints.filter(c => c.stage === LadderStage.WIN);
-					setWinCheckpoints(winStage);
+					const winStage = fetchedActivities.filter(c => c.stage === LadderStage.WIN);
+					setWinActivities(winStage);
 
 					if (winStage.length > 0) {
 						setFormData(prev => ({ ...prev, origin: winStage[0].label }));
@@ -72,8 +88,18 @@ const PublicRegistration = () => {
 					if (cellParam) {
 						const targetCell = fetchedCells.find(c => c.id === cellParam);
 						if (targetCell) {
-							// Use the primary leader or the first from leaderIds array
-							const primaryLeaderId = targetCell.leaderId || (targetCell.leaderIds && targetCell.leaderIds[0]) || '';
+							// Collect all leaders from leaderIds or leaderId
+							const cellLeaderIds = targetCell.leaderIds || (targetCell.leaderId ? [targetCell.leaderId] : []);
+							
+							// Format the leaders' names for display
+							const leaderNames = cellLeaderIds
+								.map(id => getCoupledNameFromList(id, fetchedMembers))
+								.filter(Boolean)
+								.join(' & ');
+							
+							setInvitedCellLeadersLabel(leaderNames);
+							
+							const primaryLeaderId = cellLeaderIds[0] || '';
 							const leader = fetchedMembers.find(m => m.id === primaryLeaderId);
 							
 							setFormData(prev => ({
@@ -83,17 +109,27 @@ const PublicRegistration = () => {
 								pastorId: leader?.pastorId || ''
 							}));
 							setInvitedCellName(targetCell.name);
+							setInvitedCell(targetCell);
 						}
 					}
 				}
 			} catch (err) {
-				console.error("Igreja não encontrada", err);
+				console.error(err);
 			} finally {
 				setLoading(false);
 			}
 		};
 		loadChurch();
 	}, [slug, search]);
+
+	const getCoupledNameFromList = (memberId: string, list: Member[]) => {
+		const m = list.find(x => x.id === memberId);
+		if (!m) return '';
+		const spouseId = m.spouseId || (m as any).spouse_id;
+		const spouse = spouseId ? list.find(x => x.id === spouseId) : null;
+		if (spouse) return `${m.name} e ${spouse.name}`;
+		return m.name;
+	};
 
 	const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		let cep = e.target.value.replace(/\D/g, '');
@@ -121,97 +157,41 @@ const PublicRegistration = () => {
 		}
 	};
 
-	const getCoupledName = (memberId: string) => {
-		const m = members.find(x => x.id === memberId);
-		if (!m) return '';
-		if (m.spouseId) {
-			const spouse = members.find(s => s.id === m.spouseId);
-			if (spouse) {
-				return `${m.name} & ${spouse.name}`;
-			}
-		}
-		return m.name;
-	};
-
-	const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
-		const reader = new FileReader();
-		reader.onloadend = () => {
-			setPhotoPreview(reader.result as string);
-			setIsCropping(true);
-		};
-		reader.readAsDataURL(file);
-	};
-
-	const handleAddChild = () => {
-		setFormData(prev => ({
-			...prev,
-			children: [...prev.children, { id: Date.now().toString(), name: '', birthDate: '', photo: '' }]
-		}));
-	};
-
-	const handleRemoveChild = (id: string) => {
-		setFormData(prev => ({
-			...prev,
-			children: prev.children.filter(c => c.id !== id)
-		}));
-	};
-
-	const handleChildChange = (id: string, field: string, value: string) => {
-		setFormData(prev => ({
-			...prev,
-			children: prev.children.map(c => c.id === id ? { ...c, [field]: value } : c)
-		}));
-	};
-
-	const handleChildPhotoSelect = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-		const reader = new FileReader();
-		reader.onload = () => {
-			setFormData(prev => ({
-				...prev,
-				children: prev.children.map(c => c.id === id ? { ...c, photo: reader.result as string, file: file } : c)
-			}));
-		};
-		reader.readAsDataURL(file);
-	};
-
-	const onCropComplete = React.useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+	const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
 		setCroppedAreaPixels(croppedAreaPixels);
-	}, []);
+	};
 
-	const handleCropConfirm = async () => {
-		try {
-			setIsProcessingCrop(true);
-			const croppedImageFile = await getCroppedImg(
-				photoPreview,
-				croppedAreaPixels
-			);
-
-			if (croppedImageFile) {
-				const reader = new FileReader();
-				reader.onloadend = () => {
-					setFormData(prev => ({ ...prev, avatar: reader.result as string }));
-					setSelectedFile(croppedImageFile);
-				};
-				reader.readAsDataURL(croppedImageFile);
-			}
-			setIsCropping(false);
-		} catch (e) {
-			console.error(e);
-			alert("Erro ao recortar imagem.");
-		} finally {
-			setIsProcessingCrop(false);
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			const reader = new FileReader();
+			reader.onloadend = () => {
+				setPhotoPreview(reader.result as string);
+				setIsCropping(true);
+			};
+			reader.readAsDataURL(file);
 		}
 	};
 
-	const handleCropCancel = () => {
-		setIsCropping(false);
-		if (!selectedFile) {
-			setPhotoPreview('');
+	const handleConfirmCrop = async () => {
+		if (photoPreview && croppedAreaPixels) {
+			setIsProcessingCrop(true);
+			try {
+				const croppedFile = await getCroppedImg(photoPreview, croppedAreaPixels);
+				if (croppedFile) {
+					const reader = new FileReader();
+					reader.onloadend = () => {
+						setPhotoPreview(reader.result as string);
+						setIsCropping(false);
+					};
+					reader.readAsDataURL(croppedFile);
+					setSelectedFile(croppedFile);
+				}
+			} catch (e) {
+				console.error(e);
+			} finally {
+				setIsProcessingCrop(false);
+			}
 		}
 	};
 
@@ -219,165 +199,837 @@ const PublicRegistration = () => {
 		e.preventDefault();
 		if (!church) return;
 
-		if (!formData.avatar) {
-			alert("A foto de perfil é OBRIGATÓRIA. Envie uma foto de boa qualidade do seu rosto.");
-			return;
-		}
-
 		if (formData.password !== formData.confirmPassword) {
 			alert("As senhas não coincidem!");
 			return;
 		}
 
-		setSubmitting(true);
+		if (!formData.birthDate) {
+			alert("Data de nascimento é obrigatória!");
+			return;
+		}
+
 		try {
-			let finalAvatar = formData.avatar;
+			setSubmitting(true);
+			
+			let uploadedAvatar = '';
 			if (selectedFile) {
-				finalAvatar = await memberService.uploadAvatar(selectedFile);
+				uploadedAvatar = await memberService.uploadAvatar(selectedFile);
 			}
 
-			const finalChildren = [];
-			if (formData.hasChildren) {
-				for (const child of formData.children) {
-					let childAvatar = child.photo || '';
-					if ((child as any).file) {
-						childAvatar = await memberService.uploadAvatar((child as any).file);
-					}
-					finalChildren.push({
-						id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-						name: child.name,
-						birthDate: child.birthDate,
-						photo: childAvatar
-					});
-				}
-			}
-
-			const res = await memberService.create({
-				name: formData.name,
-				email: formData.email,
-				login: formData.email,
-				phone: formData.phone,
-				cpf: formData.cpf,
-				birthDate: formData.birthDate,
-				sex: formData.sex,
-				hasChildren: formData.hasChildren,
-				children: formData.hasChildren ? finalChildren : [],
-				cep: formData.cep,
-				street: formData.street,
-				number: formData.number,
-				complement: formData.complement,
-				neighborhood: formData.neighborhood,
-				city: formData.city,
-				state: formData.state,
-				origin: formData.origin,
-				cellId: formData.cellId,
-				disciplerId: formData.disciplerId,
-				pastorId: formData.pastorId,
-				maritalStatus: formData.maritalStatus,
-				spouseId: formData.spouseId,
-				avatar: finalAvatar,
-				role: formData.role,
-				status: MemberStatus.PENDING,
-				stage: LadderStage.WIN,
-				joinedDate: new Date().toISOString(),
+			const payload: any = {
+				...formData,
 				church_id: church.id,
-				stageHistory: [],
-				password: formData.password
-			} as any);
+				joinedDate: new Date().toISOString(),
+				status: MemberStatus.ACTIVE,
+				stage: LadderStage.WIN,
+				avatar: uploadedAvatar,
+				login: formData.email,
+				completedMilestones: formData.origin ? [formData.origin] : [],
+				stageHistory: [{
+					stage: LadderStage.WIN,
+					date: new Date().toISOString(),
+					recordedBy: 'Portal Público',
+					notes: 'Cadastro via formulário público de membresia.'
+				}]
+			};
 
-			// Se for novo pastor/lider e criou celula, vincular (opcional, o service poderia tratar)
-			if (formData.isCreatingCell && formData.newCellName) {
-				const created = await cellService.create({
-					name: formData.newCellName,
-					leaderId: (res as any).id,
-					church_id: church.id,
-					hostName: '',
-					address: '',
-					meetingDay: 'A definir',
-					meetingTime: '19:30',
-					membersCount: 1,
-					status: 'ACTIVE'
-				} as any);
-				
-				await memberService.update((res as any).id, { cellId: created.id });
-			}
+			delete payload.confirmPassword;
+			delete payload.newCellName;
+			delete payload.isCreatingCell;
 
+			await memberService.create(payload);
 			setSuccess(true);
 		} catch (err: any) {
 			console.error(err);
-			const errorMessage = err?.message || "Houve um erro ao processar seu cadastro. Pode ser que o e-mail ou CPF já estejam em uso.";
-			alert(errorMessage);
+			alert(err.message || "Erro ao realizar cadastro.");
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	if (loading) {
-		return (
-			<div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-				<div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-				<p className="text-zinc-500 font-bold uppercase tracking-widest text-xs animate-pulse">Carregando...</p>
+	if (loading) return (
+		<div className="min-h-screen bg-black flex items-center justify-center p-10">
+			<div className="flex flex-col items-center gap-6">
+				<div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+				<h2 className="text-white font-black uppercase tracking-[0.5em] animate-pulse">Sincronizando Portal...</h2>
 			</div>
-		);
-	}
+		</div>
+	);
 
-	if (!church || success) {
-		return (
-			<div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-center">
-				{success ? (
-					<div className="max-w-md w-full bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in-95 duration-500">
-						<div className="w-20 h-20 bg-emerald-500/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-emerald-500 shadow-inner">
-							<CheckCircle2 size={40} />
-						</div>
-						<h2 className="text-2xl font-black text-white uppercase tracking-tight mb-3">Cadastro Concluído!</h2>
-						<p className="text-zinc-400 text-sm mb-8 leading-relaxed font-medium">
-							Sua conta na instituição <span className="text-white font-bold">{church.name}</span> foi criada com sucesso. 
-							<br /><br />
-							<span className="text-amber-500 font-bold uppercase tracking-widest text-[10px]">Aguardando Liberação:</span>
-							<br />
-							Seu acesso será liberado pelo Pastor indicado em breve. Você receberá um aviso.
-						</p>
-					</div>
-				) : (
-					<div className="flex flex-col items-center">
-						<ShieldCheck size={48} className="text-rose-500 mb-6" />
-						<h1 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Link Inválido</h1>
-						<p className="text-zinc-500 font-medium max-w-sm">A instituição que você está tentando acessar não foi encontrada no servidor.</p>
-					</div>
-				)}
+	if (!church) return (
+		<div className="min-h-screen bg-black flex items-center justify-center p-10">
+			<div className="text-center">
+				<h2 className="text-4xl text-white font-black uppercase tracking-tighter mb-4">Igreja não encontrada</h2>
+				<p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">O link que você acessou parece estar incorreto.</p>
 			</div>
-		);
-	}
+		</div>
+	);
+
+	if (success) return (
+		<div className="min-h-screen bg-black flex items-center justify-center p-4">
+			<div className="fixed inset-0 overflow-hidden z-0">
+				<img 
+					src={church.settings?.bannerImage || "https://images.unsplash.com/photo-1544427928-c49cdfb81949?q=80&w=2670&auto=format&fit=crop"} 
+					className="w-full h-full object-cover scale-110 blur-xl opacity-50"
+					alt=""
+				/>
+				<div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+			</div>
+
+			<div className="relative z-10 w-full max-w-xl bg-zinc-950/80 backdrop-blur-2xl border border-white/10 p-12 rounded-[3.5rem] shadow-2xl text-center animate-in zoom-in-95 duration-500">
+				<div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-xl shadow-blue-500/20">
+					<CheckCircle2 size={48} className="text-white" />
+				</div>
+				<h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-6 leading-none">CADASTRO CONCLUÍDO</h2>
+				<p className="text-zinc-400 font-medium mb-10 leading-relaxed">
+					Sua ficha foi enviada com sucesso! Seu acesso já está liberado. Clique no botão abaixo para entrar no sistema.
+				</p>
+				<div className="space-y-4">
+					<button
+						onClick={() => navigate('/login')}
+						className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] text-xs font-black uppercase tracking-[0.3em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 active:scale-95"
+					>
+						Acessar o Sistema
+					</button>
+					<button
+						onClick={() => window.location.reload()}
+						className="w-full py-5 bg-white/5 text-zinc-400 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.3em] hover:bg-white/10 hover:text-white transition-all"
+					>
+						Novo Cadastro
+					</button>
+				</div>
+			</div>
+		</div>
+	);
 
 	return (
-		<div className="min-h-screen bg-zinc-950 flex flex-col relative overflow-x-hidden selection:bg-blue-500/30">
-			{/* Fundo Imersivo (Tela Cheia) */}
-			<div className="fixed inset-0 z-0">
-				<div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-zinc-950/90 to-zinc-950 z-10" />
-				<div 
-					className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105"
-					style={{ 
-						backgroundImage: "url('https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2000&auto=format&fit=crop')",
-						filter: 'brightness(0.4) saturate(1.2)'
-					}} 
+		<div className="min-h-screen bg-black selection:bg-blue-500 selection:text-white pb-20">
+			{/* Background Imersivo */}
+			<div className="fixed inset-0 overflow-hidden z-0">
+				<img 
+					src={church.settings?.bannerImage || "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2673&auto=format&fit=crop"} 
+					className="w-full h-full object-cover scale-105 opacity-60"
+					alt=""
 				/>
+				<div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black" />
 			</div>
 
-			{/* Modal do Cropper de Foto */}
-			{isCropping && (
-				<div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto pt-4 md:pt-10 backdrop-blur-md">
-					<div className="absolute inset-0 bg-black/60" onClick={handleCropCancel} />
-					<div className="relative w-full max-w-lg mx-auto bg-zinc-950/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-						<div className="p-5 border-b border-white/5 flex items-center justify-between bg-white/5">
-							<div>
-								<h3 className="text-lg font-black text-white tracking-tight">Ajustar Foto de Perfil</h3>
-								<p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">Recorte para enquadrar seu rosto</p>
+			<div className="relative z-10 container mx-auto px-4 pt-20">
+				<div className="max-w-4xl mx-auto">
+					<div className="flex flex-col lg:flex-row items-stretch gap-6 mb-16">
+						{/* Card Principal da Igreja */}
+						<div className="flex-1 bg-zinc-950/40 backdrop-blur-2xl border border-white/5 p-8 md:p-10 rounded-[3rem] relative overflow-hidden group shadow-2xl">
+							<div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+							
+							<div className="flex flex-col md:flex-row items-center gap-8 relative z-10 h-full">
+								{/* Logo Igreja */}
+								<div className="shrink-0">
+									<img 
+										src={church.logo || "https://ui-avatars.com/api/?name=Church&background=2563eb"} 
+										className="w-20 md:w-28 h-auto object-contain transition-all hover:scale-105" 
+										alt={church.name} 
+									/>
+								</div>
+
+								<div className="text-center md:text-left flex-1 border-white/5 md:border-l md:pl-8">
+									<div className="flex flex-col gap-3">
+										<div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+											<div className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 rounded-full">
+												<span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+													{invitedCellName ? 'Convite por Célula' : 'Ficha Ministerial'}
+												</span>
+											</div>
+										</div>
+										<h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-sm max-w-sm">
+											{church.name}
+										</h1>
+										<div className="flex items-center justify-center md:justify-start gap-4">
+											<div className="w-8 h-px bg-white/10" />
+											<p className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px]">Portal de Integração</p>
+										</div>
+									</div>
+								</div>
 							</div>
-							<button type="button" onClick={handleCropCancel} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
+						</div>
+
+						{/* Card da Célula (Se houver convite) */}
+						{invitedCell && (
+							<div className="lg:w-[400px] bg-blue-600/5 backdrop-blur-2xl border border-blue-500/10 p-8 rounded-[3rem] relative overflow-hidden group shadow-2xl">
+								<div className="absolute top-0 right-0 p-4">
+									<Users className="text-blue-500/20" size={40} />
+								</div>
+								
+								<div className="flex flex-col gap-6 relative z-10 h-full justify-center">
+									<div className="flex items-center gap-4">
+										{invitedCell.logo ? (
+											<div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-lg">
+												<img src={invitedCell.logo} className="w-full h-full object-cover" alt={invitedCell.name} />
+											</div>
+										) : (
+											<div className="w-14 h-14 rounded-2xl bg-blue-600/20 flex items-center justify-center text-blue-500 shrink-0">
+												<Users size={24} />
+											</div>
+										)}
+										<div>
+											<p className="text-[9px] font-black text-blue-500/60 uppercase tracking-widest">Você foi convidado para:</p>
+											<h2 className="text-lg font-black text-white uppercase tracking-tight leading-none">{invitedCell.name}</h2>
+										</div>
+									</div>
+									
+									<div className="space-y-1">
+										<p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Liderança da Célula</p>
+										<p className="text-xs text-white font-bold uppercase leading-relaxed whitespace-normal break-words">
+											{invitedCellLeadersLabel}
+										</p>
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
+
+					<form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-10 duration-700">
+						{/* Seção: Identidade */}
+						<div className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 p-6 md:p-12 rounded-[3.5rem] shadow-2xl space-y-10 transition-all hover:bg-zinc-950/70">
+							<div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+								<div className="flex items-center gap-4">
+									<div className="w-1.5 h-10 bg-blue-600 rounded-full" />
+									<div>
+										<h3 className="text-2xl font-black text-white tracking-tight uppercase">Identidade</h3>
+										<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Informações Pessoais</p>
+									</div>
+								</div>
+
+								{/* Upload de Avatar */}
+								<div className="flex items-center gap-6">
+									<div 
+										onClick={() => document.getElementById('avatar-upload')?.click()}
+										className="relative w-24 h-24 rounded-[1.8rem] bg-zinc-900 border-2 border-dashed border-white/10 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-all overflow-hidden group"
+									>
+										{photoPreview ? (
+											<img src={photoPreview} className="w-full h-full object-cover" alt="" />
+										) : (
+											<div className="text-center group-hover:scale-110 transition-transform">
+												<Camera size={24} className="text-zinc-700 mb-1 mx-auto" />
+												<span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none">Subir Foto</span>
+											</div>
+										)}
+										<input id="avatar-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+									</div>
+									<div className="hidden sm:block">
+										<p className="text-white text-xs font-bold uppercase mb-1">Foto de Perfil</p>
+										<p className="text-zinc-500 text-[10px] font-medium leading-relaxed max-w-[150px]">Uma boa foto ajuda na sua identificação ministerial.</p>
+									</div>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Nome Completo</label>
+									<div className="relative group/input">
+										<User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<input 
+											required
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+											placeholder="Ex: João Silva"
+											value={formData.name}
+											onChange={e => setFormData({ ...formData, name: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">WhatsApp</label>
+									<div className="relative group/input">
+										<Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<input 
+											required
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+											placeholder="(00) 00000-0000"
+											value={formData.phone}
+											onChange={e => setFormData({ ...formData, phone: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">E-mail</label>
+									<div className="relative group/input">
+										<Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<input 
+											required
+											type="email" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+											placeholder="exemplo@email.com"
+											value={formData.email}
+											onChange={e => setFormData({ ...formData, email: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-3">
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Gênero</label>
+										<div className="relative group/input">
+											<User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+											<select 
+												required
+												className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer uppercase font-black"
+												value={formData.sex}
+												onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
+											>
+												<option value="" className="bg-zinc-950">Selecionar</option>
+												<option value="MASCULINO" className="bg-zinc-950">MASCULINO</option>
+												<option value="FEMININO" className="bg-zinc-950">FEMININO</option>
+											</select>
+										</div>
+									</div>
+									<div className="space-y-3">
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Nascimento</label>
+										<div className="relative group/input">
+											<MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+											<input 
+												required
+												type="date" 
+												className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 px-8 pl-14 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+												value={formData.birthDate}
+												onChange={e => setFormData({ ...formData, birthDate: e.target.value })}
+											/>
+										</div>
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Data de Conversão (Opcional)</label>
+									<div className="relative group/input">
+										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<input 
+											type="date" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 px-8 pl-14 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+											value={formData.conversionDate}
+											onChange={e => setFormData({ ...formData, conversionDate: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Estado Civil</label>
+									<div className="relative group/input">
+										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<select 
+											required
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer uppercase font-black"
+											value={formData.maritalStatus}
+											onChange={e => setFormData({ ...formData, maritalStatus: e.target.value })}
+										>
+											<option value="" className="bg-zinc-950">Selecionar</option>
+											{['Solteiro(a)', 'Casado(a)', 'Noivo(a)', 'Moram Juntos', 'Divorciado(a)', 'Viúvo(a)'].map(s => (
+												<option key={s} value={s} className="bg-zinc-950">{s}</option>
+											))}
+										</select>
+									</div>
+								</div>
+
+								{(['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(formData.maritalStatus)) && (
+									<div className="space-y-3 animate-in slide-in-from-top-4">
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Cônjuge / Parceiro(a)</label>
+										<div className="relative group/input">
+											<User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+											<select 
+												className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer uppercase font-black"
+												value={formData.spouseId}
+												onChange={e => setFormData({ ...formData, spouseId: e.target.value })}
+											>
+												<option value="" className="bg-zinc-950">Selecionar Parceiro</option>
+												{members
+													.filter(m => {
+														// Se o usuário já selecionou sexo, filtramos parceiros do sexo oposto
+														if (formData.sex === 'MASCULINO') return m.sex === 'FEMININO';
+														if (formData.sex === 'FEMININO') return m.sex === 'MASCULINO';
+														return true;
+													})
+													.map(m => (
+														<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
+													))
+												}
+											</select>
+										</div>
+									</div>
+								)}
+							</div>
+
+							<div className="space-y-6">
+								<div className="flex items-center justify-between p-6 bg-zinc-900/30 rounded-3xl border border-white/5 group hover:border-blue-500/20 transition-all">
+									<div className="flex items-center gap-4">
+										<div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500">
+											<Users size={24} />
+										</div>
+										<div>
+											<p className="text-white font-black uppercase tracking-tight">Possui Filhos?</p>
+											<p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Marque se tiver dependentes.</p>
+										</div>
+									</div>
+									<button 
+										type="button"
+										onClick={() => setFormData({ 
+											...formData, 
+											hasChildren: !formData.hasChildren,
+											children: !formData.hasChildren ? formData.children : [] 
+										})}
+										className={`w-16 h-8 rounded-full relative transition-all duration-500 ${formData.hasChildren ? 'bg-blue-600 shadow-lg shadow-blue-500/30' : 'bg-zinc-800'}`}
+									>
+										<div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 ${formData.hasChildren ? 'left-9' : 'left-1'}`} />
+									</button>
+								</div>
+
+								{formData.hasChildren && (
+									<div className="space-y-6 pt-4 animate-in slide-in-from-top-10">
+										{formData.children.map((child, index) => (
+											<div key={child.id} className="p-8 bg-zinc-900/50 border border-white/5 rounded-[2.5rem] relative group/child overflow-hidden">
+												<button 
+													type="button"
+													onClick={() => {
+														const next = formData.children.filter((_, i) => i !== index);
+														setFormData({ ...formData, children: next });
+													}}
+													className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-rose-500 transition-all opacity-0 group-hover/child:opacity-100"
+												>
+													<X size={20} />
+												</button>
+												<div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+													{/* Foto do Filho(a) */}
+													<div className="md:col-span-3 flex flex-col items-center gap-4">
+														<div 
+															onClick={() => document.getElementById(`avatar-child-${index}`)?.click()}
+															className="relative w-32 h-32 rounded-[2.5rem] bg-zinc-950 border-2 border-dashed border-white/5 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-all overflow-hidden group/avatar"
+														>
+															{child.photo ? (
+																<img src={child.photo} className="w-full h-full object-cover" alt="" />
+															) : (
+																<div className="text-center">
+																	<Camera size={24} className="text-zinc-800 mb-1 mx-auto" />
+																	<span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Subir Foto</span>
+																</div>
+															)}
+															<input 
+																id={`avatar-child-${index}`} 
+																type="file" 
+																className="hidden" 
+																accept="image/*" 
+																onChange={async (e) => {
+																	const file = e.target.files?.[0];
+																	if (file) {
+																		try {
+																			const url = await memberService.uploadAvatar(file);
+																			const next = [...formData.children];
+																			next[index].photo = url;
+																			setFormData({ ...formData, children: next });
+																		} catch (error) {
+																			console.error('Erro ao subir foto do filho:', error);
+																		}
+																	}
+																}} 
+															/>
+														</div>
+														<p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Foto do Dependente</p>
+													</div>
+
+													<div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+														<div className="md:col-span-2 space-y-2">
+															<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo do Filho(a)</label>
+															<input 
+																type="text" 
+																className="w-full bg-zinc-950/50 border border-white/5 rounded-2x; py-4 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 font-medium"
+																placeholder="Nome completo"
+																value={child.name}
+																onChange={e => {
+																	const next = [...formData.children];
+																	next[index].name = e.target.value;
+																	setFormData({ ...formData, children: next });
+																}}
+															/>
+														</div>
+														<div className="space-y-2">
+															<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Nascimento</label>
+															<input 
+																type="date" 
+																className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 font-medium"
+																value={child.birthDate}
+																onChange={e => {
+																	const next = [...formData.children];
+																	next[index].birthDate = e.target.value;
+																	setFormData({ ...formData, children: next });
+																}}
+															/>
+														</div>
+														<div className="space-y-2">
+															<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CPF (Opcional)</label>
+															<input 
+																type="text" 
+																className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 font-medium"
+																placeholder="000.000.000-00"
+																value={child.cpf || ''}
+																onChange={e => {
+																	const next = [...formData.children];
+																	next[index].cpf = e.target.value;
+																	setFormData({ ...formData, children: next });
+																}}
+															/>
+														</div>
+														<div className="space-y-2">
+															<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Idade Calculada</label>
+															<div className="w-full bg-zinc-950/30 border border-white/5 rounded-2xl py-4 px-6 text-sm text-zinc-500 font-black uppercase tracking-widest">
+																{child.birthDate ? `${calculateAge(child.birthDate)} ANOS` : '---'}
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										))}
+										<button 
+											type="button"
+											onClick={() => {
+												setFormData({ 
+													...formData, 
+													children: [...formData.children, { id: Math.random().toString(36).substr(2, 9), name: '', birthDate: '' }] 
+												});
+											}}
+											className="w-full py-4 border-2 border-dashed border-white/5 rounded-2xl text-[10px] font-black uppercase text-zinc-600 hover:text-blue-500 hover:border-blue-500/30 transition-all"
+										>
+											+ Adicionar Dependente
+										</button>
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Seção: Localização */}
+						<div className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 p-6 md:p-12 rounded-[3.5rem] shadow-2xl space-y-10 transition-all hover:bg-zinc-950/70">
+							<div className="flex items-center gap-4">
+								<div className="w-1.5 h-10 bg-indigo-600 rounded-full" />
+								<div>
+									<h3 className="text-2xl font-black text-white tracking-tight uppercase">Endereço</h3>
+									<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Aonde vamos te visitar</p>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-6 gap-8">
+								<div className="md:col-span-2 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">CEP</label>
+									<div className="relative group/input">
+										<Map className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											required
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+											placeholder="00000-000"
+											value={formData.cep}
+											onChange={handleCepChange}
+											maxLength={9}
+										/>
+										{fetchingCep && <div className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+									</div>
+								</div>
+
+								<div className="md:col-span-4 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Rua / Logradouro</label>
+									<div className="relative group/input">
+										<Home className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											required
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+											placeholder="Rua, Avenida..."
+											value={formData.street}
+											onChange={e => setFormData({ ...formData, street: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="md:col-span-2 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Número</label>
+									<div className="relative group/input">
+										<MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											required
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+											placeholder="123"
+											value={formData.number}
+											onChange={e => setFormData({ ...formData, number: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="md:col-span-4 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Complemento</label>
+									<div className="relative group/input">
+										<Building className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											type="text" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+											placeholder="Apto, Bloco..."
+											value={formData.complement}
+											onChange={e => setFormData({ ...formData, complement: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="md:col-span-2 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Bairro</label>
+									<input 
+										required
+										type="text" 
+										className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 px-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+										placeholder="Bairro"
+										value={formData.neighborhood}
+										onChange={e => setFormData({ ...formData, neighborhood: e.target.value })}
+									/>
+								</div>
+
+								<div className="md:col-span-3 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Cidade</label>
+									<input 
+										required
+										type="text" 
+										className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 px-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium"
+										placeholder="Cidade"
+										value={formData.city}
+										onChange={e => setFormData({ ...formData, city: e.target.value })}
+									/>
+								</div>
+
+								<div className="md:col-span-1 space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">UF</label>
+									<input 
+										required
+										type="text" 
+										className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 px-8 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all font-medium text-center"
+										placeholder="SP"
+										maxLength={2}
+										value={formData.state}
+										onChange={e => setFormData({ ...formData, state: e.target.value })}
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* Seção: Integração Ministerial */}
+						<div className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 p-6 md:p-12 rounded-[3.5rem] shadow-2xl space-y-10 transition-all hover:bg-zinc-950/70">
+							<div className="flex items-center gap-4">
+								<div className="w-1.5 h-10 bg-emerald-600 rounded-full" />
+								<div>
+									<h3 className="text-2xl font-black text-white tracking-tight uppercase">Jornada Ministerial</h3>
+									<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Sua conexão com a visão</p>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Célula que Participa</label>
+									<div className="relative">
+										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<select 
+											required
+											disabled={!!invitedCellName}
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer uppercase font-black disabled:opacity-50"
+											value={formData.cellId}
+											onChange={e => {
+												const cid = e.target.value;
+												const target = cells.find(c => c.id === cid);
+												const leaderIds = target?.leaderIds || (target?.leaderId ? [target.leaderId] : []);
+												const primaryLeaderId = leaderIds[0] || '';
+												const leaderData = members.find(m => m.id === primaryLeaderId);
+												
+												// Atualiza o label dos líderes para exibição automática
+												const leaderNames = leaderIds
+													.map(id => getCoupledNameFromList(id, members))
+													.filter(Boolean)
+													.join(' & ');
+												setInvitedCellLeadersLabel(leaderNames);
+
+												setFormData({ 
+													...formData, 
+													cellId: cid, 
+													disciplerId: primaryLeaderId, 
+													pastorId: leaderData?.pastorId || '' 
+												});
+											}}
+										>
+											<option value="" className="bg-zinc-950">Selecionar Célula</option>
+											{cells.map(c => (
+												<option key={c.id} value={c.id} className="bg-zinc-950">{c.name.toUpperCase()}</option>
+											))}
+										</select>
+									</div>
+									{invitedCellName && (
+										<p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest ml-4 mt-2">Você foi convidado para a célula {invitedCellName}</p>
+									)}
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Líder / Discipulador</label>
+									<div className="relative">
+										<User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										{formData.cellId ? (
+											<div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-zinc-500 font-black uppercase whitespace-normal break-words leading-relaxed min-h-[62px] flex items-center">
+												{invitedCellLeadersLabel || 'Selecione uma Célula'}
+											</div>
+										) : (
+											<select 
+												required
+												className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer uppercase font-black"
+												value={formData.disciplerId}
+												onChange={e => {
+													const did = e.target.value;
+													const leader = members.find(m => m.id === did);
+													setFormData({ ...formData, disciplerId: did, pastorId: leader?.pastorId || '' });
+												}}
+											>
+												<option value="" className="bg-zinc-950">Selecionar Líder</option>
+												{members
+													.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
+													.map(m => (
+														<option key={m.id} value={m.id} className="bg-zinc-950">
+															{getCoupledNameFromList(m.id, members)}
+														</option>
+													))
+												}
+											</select>
+										)}
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Pastor(es)</label>
+									<div className="relative">
+										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-zinc-500 font-black uppercase whitespace-normal break-words leading-relaxed min-h-[62px] flex items-center">
+											{formData.pastorId ? (
+												formData.pastorId.split(',').map(id => getCoupledNameFromList(id.trim(), members)).filter(Boolean).join(' & ') || 'Nenhum pastor vinculado'
+											) : (
+												'Nenhum pastor vinculado'
+											)}
+										</div>
+									</div>
+								</div>
+
+								<div className="md:col-span-2 space-y-3 pt-6">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Atividades Iniciais (M12)</label>
+									<div className="bg-zinc-900/40 border border-white/5 p-8 rounded-[2.5rem]">
+										<DynamicForm
+											fields={winActivities}
+											values={formData.milestoneValues}
+											onChange={async (fieldId, value) => {
+												const field = winActivities.find(f => f.id === fieldId);
+												if (!field) return;
+												const newValues = { ...formData.milestoneValues, [field.label]: value };
+												
+												// Se for campo de Origem, sincroniza com formData.origin
+												let extraData: any = {};
+												if (field.label.toLowerCase().includes('origem')) {
+													extraData.origin = value;
+												}
+
+												setFormData({ ...formData, ...extraData, milestoneValues: newValues });
+											}}
+											members={members}
+											currentUser={{ id: 'public-registration', role: UserRole.MEMBER_VISITOR }}
+											isAdmin={false}
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Seção: Acesso */}
+						<div className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 p-6 md:p-12 rounded-[3.5rem] shadow-2xl space-y-10 transition-all hover:bg-zinc-950/70">
+							<div className="flex items-center gap-4">
+								<div className="w-1.5 h-10 bg-rose-600 rounded-full" />
+								<div>
+									<h3 className="text-2xl font-black text-white tracking-tight uppercase">Segurança</h3>
+									<p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Sua chave de acesso ao sistema</p>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Senha de Acesso</label>
+									<div className="relative group/input">
+										<Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											required
+											type="password" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-rose-500/50 transition-all font-medium"
+											placeholder="••••••••"
+											value={formData.password}
+											onChange={e => setFormData({ ...formData, password: e.target.value })}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Confirmar Senha</label>
+									<div className="relative group/input">
+										<Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
+										<input 
+											required
+											type="password" 
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-rose-500/50 transition-all font-medium"
+											placeholder="••••••••"
+											value={formData.confirmPassword}
+											onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Botão Finalizar */}
+						<div className="pt-10 flex flex-col items-center gap-6">
+							<button
+								type="submit"
+								disabled={submitting}
+								className="w-full md:w-auto px-20 py-6 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.3em] hover:bg-blue-500 transition-all shadow-2xl shadow-blue-500/30 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+							>
+								{submitting ? (
+									<>
+										<div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+										Processando...
+									</>
+								) : (
+									<>
+										<UserPlus size={20} />
+										Finalizar meu Cadastro
+									</>
+								)}
+							</button>
+							<p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest max-w-sm text-center leading-relaxed">
+								Ao clicar em finalizar, você concorda com os termos de uso e política de privacidade da igreja.
+							</p>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			{/* Modal de Crop */}
+			{isCropping && (
+				<div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+					<div className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
+					<div className="relative w-full max-w-2xl bg-zinc-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(37,99,235,0.2)] animate-in zoom-in-95 duration-300">
+						<div className="p-8 border-b border-white/5 flex items-center justify-between">
+							<div>
+								<h3 className="text-2xl font-black text-white uppercase tracking-tight">Recortar Foto</h3>
+								<p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-1">Ajuste o enquadramento</p>
+							</div>
+							<button onClick={() => setIsCropping(false)} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
 								<X size={20} />
 							</button>
 						</div>
-						<div className="relative h-[50vw] max-h-[380px] min-h-[260px] bg-black/20">
+						
+						<div className="relative h-[450px] bg-black">
 							<Cropper
 								image={photoPreview}
 								crop={crop}
@@ -388,395 +1040,45 @@ const PublicRegistration = () => {
 								onZoomChange={setZoom}
 								cropShape="round"
 								showGrid={false}
-								style={{
-									containerStyle: { backgroundColor: 'transparent' },
-									cropAreaStyle: { border: '2px solid rgba(255,255,255,0.5)' }
-								}}
 							/>
 						</div>
-						<div className="p-5 bg-white/5 border-t border-white/5">
-							<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-3 text-center">Ajuste o Zoom</label>
-							<input type="range" value={zoom} min={1} max={3} step={0.1}
-								aria-label="Zoom" onChange={(e) => setZoom(Number(e.target.value))}
-								className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-6"
-							/>
-							<div className="flex gap-3">
-								<button type="button" onClick={handleCropCancel} disabled={isProcessingCrop}
-									className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 text-zinc-300 hover:bg-white/10 transition-all">
+						
+						<div className="p-10 space-y-8 bg-zinc-900/50">
+							<div className="space-y-4">
+								<div className="flex justify-between text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+									<span>Zoom</span>
+									<span>{Math.round(zoom * 100)}%</span>
+								</div>
+								<input
+									type="range"
+									value={zoom}
+									min={1}
+									max={3}
+									step={0.1}
+									onChange={(e) => setZoom(Number(e.target.value))}
+									className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+								/>
+							</div>
+							
+							<div className="flex gap-4">
+								<button 
+									onClick={() => setIsCropping(false)}
+									className="flex-1 py-5 bg-zinc-800 text-zinc-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all border border-white/5"
+								>
 									Cancelar
 								</button>
-								<button type="button" onClick={handleCropConfirm} disabled={isProcessingCrop}
-									className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20">
-									{isProcessingCrop
-										? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-										: <><CropIcon size={16} /> Confirmar</>
-									}
+								<button 
+									onClick={handleConfirmCrop}
+									disabled={isProcessingCrop}
+									className="flex-1 py-5 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+								>
+									{isProcessingCrop ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Confirmar Recorte'}
 								</button>
 							</div>
 						</div>
 					</div>
 				</div>
 			)}
-
-			<div className="relative z-10 flex flex-col items-center">
-				{/* Header Imersivo */}
-				<div className="w-full py-12 md:py-20 flex flex-col items-center animate-in fade-in slide-in-from-top-10 duration-1000">
-					<div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[2.5rem] flex items-center justify-center border border-white/20 mb-8 p-5 shadow-2xl transition-transform hover:scale-110">
-						{church.logo ? (
-							<img src={church.logo} className="w-full h-full object-contain" alt="Logo" />
-						) : (
-							<div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-xl">
-								{church.name.charAt(0)}
-							</div>
-						)}
-					</div>
-					<h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter text-center px-4 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] max-w-3xl leading-none">
-						{church.name}
-					</h1>
-					<div className="h-1 w-20 bg-blue-500 mt-6 md:mt-8 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
-				</div>
-
-				{/* Formulário com Efeito de Vidro */}
-				<div className="w-full max-w-4xl px-4 sm:px-8 pb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
-					<div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-6 lg:p-16 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
-						<div className="mb-12 text-center">
-							<span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] mb-3 block">Ambiente de Cadastro</span>
-							<h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
-								{invitedCellName ? `Convite à Célula ${invitedCellName}` : 'Ficha Ministerial'}
-							</h2>
-							<p className="text-zinc-400 text-xs font-medium uppercase tracking-widest mt-2 opacity-60">Sincronizando seus dados com a rede local</p>
-						</div>
-
-						<form onSubmit={handleSubmit} className="space-y-12">
-							{/* Seção 1: Foto */}
-							<div className="flex flex-col items-center">
-								<div className="relative group mb-8">
-									<div className={`w-44 h-44 rounded-full flex items-center justify-center border-2 border-dashed ${formData.avatar ? 'border-transparent' : 'border-white/10 bg-white/5'} overflow-hidden shadow-2xl transition-all group-hover:border-blue-500/50 backdrop-blur-md relative`}>
-										{formData.avatar ? (
-											<img src={formData.avatar} className="w-full h-full object-cover rounded-full" alt="Sua Foto" />
-										) : (
-											<div className="flex flex-col items-center text-zinc-500">
-												<Camera size={48} className="mb-2 opacity-20" />
-												<span className="text-[10px] font-black uppercase tracking-widest text-center opacity-40">Perfil</span>
-											</div>
-										)}
-									</div>
-								</div>
-
-								<div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-									<label htmlFor="camera-upload" className="flex-1 flex items-center justify-center gap-3 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl cursor-pointer transition-all shadow-xl shadow-blue-500/10 group">
-										<Camera size={20} className="group-hover:scale-110 transition-transform" />
-										<div className="flex flex-col items-start leading-none">
-											<span className="text-[11px] font-black uppercase tracking-wider">Tirar Foto</span>
-											<span className="text-[8px] font-bold uppercase tracking-widest opacity-60 mt-0.5">Usar Câmera</span>
-										</div>
-									</label>
-									
-									<label htmlFor="gallery-upload" className="flex-1 flex items-center justify-center gap-3 py-5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-2xl cursor-pointer border border-white/5 transition-all group">
-										<Upload size={20} className="group-hover:-translate-y-1 transition-transform text-zinc-500" />
-										<div className="flex flex-col items-start leading-none">
-											<span className="text-[11px] font-black uppercase tracking-wider">Galeria</span>
-											<span className="text-[8px] font-bold uppercase tracking-widest opacity-60 mt-0.5">Escolher Arquivo</span>
-										</div>
-									</label>
-								</div>
-
-								<input id="camera-upload" type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoSelect} />
-								<input id="gallery-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
-								
-								<div className="mt-6 px-6 py-2 bg-rose-500/5 border border-rose-500/10 rounded-full">
-									<p className="text-[9px] text-rose-500/70 font-black uppercase tracking-widest text-center italic">⚠️ A foto de perfil é obrigatória para identificação</p>
-								</div>
-							</div>
-
-							{/* Seção 2: Dados Básicos */}
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-								<div className="md:col-span-2 flex items-center gap-4 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em]">
-									<span className="shrink-0">Dados Pessoais</span>
-									<div className="h-px bg-white/10 w-full" />
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Nome Civil Completo</label>
-									<div className="relative group">
-										<User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-										<input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="Digite seu nome..." />
-									</div>
-								</div>
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Data de Nascimento</label>
-									<input type="date" required value={formData.birthDate} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium [color-scheme:dark]" />
-								</div>
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Sexo</label>
-									<select required value={formData.sex} onChange={e => setFormData({ ...formData, sex: e.target.value as any })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-										<option value="" className="bg-zinc-900">Selecione...</option>
-										<option value="MASCULINO" className="bg-zinc-900">Masculino</option>
-										<option value="FEMININO" className="bg-zinc-900">Feminino</option>
-									</select>
-								</div>
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Número do CPF</label>
-									<div className="relative group">
-										<ShieldCheck size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-										<input required value={formData.cpf} onChange={e => setFormData({ ...formData, cpf: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="000.000.000-00" />
-									</div>
-								</div>
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Estado Civil</label>
-									<select value={formData.maritalStatus} onChange={e => setFormData({ ...formData, maritalStatus: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-										<option value="" className="bg-zinc-900">Selecione...</option>
-										<option value="Solteiro(a)" className="bg-zinc-900">Solteiro(a)</option>
-										<option value="Casado(a)" className="bg-zinc-900">Casado(a)</option>
-										<option value="Divorciado(a)" className="bg-zinc-900">Divorciado(a)</option>
-										<option value="Viúvo(a)" className="bg-zinc-900">Viúvo(a)</option>
-									</select>
-								</div>
-								{formData.maritalStatus === 'Casado(a)' && (
-									<div className="space-y-3">
-										<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Cônjuge (Se for membro)</label>
-										<select value={formData.spouseId} onChange={e => setFormData({ ...formData, spouseId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-											<option value="" className="bg-zinc-900">Selecione o cônjuge...</option>
-											{members
-												.filter(m => m.id !== formData.spouseId && m.maritalStatus === 'Casado(a)')
-												.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)}
-										</select>
-									</div>
-								)}
-
-								<div className="md:col-span-2 mt-6">
-									<div className="flex items-center gap-4 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] mb-6">
-										<span className="shrink-0">Filhos / Dependentes</span>
-										<div className="h-px bg-white/10 w-full" />
-									</div>
-
-									<div className="flex items-center gap-3 mb-6">
-										<input type="checkbox" id="hasChildren" checked={formData.hasChildren} onChange={e => setFormData({ ...formData, hasChildren: e.target.checked })} className="w-5 h-5 rounded overflow-hidden bg-zinc-900 border-white/10 text-emerald-500 focus:ring-emerald-500 cursor-pointer" />
-										<label htmlFor="hasChildren" className="text-sm font-medium text-white cursor-pointer select-none">Possui filhos?</label>
-									</div>
-
-									{formData.hasChildren && (
-										<div className="space-y-4">
-											{formData.children.map((child, index) => (
-												<div key={child.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl flex flex-col md:flex-row gap-4 items-start md:items-center relative animate-in fade-in slide-in-from-top-2">
-													<div className="w-16 h-16 rounded-full bg-zinc-900 border-2 border-dashed border-white/20 shrink-0 overflow-hidden relative cursor-pointer group flex items-center justify-center">
-														{child.photo ? (
-															<img src={child.photo} alt="Filho" className="w-full h-full object-cover" />
-														) : (
-															<Camera size={20} className="text-zinc-500 group-hover:text-emerald-400 transition-colors" />
-														)}
-														<input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => handleChildPhotoSelect(child.id, e)} />
-													</div>
-													
-													<div className="flex-1 space-y-3 w-full">
-														<div>
-															<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2 block mb-1">Nome do Filho(a)</label>
-															<input required value={child.name} onChange={e => handleChildChange(child.id, 'name', e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-600" placeholder="Nome completo..." />
-														</div>
-														<div>
-															<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2 block mb-1">Data de Nascimento</label>
-															<input required type="date" value={child.birthDate} onChange={e => handleChildChange(child.id, 'birthDate', e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all [color-scheme:dark]" />
-														</div>
-													</div>
-													
-													<button type="button" onClick={() => handleRemoveChild(child.id)} className="absolute top-4 right-4 md:static p-2 text-zinc-500 hover:text-rose-500 bg-white/5 hover:bg-rose-500/10 rounded-xl transition-all">
-														<X size={16} />
-													</button>
-												</div>
-											))}
-											
-											<button type="button" onClick={handleAddChild} className="w-full py-4 bg-zinc-900 hover:bg-zinc-800 border border-white/5 hover:border-emerald-500/30 text-zinc-400 hover:text-emerald-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2">
-												<UserPlus size={16} />
-												Adicionar Filho(a)
-											</button>
-										</div>
-									)}
-								</div>
-							</div>
-
-							{/* Seção 3: Endereço */}
-							<div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-								<div className="md:col-span-6 flex items-center gap-4 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em]">
-									<span className="shrink-0">Endereço Residencial</span>
-									<div className="h-px bg-white/10 w-full" />
-								</div>
-
-								<div className="space-y-3 md:col-span-2">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">CEP</label>
-									<div className="relative group">
-										<MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-										<input value={formData.cep} onChange={handleCepChange} maxLength={9} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="00000-000" />
-										{fetchingCep && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />}
-									</div>
-								</div>
-								<div className="space-y-3 md:col-span-4">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Rua / Logradouro</label>
-									<div className="relative group">
-										<Home size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-										<input value={formData.street} onChange={e => setFormData({ ...formData, street: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="Nome da via..." />
-									</div>
-								</div>
-								<div className="space-y-3 md:col-span-2">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Número</label>
-									<input value={formData.number} onChange={e => setFormData({ ...formData, number: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="Ex: 123" />
-								</div>
-								<div className="space-y-3 md:col-span-4">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Complemento / Bairro</label>
-									<div className="relative group">
-										<Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-										<input value={`${formData.neighborhood}${formData.complement ? ' - ' + formData.complement : ''}`} onChange={e => setFormData({ ...formData, neighborhood: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" />
-									</div>
-								</div>
-								<div className="space-y-3 md:col-span-4">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Cidade de Residência</label>
-									<input value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-medium" />
-								</div>
-								<div className="space-y-3 md:col-span-2">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">UF</label>
-									<input value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })} maxLength={2} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-4 text-sm text-center text-white focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all font-bold uppercase" />
-								</div>
-							</div>
-
-							{/* Seção 4: Eclesiástico */}
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-								<div className="md:col-span-2 flex items-center gap-4 text-amber-500 font-black text-[10px] uppercase tracking-[0.3em]">
-									<span className="shrink-0">Vida na Comunidade</span>
-									<div className="h-px bg-white/10 w-full" />
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Cargo / Perfil</label>
-									<select disabled={!!invitedCellName} value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-										<option value={UserRole.MEMBER_VISITOR} className="bg-zinc-900">Membro</option>
-										<option value={UserRole.CELL_LEADER_DISCIPLE} className="bg-zinc-900">Líder de Célula</option>
-										<option value={UserRole.PASTOR} className="bg-zinc-900">Pastor</option>
-									</select>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Origem / Indicação</label>
-									<select value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer">
-										{winCheckpoints.length > 0 ? (
-											winCheckpoints.map(c => (
-												<option key={c.id} value={c.label} className="bg-zinc-900">{c.label}</option>
-											))
-										) : (
-											<>
-												<option value={MemberOrigin.PRAYER_REQUEST} className="bg-zinc-900">Sistema de Oração</option>
-												<option value={MemberOrigin.EVANGELISM} className="bg-zinc-900">Evangelismo</option>
-												<option value={MemberOrigin.CELL_VISIT} className="bg-zinc-900">Visita de Célula</option>
-												<option value={MemberOrigin.OTHER_CHURCH} className="bg-zinc-900">Outra Igreja</option>
-											</>
-										)}
-									</select>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Célula Principal</label>
-									{(formData.role === UserRole.PASTOR || formData.role === UserRole.CELL_LEADER_DISCIPLE) && (
-										<div className="flex items-center gap-2 mb-2">
-											<input type="checkbox" id="createCell" checked={formData.isCreatingCell} onChange={e => setFormData({ ...formData, isCreatingCell: e.target.checked })} className="rounded bg-zinc-900 border-white/10 text-blue-600 focus:ring-blue-500" />
-											<label htmlFor="createCell" className="text-[9px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer">Cadastrar nova célula na hora</label>
-										</div>
-									)}
-									
-									{formData.isCreatingCell ? (
-										<input value={formData.newCellName} onChange={e => setFormData({ ...formData, newCellName: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium placeholder:text-zinc-700" placeholder="Nome da Nova Célula..." />
-									) : (
-										<select disabled={!!invitedCellName} value={formData.cellId} onChange={e => setFormData({ ...formData, cellId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-											<option value="" className="bg-zinc-900">Ainda não participo...</option>
-											{cells.map(c => <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>)}
-										</select>
-									)}
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Líder Direto / Cuidado</label>
-									<select disabled={!!invitedCellName} value={formData.disciplerId} onChange={e => setFormData({ ...formData, disciplerId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-										<option value="" className="bg-zinc-900">Não tenho / Não sei</option>
-										{members
-											.filter(m => {
-												if (formData.role === UserRole.PASTOR) return m.role === UserRole.CHURCH_ADMIN || m.role === UserRole.PASTOR;
-												if (formData.role === UserRole.CELL_LEADER_DISCIPLE) return m.role === UserRole.PASTOR;
-												return m.role === UserRole.CELL_LEADER_DISCIPLE;
-											})
-											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{getCoupledName(m.id)}</option>)}
-									</select>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Pastor(a) Supervisor</label>
-									<select disabled={!!invitedCellName} value={formData.pastorId} onChange={e => setFormData({ ...formData, pastorId: e.target.value })} className="w-full bg-white/5 border border-white/5 backdrop-blur-md rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-										<option value="" className="bg-zinc-900">Não tenho / Não sei</option>
-										{members
-											.filter(m => m.role === UserRole.PASTOR)
-											.map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{getCoupledName(m.id)}</option>)}
-									</select>
-								</div>
-							</div>
-
-							{/* Seção 5: Acesso Digital */}
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-blue-500/5 rounded-[2.5rem] border border-blue-500/10">
-								<div className="md:col-span-2 flex items-center gap-4 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em]">
-									<span className="shrink-0">Credenciais Digitais</span>
-									<div className="h-px bg-blue-500/20 w-full" />
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Seu WhatsApp</label>
-									<div className="relative group">
-										<Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-										<input required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium" placeholder="(00) 00000-0000" />
-									</div>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest ml-2">E-mail (Será seu Login)</label>
-									<div className="relative group">
-										<Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-bold" />
-										<input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-emerald-500/5 border border-emerald-500/20 backdrop-blur-md rounded-2xl py-5 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all font-bold placeholder:text-zinc-700" placeholder="escolha@email.com" />
-									</div>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Nova Senha</label>
-									<div className="relative group">
-										<Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-										<input type="password" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium placeholder:text-zinc-700" placeholder="••••••••" />
-									</div>
-								</div>
-
-								<div className="space-y-3">
-									<label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">Confirme a Senha</label>
-									<div className="relative group">
-										<Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-										<input type="password" required value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} className="w-full bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl py-5 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium placeholder:text-zinc-700" placeholder="••••••••" />
-									</div>
-								</div>
-							</div>
-
-							<button
-								type="submit"
-								disabled={submitting}
-								className="w-full py-6 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.3em] shadow-[0_20px_40px_-10px_rgba(59,130,246,0.5)] hover:bg-blue-500 transition-all flex items-center justify-center gap-4 disabled:opacity-50 group hover:scale-[1.02] active:scale-95 duration-200 mt-12 mb-4"
-							>
-								{submitting ? (
-									<div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-								) : (
-									<>
-										<UserPlus size={22} className="group-hover:rotate-12 transition-transform" /> 
-										Finalizar Cadastro Oficial
-									</>
-								)}
-							</button>
-
-							<p className="text-center text-[10px] text-zinc-500 font-bold uppercase tracking-widest opacity-60">
-								Ao confirmar, seus dados serão enviados sob criptografia end-to-end.
-							</p>
-						</form>
-					</div>
-				</div>
-			</div>
 		</div>
 	);
 };

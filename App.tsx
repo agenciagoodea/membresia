@@ -188,10 +188,7 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
         <nav className="flex-1 px-4 space-y-1.5 mt-4 overflow-y-auto scrollbar-hide">
           {navItems.map((item) => {
             let path = '/app';
-            if (item.id === 'prayer-request-new') {
-              path = role === UserRole.MEMBER_VISITOR ? '/app?action=new-prayer' : '/prayer/new';
-            }
-            else if (item.id === 'prayer-screen-demo' || item.id === 'prayer-screen-link') path = '/prayer-screen';
+            if (item.id === 'prayer-screen-demo' || item.id === 'prayer-screen-link') path = '/prayer-screen';
             else if (item.id === 'settings' || item.id === 'profile' || item.id === 'master-settings') path = '/app/settings';
             else if (item.id !== 'dashboard' && item.id !== 'master-dashboard') path = `/app/${item.id}`;
 
@@ -275,7 +272,7 @@ const Header = ({ user, onMenuToggle, notificationsCount = 0 }: { user: any, onM
             )}
           </button>
 
-          <QuickActionsMenu user={user} />
+          {user.role !== UserRole.MEMBER_VISITOR && <QuickActionsMenu user={user} />}
 
           <div className="w-px h-8 bg-white/5 mx-2" />
 
@@ -518,6 +515,7 @@ const App: React.FC = () => {
 
                         {/* Rotas de Membro/Líder */}
                         <Route path="/my-activities" element={<MyM12Activities user={currentUser} />} />
+                        <Route path="/prayer-request-new" element={<Dashboard user={currentUser} activeTab="prayer-request-new" />} />
 
                         {currentUser?.role === UserRole.MEMBER_VISITOR && (
                         <>
