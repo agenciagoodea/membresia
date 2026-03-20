@@ -58,6 +58,7 @@ const PublicRegistration = lazy(() => import('./components/Marketing/PublicRegis
 const Settings = lazy(() => import('./components/Settings'));
 const AdminsManager = lazy(() => import('./components/MasterAdmin/AdminsManager'));
 const Events = lazy(() => import('./components/Events/Events'));
+import CompleteProfileModal from './components/Shared/CompleteProfileModal';
 
 import { ChurchProvider } from './contexts/ChurchContext';
 
@@ -299,6 +300,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pendingPrayersCount, setPendingPrayersCount] = useState(0);
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const profileResolvedRef = React.useRef(false);
 
@@ -385,6 +387,15 @@ const App: React.FC = () => {
            if (profile.role !== UserRole.MASTER_ADMIN && session.user?.email) {
              syncFreshProfile(session.user.email);
            }
+           // Exibir modal de completar perfil se necessário (exceto admins)
+           if (
+             profile.role !== UserRole.MASTER_ADMIN &&
+             profile.role !== UserRole.CHURCH_ADMIN &&
+             profile.firstAccessCompleted === false &&
+             !sessionStorage.getItem('profile_modal_dismissed')
+           ) {
+             setShowCompleteProfileModal(true);
+           }
         }
         profileResolvedRef.current = true;
         setLoading(false);
@@ -470,6 +481,13 @@ const App: React.FC = () => {
             <ProtectedRoute user={currentUser} loading={loading}>
               <ChurchProvider user={currentUser}>
                 <div className="min-h-screen bg-zinc-950 flex">
+                  {/* Modal de completar perfil — primeiro acesso */}
+                  {showCompleteProfileModal && (
+                    <CompleteProfileModal
+                      userName={currentUser?.name}
+                      onDismiss={() => setShowCompleteProfileModal(false)}
+                    />
+                  )}
                   <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} user={currentUser} />
                   <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
                     <Header user={currentUser} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} notificationsCount={pendingPrayersCount} />

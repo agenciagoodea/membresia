@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   Settings as SettingsIcon,
@@ -38,11 +39,13 @@ import { supabase } from '../services/supabaseClient';
 import { Member, ChurchTenant, UserRole } from '../types';
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('PROFILE');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
   const [church, setChurch] = useState<ChurchTenant | null>(null);
+  const [showM12Modal, setShowM12Modal] = useState(false);
 
   // Estados dos formulários controlados
   const [profileData, setProfileData] = useState<Partial<Member>>({});
@@ -207,8 +210,14 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       setSaving(true);
       if (activeTab === 'PROFILE') {
         if (member?.id) {
+          // Verificar se o perfil ainda não foi concluído (firstAccessCompleted === false)
+          const wasProfileIncomplete = member.firstAccessCompleted === false;
+
+          // Marcar perfil como concluído ao salvar dados pessoais
+          const updateData = { ...profileData, firstAccessCompleted: true };
+
           // Atualiza Perfil na tabela members
-          const updated = await memberService.update(member.id, profileData);
+          const updated = await memberService.update(member.id, updateData);
           setMember(updated);
           // Importante: Manter o cache local do Auth atualizado para a UI global (Sidebar/TopBar)
           await supabase.auth.updateUser({
@@ -217,9 +226,17 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               spouseId: updated.spouseId,
               hasChildren: updated.hasChildren,
               children: updated.children,
-              sex: updated.sex
+              sex: updated.sex,
+              firstAccessCompleted: true
             } }
           });
+
+          // Se o perfil estava incompleto, exibir modal de próximo passo (M12)
+          if (wasProfileIncomplete) {
+            setShowM12Modal(true);
+          } else {
+            alert('Perfil pessoal atualizado com sucesso!');
+          }
         } else {
           // Para MASTER_ADMIN ou usuários sem registro na tabela: salvar no Auth metadata
           const { error: authError } = await supabase.auth.updateUser({
@@ -241,8 +258,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           await supabase.auth.updateUser({
             data: { profile: { ...user, ...profileData } }
           });
+          alert('Perfil pessoal atualizado com sucesso!');
         }
-        alert('Perfil pessoal atualizado com sucesso!');
       } else if (activeTab === 'CHURCH' && church?.id) {
         // Atualiza Igreja
         const updated = await churchService.update(church.id, churchData);
@@ -339,6 +356,57 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
+
+      {/* ── Modal: Próximo Passo — Atividades M12 ───────────────────────────── */}
+      {showM12Modal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowM12Modal(false)} />
+          <div className="relative w-full max-w-md animate-in zoom-in-95 fade-in duration-400">
+            <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full scale-150 pointer-events-none" />
+            <div className="relative bg-zinc-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.15)]">
+              <div className="p-8 pb-6 bg-gradient-to-b from-emerald-600/10 to-transparent border-b border-white/5">
+                <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.8rem] flex items-center justify-center mb-5">
+                  <Check size={28} className="text-emerald-400" />
+                </div>
+                <h2 className="text-2xl font-black text-white tracking-tight leading-tight uppercase">
+                  Cadastro Concluído!
+                </h2>
+                <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mt-1">Perfil salvo com sucesso</p>
+              </div>
+              <div className="p-8 space-y-6">
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Agora finalize seu desenvolvimento informando suas atividades na igreja.
+                </p>
+                <div className="p-4 bg-blue-600/5 border border-blue-500/10 rounded-2xl flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-600/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Activity size={16} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-xs font-black uppercase tracking-tight">Minhas Atividades M12</p>
+                    <p className="text-zinc-600 text-[10px] font-bold mt-0.5">Registre sua jornada dentro da igreja</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => { setShowM12Modal(false); navigate('/app/my-activities'); }}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2.5"
+                  >
+                    <ChevronRight size={16} />
+                    Ir para Minhas Atividades M12
+                  </button>
+                  <button
+                    onClick={() => setShowM12Modal(false)}
+                    className="w-full py-3.5 bg-white/5 text-zinc-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-zinc-300 transition-all"
+                  >
+                    Fazer isso depois
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Configurações</h2>
