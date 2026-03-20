@@ -928,23 +928,26 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                         <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Endereço Residencial</h4>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Map size={16} className="text-zinc-600" />
+                    {/* Endereço Residencial Layout Otimizado */}
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <MapPin size={16} className="text-zinc-600" />
+                          </div>
+                          <input value={profileData.cep || ''} onChange={handleCepChange} maxLength={9} placeholder="00000-000" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                          {fetchingCep && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
                         </div>
-                        <input value={profileData.cep || ''} onChange={handleCepChange} maxLength={9} placeholder="00000-000" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                        {fetchingCep && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
                       </div>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rua / Logradouro</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Home size={16} className="text-zinc-600" />
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rua / Logradouro</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Home size={16} className="text-zinc-600" />
+                          </div>
+                          <input value={profileData.street || ''} onChange={e => setProfileData({ ...profileData, street: e.target.value })} placeholder="Nome da rua" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
                         </div>
-                        <input value={profileData.street || ''} onChange={e => setProfileData({ ...profileData, street: e.target.value })} placeholder="Nome da rua" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
                       </div>
                     </div>
                     <div className="space-y-2">
