@@ -29,14 +29,19 @@ import {
   Check,
   Baby,
   Heart as HeartIcon,
-  Smartphone
+  Smartphone,
+  ArrowUpRight,
+  Users2,
+  ShieldCheck,
+  Briefcase
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { memberService } from '../services/memberService';
 import { churchService } from '../services/churchService';
+import { cellService } from '../services/cellService';
 import { supabase } from '../services/supabaseClient';
-import { Member, ChurchTenant, UserRole } from '../types';
+import { Member, ChurchTenant, UserRole, Cell } from '../types';
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
   const navigate = useNavigate();
@@ -52,6 +57,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [churchData, setChurchData] = useState<Partial<ChurchTenant>>({});
 
   const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [allCells, setAllCells] = useState<Cell[]>([]);
   const [fetchingCep, setFetchingCep] = useState(false);
 
   const calculateAge = (dateString: string) => {
@@ -135,7 +141,14 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         number: user.number || user.user_metadata?.number || '',
         neighborhood: user.neighborhood || user.user_metadata?.neighborhood || '',
         city: user.city || user.user_metadata?.city || '',
-        state: user.state || user.user_metadata?.state || ''
+        state: user.state || user.user_metadata?.state || '',
+        origin: user.origin || user.user_metadata?.origin || '',
+        conversionDate: user.conversionDate || user.user_metadata?.conversion_date || '',
+        baptismDate: user.baptismDate || user.user_metadata?.baptism_date || '',
+        baptismHolySpiritDate: user.baptismHolySpiritDate || user.user_metadata?.baptism_holy_spirit_date || '',
+        cellId: user.cellId || user.user_metadata?.cell_id || '',
+        disciplerId: user.disciplerId || user.user_metadata?.discipler_id || '',
+        pastorId: user.pastorId || user.user_metadata?.pastor_id || '',
       });
 
       let effectiveChurchId = user.churchId;
@@ -165,10 +178,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       try {
         setLoading(true);
 
-        // Buscar em paralelo: dados da igreja + membros
-        const [churchRes, membersList] = await Promise.all([
+        // Buscar em paralelo: dados da igreja + membros + células
+        const [churchRes, membersList, cellsList] = await Promise.all([
           churchService.getById(effectiveChurchId).catch(() => null),
-          memberService.getAll(effectiveChurchId).catch(() => [])
+          memberService.getAll(effectiveChurchId).catch(() => []),
+          cellService.getAll(effectiveChurchId).catch(() => [])
         ]);
 
         if (!cancelled) {
@@ -177,6 +191,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
             setChurchData(churchRes);
           }
           setAllMembers(membersList);
+          setAllCells(cellsList);
 
           // Se ainda não temos o perfil (não buscamos globalmente), buscar na lista da igreja
           if (!myProfile) {
@@ -227,6 +242,13 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               hasChildren: updated.hasChildren,
               children: updated.children,
               sex: updated.sex,
+              cellId: updated.cellId,
+              disciplerId: updated.disciplerId,
+              pastorId: updated.pastorId,
+              conversionDate: updated.conversionDate,
+              baptismDate: updated.baptismDate,
+              baptismHolySpiritDate: updated.baptismHolySpiritDate,
+              origin: updated.origin,
               firstAccessCompleted: true
             } }
           });
@@ -250,6 +272,10 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               spouse_id: profileData.spouseId,
               has_children: profileData.hasChildren,
               children: profileData.children,
+              conversion_date: profileData.conversionDate,
+              baptism_date: profileData.baptismDate,
+              baptism_holy_spirit_date: profileData.baptismHolySpiritDate,
+              origin: profileData.origin,
             }
           });
           if (authError) throw authError;
@@ -456,17 +482,25 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               {activeTab === 'PROFILE' && (
                 <div className="space-y-10 animate-in fade-in duration-300">
                   <div className="flex flex-col md:flex-row md:items-center gap-8">
-                    <div className="relative group cursor-pointer">
-                      <img 
-                        src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`} 
-                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
-                        className="w-32 h-32 rounded-full ring-4 ring-zinc-950 shadow-2xl object-cover transition-transform group-hover:scale-105" 
-                        alt="Avatar" 
-                      />
-                      <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                        <Camera className="text-white" size={24} />
-                      </label>
-                      <input id="avatar-upload" type="file" accept="image/*" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />
+                    <div className="relative group">
+                      <div className="relative">
+                        <img 
+                          src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
+                          className="w-32 h-32 rounded-[2.5rem] ring-4 ring-zinc-950 shadow-2xl object-cover transition-all group-hover:scale-95 group-hover:rounded-[3rem]" 
+                          alt="Avatar" 
+                        />
+                        <div className="absolute -bottom-2 -right-2 flex gap-1">
+                          <label htmlFor="avatar-upload-gallery" className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center justify-center cursor-pointer shadow-lg transition-all active:scale-90 border-2 border-zinc-950">
+                            <Smartphone size={18} />
+                          </label>
+                          <label htmlFor="avatar-upload-camera" className="w-10 h-10 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl flex items-center justify-center cursor-pointer shadow-lg transition-all active:scale-90 border-2 border-zinc-950">
+                            <Camera size={18} />
+                          </label>
+                        </div>
+                      </div>
+                      <input id="avatar-upload-gallery" type="file" accept="image/*" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />
+                      <input id="avatar-upload-camera" type="file" accept="image/*" capture="user" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />
                     </div>
                     <div>
                       <h3 className="text-2xl font-black text-white uppercase tracking-tight break-all">{profileData.name || activeUser.name}</h3>
@@ -731,6 +765,140 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                               ))}
                            </div>
                         </div>
+                    </div>
+
+                    {/* Minha Jornada Cristã */}
+                    <div className="space-y-4 md:col-span-2 pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Minha Jornada Cristã</h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Conversão</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Zap size={16} className="text-zinc-600" />
+                        </div>
+                        <input type="date" value={profileData.conversionDate || ''} onChange={e => setProfileData({ ...profileData, conversionDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Batismo nas Águas</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Check size={16} className="text-zinc-600" />
+                        </div>
+                        <input type="date" value={profileData.baptismDate || ''} onChange={e => setProfileData({ ...profileData, baptismDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Batismo no Espírito Santo</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Zap size={16} className="text-amber-400" />
+                        </div>
+                        <input type="date" value={profileData.baptismHolySpiritDate || ''} onChange={e => setProfileData({ ...profileData, baptismHolySpiritDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Origem / Como nos conheceu?</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Globe size={16} className="text-zinc-600" />
+                        </div>
+                        <select
+                          value={profileData.origin || ''}
+                          onChange={e => setProfileData({ ...profileData, origin: e.target.value })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Origem</option>
+                          {['EVANGELISMO', 'VISITA DE CÉLULA', 'PEDIDO DE ORAÇÃO', 'OUTRA IGREJA', 'REDES SOCIAIS', 'AMIGOS / FAMÍLIA', 'OUTROS'].map(origin => (
+                            <option key={origin} value={origin} className="bg-zinc-900">{origin}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                          <ArrowUpRight size={14} className="text-zinc-700" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vínculos Ministeriais */}
+                    <div className="space-y-4 md:col-span-2 pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
+                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos Ministeriais</h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Célula que Participa</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Users2 size={16} className="text-zinc-600" />
+                        </div>
+                        <select
+                          value={profileData.cellId || ''}
+                          onChange={e => setProfileData({ ...profileData, cellId: e.target.value })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Célula</option>
+                          {allCells.map(cell => (
+                            <option key={cell.id} value={cell.id} className="bg-zinc-900">{cell.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                          <ArrowUpRight size={14} className="text-zinc-700" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Discipulador</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <User size={16} className="text-zinc-600" />
+                        </div>
+                        <select
+                          value={profileData.disciplerId || ''}
+                          onChange={e => setProfileData({ ...profileData, disciplerId: e.target.value })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Discipulador</option>
+                          {allMembers.filter(m => m.id !== member?.id).map(m => (
+                            <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                          <ArrowUpRight size={14} className="text-zinc-700" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Pastor (Opcional)</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <ShieldCheck size={16} className="text-zinc-600" />
+                        </div>
+                        <select
+                          value={profileData.pastorId || ''}
+                          onChange={e => setProfileData({ ...profileData, pastorId: e.target.value })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Pastor</option>
+                          {allMembers.filter(m => m.role === UserRole.PASTOR).map(m => (
+                            <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                          <ArrowUpRight size={14} className="text-zinc-700" />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Endereço Residencial */}

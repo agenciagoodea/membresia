@@ -157,6 +157,7 @@ export interface Member {
   password?: string;
   birthDate: string; // Now mandatory
   conversionDate?: string;
+  baptismHolySpiritDate?: string;
   firstAccessCompleted?: boolean;
   milestoneValues?: { [key: string]: any };
 }
