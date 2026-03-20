@@ -142,7 +142,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         state: user.state || user.user_metadata?.state || '',
         origin: user.origin || user.user_metadata?.origin || '',
         conversionDate: user.conversionDate || user.user_metadata?.conversion_date || '',
-        baptismDate: user.baptismDate || user.user_metadata?.baptism_date || '',
         cellId: user.cellId || user.user_metadata?.cell_id || '',
         disciplerId: user.disciplerId || user.user_metadata?.discipler_id || '',
         pastorId: user.pastorId || user.user_metadata?.pastor_id || '',
@@ -272,7 +271,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               disciplerId: updated.disciplerId,
               pastorId: updated.pastorId,
               conversionDate: updated.conversionDate,
-              baptismDate: updated.baptismDate,
               origin: updated.origin,
               firstAccessCompleted: true
             } }
@@ -488,15 +486,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Configurações</h2>
           <p className="text-zinc-500 font-medium text-lg italic">Console de controle da sua instância e perfil pessoal.</p>
         </div>
-        {(activeTab === 'PROFILE' || (activeTab === 'CHURCH' && activeUser.role === UserRole.CHURCH_ADMIN)) && (
-          <button
-            onClick={handleSave}
-            disabled={saving || loading}
-            className={`flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Save size={18} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
-          </button>
-        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-10">
@@ -806,19 +795,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                                               className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 appearance-none"
                                             />
                                          </div>
-                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">CPF / Identidade</label>
-                                            <input 
-                                              value={child.cpf || ''} 
-                                              onChange={e => {
-                                                const next = [...(profileData.children || [])];
-                                                next[idx].cpf = e.target.value;
-                                                setProfileData({ ...profileData, children: next });
-                                              }}
-                                              placeholder="000.000.000-00"
-                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
-                                            />
-                                         </div>
+
                                          <div className="md:col-span-2 flex items-center justify-center p-4 bg-blue-600/5 rounded-2xl border border-blue-500/10">
                                              <div className="flex flex-col items-center">
                                                 <span className="text-[10px] font-black text-blue-500/60 uppercase tracking-[0.3em] mb-1">Idade Atual</span>
@@ -865,8 +842,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                       </div>
                     </div>
 
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Origem / Como nos conheceu?</label>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Como aceitou a Jesus Cristo?</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                           <Globe size={16} className="text-zinc-600" />

@@ -15,7 +15,7 @@ const mapToFrontend = (m: any): Member => ({
 	cellId: m.cell_id,
 	disciplerId: m.discipler_id,
 	pastorId: m.pastor_id,
-	baptismDate: m.baptism_date,
+	conversionDate: m.conversion_date,
 	joinedDate: m.joined_date,
 	avatar: m.avatar,
 	stageHistory: m.stage_history || [],
@@ -38,7 +38,6 @@ const mapToFrontend = (m: any): Member => ({
 	hasChildren: m.has_children,
 	children: m.children || [],
 	leadingCellIds: m.leading_cell_ids || [],
-	conversionDate: m.conversion_date,
 	firstAccessCompleted: m.first_access_completed || false,
 	milestoneValues: m.milestone_values || {},
 });
@@ -60,7 +59,6 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.cellId !== undefined) db.cell_id = m.cellId || null;
 	if (m.disciplerId !== undefined) db.discipler_id = m.disciplerId || null;
 	if (m.pastorId !== undefined) db.pastor_id = m.pastorId || null;
-	if (m.baptismDate !== undefined) db.baptism_date = m.baptismDate;
 	if (m.joinedDate !== undefined) db.joined_date = m.joinedDate;
 	if (m.avatar !== undefined) db.avatar = m.avatar;
 	if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;

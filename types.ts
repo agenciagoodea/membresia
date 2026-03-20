@@ -108,7 +108,6 @@ export interface Child {
   name: string;
   birthDate: string;
   photo?: string;
-  cpf?: string; // Only if adult/needed
 }
 
 export interface StageHistory {
@@ -135,7 +134,6 @@ export interface Member {
   stageHistory: StageHistory[];
   completedMilestones?: string[];
   origin?: string;
-  baptismDate?: string;
   joinedDate: string;
   cpf?: string;
 
