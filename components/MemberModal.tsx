@@ -461,7 +461,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
-										{Object.values(UserRole).filter(r => r !== UserRole.MASTER_ADMIN).map(role => (
+										{Object.values(UserRole).filter(r => r !== 'MASTER ADMIN' && r !== 'ADMINISTRADOR DA IGREJA').map(role => (
 											<option key={role} value={role} className="bg-zinc-950">{role}</option>
 										))}
 									</select>

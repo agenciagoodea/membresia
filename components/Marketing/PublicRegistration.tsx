@@ -509,6 +509,24 @@ const PublicRegistration = () => {
 									</div>
 								</div>
 
+								<div className="space-y-3">
+									<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Cargo / Perfil</label>
+									<div className="relative group/input">
+										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={20} />
+										<select 
+											required
+											className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer uppercase font-black"
+											value={formData.role}
+											onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
+										>
+											{Object.values(UserRole).filter(r => r !== UserRole.MASTER_ADMIN && r !== UserRole.CHURCH_ADMIN).map(role => (
+												<option key={role} value={role} className="bg-zinc-950">{role}</option>
+											))}
+										</select>
+									</div>
+								</div>
+
+
 								<div className="grid grid-cols-2 gap-4">
 									<div className="space-y-3">
 										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-2">Gênero</label>
