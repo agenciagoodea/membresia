@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Layers, 
-  TrendingUp, 
-  Calendar, 
-  Target, 
-  Heart, 
-  Activity, 
-  Zap, 
+import {
+  Users,
+  Layers,
+  TrendingUp,
+  Calendar,
+  Target,
+  Heart,
+  Activity,
+  Zap,
   ChevronRight,
   Clock,
   MapPin,
@@ -17,15 +17,15 @@ import {
   X,
   Plus
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  Cell as RechartsCell 
+  Cell as RechartsCell
 } from 'recharts';
 import { useChurch } from '../contexts/ChurchContext';
 import { UserRole, LadderStage, PrayerStatus, Member, Cell, PrayerRequest } from '../types';
@@ -82,8 +82,8 @@ const StatCard = React.memo(({ title, value, trend, subValue, icon, color }: { t
 
 const MasterDashboard = () => (
   <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
-    <PageHeader 
-      title="Global Overview" 
+    <PageHeader
+      title="Global Overview"
       subtitle="Ecossistema completo de gestão eclesiástica."
       actions={
         <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ const MasterDashboard = () => (
         </div>
       }
     />
-    
+
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
       <StatCard title="Igrejas Ativas" value="124" trend={15} icon={<Layers size={24} />} color="bg-blue-600/20" />
       <StatCard title="Total Membros" value="12.4k" trend={8} icon={<Users size={24} />} color="bg-indigo-600/20" />
@@ -151,7 +151,7 @@ const MasterDashboard = () => (
 
 const DashboardEventsWidget = ({ events }: { events: any[] }) => {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  
+
   const upcoming = events
     .filter(e => e.date >= new Date().toISOString().split('T')[0])
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -166,8 +166,8 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
       </h4>
       <div className="space-y-4 flex-1 overflow-y-auto scrollbar-hide">
         {upcoming.map(evt => (
-          <div 
-            key={evt.id} 
+          <div
+            key={evt.id}
             onClick={() => setSelectedEvent(evt)}
             className="flex items-center gap-4 p-4 bg-zinc-950 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all cursor-pointer group"
           >
@@ -211,60 +211,60 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedEvent(null)} />
           <div className="relative w-full max-w-lg bg-zinc-950 rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-             <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 z-10 p-3 text-zinc-500 hover:text-white bg-black/40 backdrop-blur-md rounded-2xl transition-all border border-white/5">
-                <X size={20} />
-             </button>
-             
-             {selectedEvent.image_url && (
-               <div className="w-full aspect-video overflow-hidden">
-                 <img src={selectedEvent.image_url} className="w-full h-full object-cover" alt="" />
-               </div>
-             )}
-             
-             <div className="p-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                    Evento da Agenda
-                  </div>
+            <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 z-10 p-3 text-zinc-500 hover:text-white bg-black/40 backdrop-blur-md rounded-2xl transition-all border border-white/5">
+              <X size={20} />
+            </button>
+
+            {selectedEvent.image_url && (
+              <div className="w-full aspect-video overflow-hidden">
+                <img src={selectedEvent.image_url} className="w-full h-full object-cover" alt="" />
+              </div>
+            )}
+
+            <div className="p-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                  Evento da Agenda
                 </div>
-                
-                <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-8 leading-none">
-                  {selectedEvent.title}
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-6 mb-10">
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                       <Calendar size={12} className="text-amber-500" /> Data do Evento
-                    </p>
-                    <p className="text-lg font-black text-white">
-                      {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}, {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                       <Clock size={12} className="text-amber-500" /> Horário
-                    </p>
-                    <p className="text-lg font-black text-white">{selectedEvent.time || '00:00'}</p>
-                  </div>
+              </div>
+
+              <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-8 leading-none">
+                {selectedEvent.title}
+              </h3>
+
+              <div className="grid grid-cols-2 gap-6 mb-10">
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Calendar size={12} className="text-amber-500" /> Data do Evento
+                  </p>
+                  <p className="text-lg font-black text-white">
+                    {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}, {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                  </p>
                 </div>
-                
-                {selectedEvent.location && (
-                  <div className="bg-white/5 p-8 rounded-3xl border border-white/5 mb-10">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                       <MapPin size={14} className="text-rose-500" /> Localização
-                    </p>
-                    <p className="text-sm font-bold text-zinc-300 uppercase leading-relaxed">{selectedEvent.location}</p>
-                  </div>
-                )}
-                
-                {selectedEvent.description && (
-                  <div className="border-t border-white/5 pt-8">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Sobre o Evento</p>
-                    <p className="text-sm text-zinc-400 font-medium leading-relaxed italic">{selectedEvent.description}</p>
-                  </div>
-                )}
-             </div>
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Clock size={12} className="text-amber-500" /> Horário
+                  </p>
+                  <p className="text-lg font-black text-white">{selectedEvent.time || '00:00'}</p>
+                </div>
+              </div>
+
+              {selectedEvent.location && (
+                <div className="bg-white/5 p-8 rounded-3xl border border-white/5 mb-10">
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <MapPin size={14} className="text-rose-500" /> Localização
+                  </p>
+                  <p className="text-sm font-bold text-zinc-300 uppercase leading-relaxed">{selectedEvent.location}</p>
+                </div>
+              )}
+
+              {selectedEvent.description && (
+                <div className="border-t border-white/5 pt-8">
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Sobre o Evento</p>
+                  <p className="text-sm text-zinc-400 font-medium leading-relaxed italic">{selectedEvent.description}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -304,7 +304,7 @@ const ChurchAdminDashboard = ({ user, members, cells, prayers, events, activeTab
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
         <div className="bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5"><Zap size={100} /></div>
-            <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Metas de Crescimento
+          <div className="w-1.5 h-6 bg-blue-600 rounded-full" /> Metas de Crescimento
           <div className="space-y-12">
             <div>
               <div className="flex justify-between mb-3 items-end">
@@ -432,7 +432,7 @@ const PastorDashboard = ({ user, members, cells, prayers, events, activeTab }: {
                   </div>
                   <div className="w-full bg-white/5 h-3 rounded-full overflow-hidden border border-white/5">
                     <div className="bg-indigo-500 h-full rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all duration-1000" style={{ width: `${meta.val}%` }}></div>
-                   </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -449,7 +449,7 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
 
   // Célula que o usuário PARTICIPA (para o Cabeçalho)
   const participatingCell = cells.find(c => c.id === user.cellId);
-  
+
   // Célula(s) que o usuário LIDERA (para o painel de discípulos e relatórios)
   const leadingCells = cells.filter(c => c.leaderId === user.id || c.leaderIds?.includes(user.id));
   const primaryLeadingCell = leadingCells.length > 0 ? leadingCells[0] : null;
@@ -467,7 +467,7 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
   };
 
   const headerTitle = participatingCell ? participatingCell.name : 'Painel do Líder';
-  const headerSubtitle = participatingCell 
+  const headerSubtitle = participatingCell
     ? `Discipulador(a): ${getMemberName(user.disciplerId) || 'Não definido'} | Pastor(a): ${getMemberName(user.pastorId) || 'Não definido'}`
     : 'Líder de Célula Ativo.';
 
@@ -475,8 +475,8 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
 
   // Considera discípulo quem estiver nas células LIDERADAS
   // Excluindo os próprios líderes
-  const cellMembers = members.filter(m => 
-    m.cellId && leadingCellIds.includes(m.cellId) && 
+  const cellMembers = members.filter(m =>
+    m.cellId && leadingCellIds.includes(m.cellId) &&
     m.id !== user.id &&
     !leadingCells.some(c => c.leaderId === m.id || c.leaderIds?.includes(m.id))
   );
@@ -491,7 +491,7 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
     const dayName = dateObj.toLocaleString('pt-BR', { weekday: 'long' });
     const dayNum = dateObj.getDate();
     const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });
-    
+
     const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${cellToNotify.name}*!
     
 🗓️ *Data:* ${dayName}, ${dayNum} de ${monthName}
@@ -535,7 +535,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
           <MapPin size={12} className={theme.text} /> <span className="truncate">{cell.address}</span>
         </div>
         {onNotify && (
-          <button 
+          <button
             onClick={onNotify}
             className="w-full py-4 bg-white text-zinc-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5 text-center flex items-center justify-center gap-2"
           >
@@ -562,7 +562,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
         <StatCard title="Presença Média" value="88%" trend={2} icon={<Users className="text-emerald-400" />} color="bg-emerald-500/10" />
         <StatCard title="Visitantes" value="3" trend={50} icon={<TrendingUp className="text-blue-400" />} color="bg-blue-500/10" />
         <StatCard title="Transições" value="2" subValue="estágios" icon={<Target className="text-amber-400" />} color="bg-amber-500/10" />
-        
+
         {primaryLeadingCell ? (
           <div className="bg-zinc-900/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden flex flex-col justify-between group">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/20 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity" />
@@ -600,7 +600,7 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
           </h4>
           <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide">
             {cellMembers.length === 0 ? (
-               <div className="py-20 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado às suas células</div>
+              <div className="py-20 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum discípulo vinculado às suas células</div>
             ) : cellMembers.map(m => (
               <div key={m.id} className="flex items-center justify-between p-5 bg-white/5 rounded-[1.5rem] transition-all border border-white/5 hover:border-white/10 group">
                 <div className="flex items-center gap-4">
@@ -610,8 +610,8 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
                     <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => { setSelectedDisciple(m); setIsProfileModalOpen(true); }} 
+                <button
+                  onClick={() => { setSelectedDisciple(m); setIsProfileModalOpen(true); }}
                   className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hover:text-white transition-colors bg-zinc-950 px-4 py-2 rounded-xl border border-white/5">Ver Perfil</button>
               </div>
             ))}
@@ -619,35 +619,35 @@ Esperamos por você! Vai ser um tempo precioso! 🔥`;
         </div>
 
         <div className="space-y-8">
-          <CellEventWidget 
-            title="Próxima Reunião" 
-            cell={participatingCell} 
-            eventsList={events} 
-            theme={{ dot: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-500' }} 
+          <CellEventWidget
+            title="Próxima Reunião"
+            cell={participatingCell}
+            eventsList={events}
+            theme={{ dot: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-500' }}
           />
 
-          <CellEventWidget 
-            title="Próximo Encontro" 
-            cell={primaryLeadingCell} 
-            eventsList={events} 
-            onNotify={nextMeeting && primaryLeadingCell ? () => handleWhatsAppNotify(primaryLeadingCell, nextMeeting) : undefined} 
-            theme={{ dot: 'bg-blue-600', bg: 'bg-blue-500/20', text: 'text-blue-500' }} 
+          <CellEventWidget
+            title="Próximo Encontro"
+            cell={primaryLeadingCell}
+            eventsList={events}
+            onNotify={nextMeeting && primaryLeadingCell ? () => handleWhatsAppNotify(primaryLeadingCell, nextMeeting) : undefined}
+            theme={{ dot: 'bg-blue-600', bg: 'bg-blue-500/20', text: 'text-blue-500' }}
           />
 
           <div className="bg-zinc-900 border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
-             <h4 className="font-black text-white text-sm mb-6 flex items-center gap-3 uppercase tracking-tighter">
-                <div className="w-1.5 h-4 bg-emerald-500 rounded-full" /> Eventos Gerais
-             </h4>
-             <div className="scale-[0.9] origin-top-left w-[111%] -mb-4">
-                <DashboardEventsWidget events={events.filter(e => !e.id.startsWith('cell-'))} />
-             </div>
+            <h4 className="font-black text-white text-sm mb-6 flex items-center gap-3 uppercase tracking-tighter">
+              <div className="w-1.5 h-4 bg-emerald-500 rounded-full" /> Eventos Gerais
+            </h4>
+            <div className="scale-[0.9] origin-top-left w-[111%] -mb-4">
+              <DashboardEventsWidget events={events.filter(e => !e.id.startsWith('cell-'))} />
+            </div>
           </div>
         </div>
       </div>
 
-      <MemberProfileModal 
-        isOpen={isProfileModalOpen} 
-        onClose={() => { setIsProfileModalOpen(false); setSelectedDisciple(null); }} 
+      <MemberProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => { setIsProfileModalOpen(false); setSelectedDisciple(null); }}
         member={selectedDisciple}
         cellReports={[]}
         allMembers={members}
@@ -674,11 +674,11 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
     try {
       // 1. Atualizar no banco de dados (tabela members)
       await memberService.update(user.id, { firstAccessCompleted: true });
-      
+
       // 2. Importante: Atualizar metadados do Auth para refletir imediatamente no App.tsx
       // Isso disparará o evento USER_UPDATED no onAuthStateChange do App.tsx
-      await supabase.auth.updateUser({ 
-        data: { profile: { ...user, firstAccessCompleted: true } } 
+      await supabase.auth.updateUser({
+        data: { profile: { ...user, firstAccessCompleted: true } }
       });
 
       setShowWelcome(false);
@@ -735,7 +735,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
       case 'PRAYERS':
         return <PrayerHistory user={user} />;
       case 'prayer-request-new':
-        return <PrayerForm isInline={true} />;
+        return <PrayerForm isInline={true} user={user} />;
       case 'm12-config':
         return <ActivityManager user={user} />;
       default:
@@ -774,12 +774,10 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
               </div>
             </div>
 
-            <MonthlyAgenda events={events} user={user} />
-
             {/* BARRA DE MENTORES */}
             <div className="bg-white p-4 rounded-[2rem] shadow-xl flex flex-wrap items-center gap-8 px-8">
               <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 pr-8 hidden md:block">Meus Mentores</div>
-              
+
               <div className="flex items-center gap-4">
                 <img src={mentors.pastor?.avatar || 'https://i.pravatar.cc/150?u=pastor'} className="w-10 h-10 rounded-full ring-2 ring-zinc-100" />
                 <div>
@@ -823,7 +821,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                     <div className="py-10 text-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum pedido recente</div>
                   )}
                 </div>
-                <button 
+                <button
                   onClick={() => navigate('/app/prayer-request-new')}
                   className="w-full py-5 bg-zinc-800 border border-white/5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all mt-4"
                 >
@@ -853,7 +851,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                   </div>
                 </div>
                 {myCell?.address && (
-                  <a 
+                  <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(myCell.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -874,17 +872,17 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                 <div className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-[3rem] shadow-3xl p-10 text-center overflow-hidden animate-in zoom-in-95 duration-500">
                   <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 rounded-full blur-[80px]" />
                   <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-600/10 rounded-full blur-[80px]" />
-                  
+
                   <div className="w-24 h-24 bg-blue-600/10 border border-blue-500/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-blue-500 shadow-inner relative z-10">
                     <Sparkles size={48} className="animate-pulse" />
                   </div>
-                  
+
                   <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4 relative z-10 leading-none">Seja bem-vindo!</h3>
                   <p className="text-zinc-400 text-sm font-medium mb-10 leading-relaxed relative z-10 italic">
                     Continue o seu cadastro nos informando todas as atividades que você já fez na igreja.
                   </p>
-                  
-                  <button 
+
+                  <button
                     onClick={handleContinue}
                     className="w-full py-5 bg-white text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5 relative z-10 group"
                   >

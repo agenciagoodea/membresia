@@ -74,7 +74,7 @@ export const PASTOR_NAV_ITEMS = [
   { id: 'prayer-screen-link', label: 'Abrir Telão (Demo)', icon: <Tv size={20} /> },
   { id: 'finance', label: 'Financeiro', icon: <DollarSign size={20} /> },
   { id: 'ia-insights', label: 'IA Insights', icon: <MessageSquare size={20} /> },
-  { id: 'settings', label: 'Configurações', icon: <Settings size={20} /> },
+  { id: 'settings', label: 'Meu Perfil', icon: <Settings size={20} /> },
 ];
 
 // GROUP LEVEL (Cell Leader)
@@ -91,12 +91,13 @@ export const LEADER_NAV_ITEMS = [
 
 // MEMBER LEVEL (Regular user / Visitor)
 export const MEMBER_NAV_ITEMS = [
-  { id: 'dashboard', label: 'Minha Jornada', icon: <LayoutDashboard size={20} /> },
+  { id: 'dashboard', label: 'Principal', icon: <LayoutDashboard size={20} /> },
+  { id: 'events', label: 'Agenda', icon: <Calendar size={20} /> },
   { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'my-cell-detail', label: 'Minha Célula', icon: <MapPin size={20} /> },
   { id: 'prayer-request-new', label: 'Enviar Oração', icon: <Plus size={20} /> },
   { id: 'my-prayers', label: 'Histórico de Pedidos', icon: <Heart size={20} /> },
-  { id: 'settings', label: 'Configurações', icon: <Settings size={20} /> },
+  { id: 'settings', label: 'Meu Perfil', icon: <Settings size={20} /> },
 ];
 
 export const MOCK_CHURCHES: ChurchTenant[] = [

@@ -19,7 +19,7 @@ const Switch = ({ active, onChange }: { active: boolean; onChange: () => void })
   </div>
 );
 
-const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void }> = ({ isInline, onComplete }) => {
+const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void; user?: any }> = ({ isInline, onComplete, user }) => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [submitted, setSubmitted] = useState(false);
@@ -53,6 +53,18 @@ const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void }> = ({
       state: ''
     }
   });
+
+  React.useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || '',
+        phone: user.phone || '',
+        email: user.email || '',
+        consent: true // Membro logado já aceitou termos ao se cadastrar/usar o sistema
+      }));
+    }
+  }, [user]);
 
   React.useEffect(() => {
     const loadTenant = async () => {
@@ -295,17 +307,40 @@ const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void }> = ({
             <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Nome Identificado</label>
-                <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner" placeholder="Ex: Roberto Silva" />
+                <input 
+                  required 
+                  readOnly={!!user}
+                  value={formData.name} 
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  className={`w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner ${!!user ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  placeholder="Ex: Roberto Silva" 
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">WhatsApp de Contato</label>
-                  <input required type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner" placeholder="(00) 00000-0000" />
+                  <input 
+                    required 
+                    readOnly={!!user}
+                    type="tel" 
+                    value={formData.phone} 
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })} 
+                    className={`w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner ${!!user ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    placeholder="(00) 00000-0000" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">E-mail Pessoal</label>
-                  <input required type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner" placeholder="voce@igreja.com" />
+                  <input 
+                    required 
+                    readOnly={!!user}
+                    type="email" 
+                    value={formData.email} 
+                    onChange={e => setFormData({ ...formData, email: e.target.value })} 
+                    className={`w-full bg-zinc-950 border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold text-white shadow-inner ${!!user ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                    placeholder="voce@igreja.com" 
+                  />
                 </div>
               </div>
             </div>
@@ -370,100 +405,106 @@ const PrayerForm: React.FC<{ isInline?: boolean; onComplete?: () => void }> = ({
                 <Switch active={formData.allowScreenBroadcast} onChange={() => setFormData({ ...formData, allowScreenBroadcast: !formData.allowScreenBroadcast })} />
               </div>
 
-              <div
-                onClick={() => setFormData({ ...formData, requestPastoralCall: !formData.requestPastoralCall })}
-                className="flex items-center justify-between p-6 bg-indigo-600/5 rounded-[2rem] border border-indigo-500/10 cursor-pointer hover:bg-indigo-600/10 transition-all group"
-              >
-                <div className="flex items-center gap-5">
-                  <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20"><UserPlus size={22} /></div>
-                  <div>
-                    <p className="text-sm font-black text-white uppercase tracking-tight">Acompanhamento Pastoral</p>
-                    <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest italic">Desejo ser acompanhado por um pastor</p>
-                  </div>
-                </div>
-                <Switch active={formData.requestPastoralCall} onChange={() => setFormData({ ...formData, requestPastoralCall: !formData.requestPastoralCall })} />
-              </div>
-
-              {formData.requestPastoralCall && (
-                <div className="space-y-6 pt-6 animate-in slide-in-from-top-4 duration-500">
-                  <div className="flex items-center gap-4 text-indigo-400 font-black text-[10px] uppercase tracking-[0.3em]">
-                    <div className="w-8 h-px bg-indigo-500/30" />
-                    <span className="flex items-center gap-2"><MapPin size={14} /> Localização para Acompanhamento</span>
-                    <div className="w-full h-px bg-indigo-500/30 flex-1" />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">CEP</label>
-                      <div className="relative">
-                        <input
-                          value={formData.addressDetails?.cep}
-                          onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, cep: e.target.value } })}
-                          onBlur={e => handleCepBlur(e.target.value)}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-600 transition-all"
-                          placeholder="00000-000"
-                        />
-                        {loadingCep && <Loader2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-indigo-500" />}
+              {!user && (
+                <>
+                  <div
+                    onClick={() => setFormData({ ...formData, requestPastoralCall: !formData.requestPastoralCall })}
+                    className="flex items-center justify-between p-6 bg-indigo-600/5 rounded-[2rem] border border-indigo-500/10 cursor-pointer hover:bg-indigo-600/10 transition-all group"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20"><UserPlus size={22} /></div>
+                      <div>
+                        <p className="text-sm font-black text-white uppercase tracking-tight">Acompanhamento Pastoral</p>
+                        <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest italic">Desejo ser acompanhado por um pastor</p>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bairro</label>
-                      <input
-                        value={formData.addressDetails?.neighborhood}
-                        onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, neighborhood: e.target.value } })}
-                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
-                        placeholder="Nome do bairro"
-                      />
-                    </div>
+                    <Switch active={formData.requestPastoralCall} onChange={() => setFormData({ ...formData, requestPastoralCall: !formData.requestPastoralCall })} />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Logradouro (Rua/Avenida)</label>
-                    <input
-                      value={formData.addressDetails?.street}
-                      onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, street: e.target.value } })}
-                      className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
-                      placeholder="Rua, número, etc."
-                    />
-                  </div>
+                  {formData.requestPastoralCall && (
+                    <div className="space-y-6 pt-6 animate-in slide-in-from-top-4 duration-500">
+                      <div className="flex items-center gap-4 text-indigo-400 font-black text-[10px] uppercase tracking-[0.3em]">
+                        <div className="w-8 h-px bg-indigo-500/30" />
+                        <span className="flex items-center gap-2"><MapPin size={14} /> Localização para Acompanhamento</span>
+                        <div className="w-full h-px bg-indigo-500/30 flex-1" />
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Cidade</label>
-                      <input
-                        value={formData.addressDetails?.city}
-                        onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, city: e.target.value } })}
-                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
-                        placeholder="Cidade"
-                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">CEP</label>
+                          <div className="relative">
+                            <input
+                              value={formData.addressDetails?.cep}
+                              onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, cep: e.target.value } })}
+                              onBlur={e => handleCepBlur(e.target.value)}
+                              className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-600 transition-all"
+                              placeholder="00000-000"
+                            />
+                            {loadingCep && <Loader2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-indigo-500" />}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bairro</label>
+                          <input
+                            value={formData.addressDetails?.neighborhood}
+                            onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, neighborhood: e.target.value } })}
+                            className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
+                            placeholder="Nome do bairro"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Logradouro (Rua/Avenida)</label>
+                        <input
+                          value={formData.addressDetails?.street}
+                          onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, street: e.target.value } })}
+                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
+                          placeholder="Rua, número, etc."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Cidade</label>
+                          <input
+                            value={formData.addressDetails?.city}
+                            onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, city: e.target.value } })}
+                            className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
+                            placeholder="Cidade"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Estado</label>
+                          <input
+                            value={formData.addressDetails?.state}
+                            onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, state: e.target.value } })}
+                            className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
+                            placeholder="UF"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Estado</label>
-                      <input
-                        value={formData.addressDetails?.state}
-                        onChange={e => setFormData({ ...formData, addressDetails: { ...formData.addressDetails!, state: e.target.value } })}
-                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none"
-                        placeholder="UF"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           </div>
 
           <div className="space-y-8">
-            <div
-              onClick={() => setFormData({ ...formData, consent: !formData.consent })}
-              className="flex items-start gap-4 px-4 cursor-pointer group"
-            >
-              <div className="pt-1">
-                <Switch active={formData.consent} onChange={() => setFormData({ ...formData, consent: !formData.consent })} />
+            {!user && (
+              <div
+                onClick={() => setFormData({ ...formData, consent: !formData.consent })}
+                className="flex items-start gap-4 px-4 cursor-pointer group"
+              >
+                <div className="pt-1">
+                  <Switch active={formData.consent} onChange={() => setFormData({ ...formData, consent: !formData.consent })} />
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-relaxed font-bold uppercase tracking-widest italic pt-1.5">
+                  Autorizo o tratamento dos dados pela {tenant?.name || 'Igreja'} conforme as leis de proteção de dados para fins exclusivos de cuidado espiritual e intercessão.
+                </p>
               </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed font-bold uppercase tracking-widest italic pt-1.5">
-                Autorizo o tratamento dos dados pela {tenant?.name || 'Igreja'} conforme as leis de proteção de dados para fins exclusivos de cuidado espiritual e intercessão.
-              </p>
-            </div>
+            )}
 
             <button
               type="submit"

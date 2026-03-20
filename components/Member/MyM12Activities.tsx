@@ -230,35 +230,8 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-zinc-900/50 border border-white/5 rounded-[2.5rem] p-6">
-            <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 px-4">Discípulos Vinculados</h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-hide pr-2">
-              {filteredMembers.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    setSelectedMember(m);
-                    setActiveStage(m.stage);
-                  }}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all border ${selectedMember?.id === m.id ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-zinc-950 border-white/5 hover:border-white/10'}`}
-                >
-                  <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}`} className="w-10 h-10 rounded-full ring-2 ring-white/10 shadow-sm" alt="" />
-                  <div className="text-left flex-1 min-w-0">
-                    <p className={`text-sm font-black truncate uppercase ${selectedMember?.id === m.id ? 'text-white' : 'text-zinc-200'}`}>{m.name}</p>
-                    <p className={`text-[9px] font-black uppercase tracking-widest ${selectedMember?.id === m.id ? 'text-blue-100' : 'text-zinc-500'}`}>
-                      {m.id === user.id ? 'Meu Perfil' : m.id === user.spouseId ? 'Cônjuge' : 'Discípulo'}
-                    </p>
-                  </div>
-                  {selectedMember?.id === m.id && <ChevronRight size={16} className="text-white" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-8">
+      <div className="grid grid-cols-1 gap-10">
+        <div className="lg:col-span-12">
           <AnimatePresence mode="wait">
             {selectedMember ? (
               <motion.div 

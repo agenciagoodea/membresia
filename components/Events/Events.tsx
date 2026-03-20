@@ -6,12 +6,15 @@ import { ChurchEvent, UserRole, Cell, CellMeetingException } from '../../types';
 import { mergeAgendaItems } from '../../utils/agendaUtils';
 import { cellMeetingService } from '../../services/cellMeetingService';
 import EventModal from './EventModal';
+import MonthlyAgenda from '../Member/MonthlyAgenda';
+import { memberService } from '../../services/memberService';
 
 const Events = ({ user }: { user: any }) => {
   const [events, setEvents] = useState<ChurchEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ChurchEvent | null>(null);
+  const [cellAnniversaries, setCellAnniversaries] = useState<any[]>([]);
 
   const canEdit = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE].includes(user.role);
 
@@ -20,14 +23,61 @@ const Events = ({ user }: { user: any }) => {
       setLoading(true);
       const churchId = user.churchId || user.church_id;
       
-      const [eventsData, cellsData, exceptionsData] = await Promise.all([
+      const [eventsData, cellsData, exceptionsData, allMembers] = await Promise.all([
         eventService.getAll(churchId),
         cellService.getAll(churchId),
-        cellMeetingService.getExceptions(churchId)
+        cellMeetingService.getExceptions(churchId),
+        memberService.getAll(churchId)
       ]);
 
+      // Lógica de Aniversariantes da Célula
+      const currentYear = new Date().getFullYear();
+      const myCellId = user.cellId || user.profile?.cellId;
+      const cellBdays: any[] = [];
+
+      if (myCellId) {
+        const cellMembers = allMembers.filter(m => m.cellId === myCellId);
+        cellMembers.forEach(m => {
+          // Membro
+          if (m.birthDate) {
+            const [bYear, bMonth, bDay] = m.birthDate.split('-');
+            cellBdays.push({
+              id: `bday-${m.id}`,
+              title: `Aniversário: ${m.name.split(' ')[0]}`,
+              date: `${currentYear}-${bMonth}-${bDay}`,
+              time: '00:00',
+              location: 'Célula',
+              description: `Aniversário de ${m.name}.`,
+              type: 'BIRTHDAY',
+              isBirthday: true
+            });
+          }
+          // Filhos do Membro
+          if (m.children && Array.isArray(m.children)) {
+            m.children.forEach((c: any) => {
+              if (c.birthDate) {
+                const [cbYear, cbMonth, cbDay] = c.birthDate.split('-');
+                cellBdays.push({
+                  id: `child-bday-${c.id}`,
+                  title: `Aniversário: ${c.name.split(' ')[0]} (Filho(a) de ${m.name.split(' ')[0]})`,
+                  date: `${currentYear}-${cbMonth}-${cbDay}`,
+                  time: '00:00',
+                  location: 'Célula',
+                  description: `Aniversário de ${c.name}, dependente de ${m.name}.`,
+                  type: 'BIRTHDAY',
+                  isBirthday: true
+                });
+              }
+            });
+          }
+        });
+      }
+      setCellAnniversaries(cellBdays);
+
       const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, user);
-      setEvents(merged);
+      // Incluir aniversários no set de eventos para a listagem se necessário, 
+      // mas a MonthlyAgenda cuida de mostrar no calendário.
+      setEvents([...merged, ...cellBdays]);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
     } finally {
@@ -100,6 +150,12 @@ const Events = ({ user }: { user: any }) => {
           </button>
         )}
       </div>
+
+      {user.role === UserRole.MEMBER_VISITOR && (
+        <div className="mb-10">
+          <MonthlyAgenda events={events} user={user} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">

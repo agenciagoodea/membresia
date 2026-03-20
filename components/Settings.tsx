@@ -28,12 +28,13 @@ import {
   Users,
   Check,
   Baby,
-  Heart as HeartIcon,
   Smartphone,
   ArrowUpRight,
   Users2,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
@@ -46,7 +47,6 @@ import { Member, ChurchTenant, UserRole, Cell, LadderStage, M12Activity } from '
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('PROFILE');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
@@ -82,6 +82,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [isProcessingCrop, setIsProcessingCrop] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let cep = e.target.value.replace(/\D/g, '');
@@ -111,7 +112,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
   useEffect(() => {
     if (!user?.churchId) {
-      // Sem churchId: usar dados do próprio objeto user (metadata)
       setProfileData({
         name: user?.name || user?.user_metadata?.name || '',
         email: user?.email || user?.user_metadata?.email || '',
@@ -124,7 +124,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
     let cancelled = false;
     const fetchData = async () => {
-      // 1. Inicializar imediatamente com o que temos do Props
       setProfileData({
         name: user.name || user.user_metadata?.name || '',
         email: user.email || user.user_metadata?.email || '',
@@ -147,12 +146,14 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         pastorId: user.pastorId || user.user_metadata?.pastor_id || '',
         newPassword: '',
         confirmPassword: '',
+        // Garantir que campos removidos não causem inconsistência na UI local
+        holySpiritBaptism: null,
+        waterBaptismDate: null,
       });
 
       let effectiveChurchId = user.churchId;
       let myProfile = null;
 
-      // 2. Se não temos church_id no user, tentar buscar o membro pelo email globalmente para recuperar o ID
       if (!effectiveChurchId || effectiveChurchId === 'undefined' || typeof effectiveChurchId !== 'string') {
         const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
         if (userEmail) {
@@ -163,7 +164,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         }
       }
 
-      // Validar church_id efetivo
       if (!effectiveChurchId || effectiveChurchId === 'undefined' || effectiveChurchId.length < 30) {
         if (myProfile) {
           setMember(myProfile);
@@ -175,7 +175,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
       try {
         setLoading(true);
-
         const [churchRes, membersList, cellsList, m12Acts] = await Promise.all([
           churchService.getBySlug(user.churchSlug || user.user_metadata?.church_slug).catch(() => null),
           memberService.getAll(effectiveChurchId).catch(() => []),
@@ -192,7 +191,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           setAllCells(cellsList);
           setWinActivities(m12Acts.filter(a => a.stage === LadderStage.WIN && a.isActive));
 
-          // Se ainda não temos o perfil (não buscamos globalmente), buscar na lista da igreja
           if (!myProfile) {
             const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
             myProfile = membersList.find(m => m.email?.toLowerCase().trim() === userEmail);
@@ -200,12 +198,22 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
           if (myProfile) {
             setMember(myProfile);
+            // Sincronizar Origem com Respostas M12
+            const responses = await m12Service.getMemberResponses(myProfile.id).catch(() => []);
+            const winActs = m12Acts.filter(a => a.stage === LadderStage.WIN && a.isActive);
+            const originAct = winActs.find(a => a.label.toLowerCase().includes('origem') || a.label.toLowerCase().includes('conheceu') || a.label.toLowerCase().includes('aceitou'));
+            const originResponse = originAct ? responses.find(r => r.activity_id === originAct.id)?.value : null;
+
+            const normalizedSex = (myProfile.sex === 'M' ? 'MASCULINO' : (myProfile.sex === 'F' ? 'FEMININO' : myProfile.sex)) || 'MASCULINO';
+
             setProfileData(prev => ({
               ...prev,
               ...myProfile,
               name: myProfile.name || prev.name,
               email: myProfile.email || prev.email,
-              phone: myProfile.phone || prev.phone
+              phone: myProfile.phone || prev.phone,
+              sex: normalizedSex as any,
+              origin: originResponse || myProfile.origin || prev.origin
             }));
           }
         }
@@ -224,125 +232,97 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
     const updates: any = { cellId };
 
     if (linkedCell && linkedCell.leaderIds && linkedCell.leaderIds.length > 0) {
-      // Pega o primeiro líder como discipulador sugerido
-      const firstLeaderId = linkedCell.leaderIds[0];
-      const leaderMember = allMembers.find(m => m.id === firstLeaderId);
-      
-      if (leaderMember) {
-        updates.disciplerId = leaderMember.id;
-        // Sugere o pastor do líder da célula
-        if (leaderMember.pastorId) {
-          updates.pastorId = leaderMember.pastorId;
-        } else if (leaderMember.disciplerId) {
-          const leaderDiscipler = allMembers.find(m => m.id === leaderMember.disciplerId);
-          if (leaderDiscipler && (leaderDiscipler.role === UserRole.PASTOR || leaderDiscipler.role === UserRole.CHURCH_ADMIN)) {
-            updates.pastorId = leaderDiscipler.id;
+      // Filtrar líderes pelo gênero do usuário para definir o discipulador
+      const leaders = linkedCell.leaderIds
+        .map(id => allMembers.find(m => m.id === id))
+        .filter(m => m && m.sex === profileData.sex);
+
+      if (leaders.length > 0) {
+        const leaderMember = leaders[0];
+        if (leaderMember) {
+          updates.disciplerId = leaderMember.id;
+          if (leaderMember.pastorId) {
+            // Verificar gênero do pastor também
+            const pastorMember = allMembers.find(m => m.id === leaderMember.pastorId);
+            if (pastorMember && pastorMember.sex === profileData.sex) {
+              updates.pastorId = pastorMember.id;
+            }
           }
         }
       }
     }
-
     setProfileData(prev => ({ ...prev, ...updates }));
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      if (activeTab === 'PROFILE') {
-        if (member?.id) {
-          // Verificar se o perfil ainda não foi concluído (firstAccessCompleted === false)
-          const wasProfileIncomplete = member.firstAccessCompleted === false;
+      if (member?.id) {
+        const wasProfileIncomplete = member.firstAccessCompleted === false;
+        const updateData: any = { 
+          ...profileData, 
+          firstAccessCompleted: true,
+          // Limpeza explícita conforme solicitado pelo usuário
+          holySpiritBaptism: null,
+          waterBaptismDate: null,
+          waterBaptismPlace: null
+        };
 
-          // Marcar perfil como concluído ao salvar dados pessoais
-          const updateData = { ...profileData, firstAccessCompleted: true };
-
-          // Atualiza Perfil na tabela members
-          const updated = await memberService.update(member.id, updateData);
-          setMember(updated);
-          // Importante: Manter o cache local do Auth atualizado para a UI global (Sidebar/TopBar)
-          await supabase.auth.updateUser({
-            data: { profile: { ...user, ...updated, 
-              maritalStatus: updated.maritalStatus,
-              spouseId: updated.spouseId,
-              hasChildren: updated.hasChildren,
-              children: updated.children,
-              sex: updated.sex,
-              cellId: updated.cellId,
-              disciplerId: updated.disciplerId,
-              pastorId: updated.pastorId,
-              conversionDate: updated.conversionDate,
-              origin: updated.origin,
-              firstAccessCompleted: true
-            } }
-          });
-
-          // Atualização de Senha se preenchida
-          if (profileData.newPassword) {
-            if (profileData.newPassword !== profileData.confirmPassword) {
-              alert('As senhas não coincidem!');
-              setSaving(false);
-              return;
-            }
-            const { error: pwdError } = await supabase.auth.updateUser({ password: profileData.newPassword });
-            if (pwdError) throw pwdError;
-            // Limpar campos após sucesso
-            setProfileData(prev => ({ ...prev, newPassword: '', confirmPassword: '' }));
-          }
-
-          // Se o perfil estava incompleto, exibir modal de próximo passo (M12)
-          if (wasProfileIncomplete) {
-            setShowM12Modal(true);
-          } else {
-            alert('Perfil pessoal atualizado com sucesso!');
-          }
-        } else {
-          // Para MASTER_ADMIN ou usuários sem registro na tabela: salvar no Auth metadata
-          const { error: authError } = await supabase.auth.updateUser({
-            data: {
-              name: profileData.name,
-              phone: profileData.phone,
-              cpf: profileData.cpf,
-              birth_date: profileData.birthDate,
-              sex: profileData.sex,
-              marital_status: profileData.maritalStatus,
-              spouse_id: profileData.spouseId,
-              has_children: profileData.hasChildren,
-              children: profileData.children,
-              conversion_date: profileData.conversionDate,
-              baptism_date: profileData.baptismDate,
-              origin: profileData.origin,
-            }
-          });
-          if (authError) throw authError;
-
-          // Atualização de Senha se preenchida
-          if (profileData.newPassword) {
-            if (profileData.newPassword !== profileData.confirmPassword) {
-              alert('As senhas não coincidem!');
-              setSaving(false);
-              return;
-            }
-            const { error: pwdError } = await supabase.auth.updateUser({ password: profileData.newPassword });
-            if (pwdError) throw pwdError;
-            // Limpar campos após sucesso
-            setProfileData(prev => ({ ...prev, newPassword: '', confirmPassword: '' }));
-          }
+        // Persistência Tripla para Sincronização M12
+        const originAct = winActivities.find(a => a.label.toLowerCase().includes('origem') || a.label.toLowerCase().includes('conheceu') || a.label.toLowerCase().includes('aceitou'));
+        if (originAct && profileData.origin) {
+          // 1. Salvar na tabela de respostas estruturadas
+          await m12Service.saveMemberResponse(member.id, originAct.id, profileData.origin).catch(err => console.error('Erro ao sincronizar atividade:', err));
           
-          // Se for Master Admin, atualizar também o objeto virtual em cache para refletir na UI imediatamente
-          await supabase.auth.updateUser({
-            data: { profile: { ...user, ...profileData } }
-          });
-          alert('Perfil pessoal atualizado com sucesso!');
+          // 2. Sincronizar milestoneValues para compatibilidade com MyM12Activities
+          updateData.milestoneValues = {
+            ...(member.milestoneValues || {}),
+            [originAct.label]: profileData.origin
+          };
+          
+          // 3. Garantir que esteja marcado como concluído nas atividades
+          updateData.completedMilestones = Array.from(new Set([...(member.completedMilestones || []), originAct.label]));
         }
-      } else if (activeTab === 'CHURCH' && church?.id) {
-        // Atualiza Igreja
-        const updated = await churchService.update(church.id, churchData);
-        setChurch(updated);
-        alert('Dados da igreja atualizados com sucesso!');
+
+        const updated = await memberService.update(member.id, updateData);
+        setMember(updated);
+        await supabase.auth.updateUser({
+          data: { profile: { ...user, ...updated, firstAccessCompleted: true } }
+        });
+        if (profileData.newPassword) {
+          if (profileData.newPassword !== profileData.confirmPassword) {
+            alert('As senhas não coincidem!');
+            setSaving(false);
+            return;
+          }
+          const { error: pwdError } = await supabase.auth.updateUser({ password: profileData.newPassword });
+          if (pwdError) throw pwdError;
+          setProfileData(prev => ({ ...prev, newPassword: '', confirmPassword: '' }));
+        }
+        if (wasProfileIncomplete) setShowM12Modal(true);
+        else alert('Perfil pessoal atualizado com sucesso!');
+      } else {
+        const { error: authError } = await supabase.auth.updateUser({
+          data: {
+            name: profileData.name,
+            phone: profileData.phone,
+            cpf: profileData.cpf,
+            birth_date: profileData.birthDate,
+            sex: profileData.sex,
+            marital_status: profileData.maritalStatus,
+            spouse_id: profileData.spouseId,
+            has_children: profileData.hasChildren,
+            children: profileData.children,
+            conversion_date: profileData.conversionDate,
+            origin: profileData.origin,
+          }
+        });
+        if (authError) throw authError;
+        alert('Perfil pessoal atualizado com sucesso!');
       }
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      alert('Resumo do erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido ao salvar.'));
+      console.error('Erro ao salvar:', error);
+      alert('Erro ao salvar. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -355,7 +335,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const handleCropCancel = () => {
     setIsCropping(false);
     setPhotoPreview('');
-    setSelectedFile(null);
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,55 +352,28 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const handleCropConfirm = async () => {
     try {
       setIsProcessingCrop(true);
-      const croppedImageFile = await getCroppedImg(
-        photoPreview,
-        croppedAreaPixels
-      );
-
+      const croppedImageFile = await getCroppedImg(photoPreview, croppedAreaPixels);
       if (croppedImageFile) {
         setIsCropping(false);
         setSaving(true);
         const url = await memberService.uploadAvatar(croppedImageFile);
-
-        // Salvar na tabela members se houver membro cadastrado
         if (member?.id) {
           const updated = await memberService.update(member.id, { avatar: url });
           setMember(updated);
-          // Manter o cache local do Auth atualizado para a UI global refletir a nova foto
-          await supabase.auth.updateUser({ 
-            data: { profile: { ...user, ...updated, avatar: url } } 
-          });
-        } else {
-          // Para MASTER_ADMIN: salvar no user_metadata do Auth
-          await supabase.auth.updateUser({ 
-            data: { 
-              avatar_url: url,
-              profile: { ...user, avatar: url } 
-            } 
-          });
+          await supabase.auth.updateUser({ data: { profile: { ...user, ...updated, avatar: url } } });
         }
-
         setProfileData(prev => ({ ...prev, avatar: url }));
-        setPhotoPreview('');
-        setSelectedFile(null);
-        alert('Foto de perfil atualizada com sucesso!');
+        alert('Foto de perfil atualizada!');
       }
     } catch (e) {
       console.error(e);
-      alert("Erro ao recortar ou salvar imagem.");
+      alert("Erro ao salvar imagem.");
     } finally {
       setIsProcessingCrop(false);
       setSaving(false);
     }
   };
 
-  const tabs = [
-    { id: 'PROFILE', label: 'Meu Perfil', icon: <User size={18} /> },
-    ...(user.role !== UserRole.MASTER_ADMIN ? [{ id: 'CHURCH', label: 'Dados da Igreja', icon: <Globe size={18} /> }] : []),
-    { id: 'SECURITY', label: 'Segurança & API', icon: <Lock size={18} /> },
-  ];
-
-  // Ajustar perfil para Agência Goodea se for Master Admin
   const activeUser = user.role === UserRole.MASTER_ADMIN ? {
     ...user,
     name: user.name || 'Agência Goodea',
@@ -429,835 +381,477 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   } : user;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
-
-      {/* ── Modal: Próximo Passo — Atividades M12 ───────────────────────────── */}
-      {showM12Modal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowM12Modal(false)} />
-          <div className="relative w-full max-w-md animate-in zoom-in-95 fade-in duration-400">
-            <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full scale-150 pointer-events-none" />
-            <div className="relative bg-zinc-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.15)]">
-              <div className="p-8 pb-6 bg-gradient-to-b from-emerald-600/10 to-transparent border-b border-white/5">
-                <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.8rem] flex items-center justify-center mb-5">
-                  <Check size={28} className="text-emerald-400" />
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-tight leading-tight uppercase">
-                  Cadastro Concluído!
-                </h2>
-                <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mt-1">Perfil salvo com sucesso</p>
-              </div>
-              <div className="p-8 space-y-6">
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  Agora finalize seu desenvolvimento informando suas atividades na igreja.
-                </p>
-                <div className="p-4 bg-blue-600/5 border border-blue-500/10 rounded-2xl flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-600/20 rounded-xl flex items-center justify-center shrink-0">
-                    <Activity size={16} className="text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-white text-xs font-black uppercase tracking-tight">Minhas Atividades M12</p>
-                    <p className="text-zinc-600 text-[10px] font-bold mt-0.5">Registre sua jornada dentro da igreja</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => { setShowM12Modal(false); navigate('/app/my-activities'); }}
-                    className="w-full py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2.5"
-                  >
-                    <ChevronRight size={16} />
-                    Ir para Minhas Atividades M12
-                  </button>
-                  <button
-                    onClick={() => setShowM12Modal(false)}
-                    className="w-full py-3.5 bg-white/5 text-zinc-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-zinc-300 transition-all"
-                  >
-                    Fazer isso depois
-                  </button>
-                </div>
-              </div>
+    <React.Fragment>
+      <div className="space-y-10 animate-in fade-in duration-700">
+        
+        {/* Modal M12 */}
+        {showM12Modal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowM12Modal(false)} />
+            <div className="relative w-full max-w-md bg-zinc-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl p-8">
+              <h2 className="text-2xl font-black text-white uppercase mb-4">Cadastro Concluído!</h2>
+              <p className="text-zinc-400 text-sm mb-6">Finalize seu desenvolvimento informando suas atividades.</p>
+              <button 
+                onClick={() => { setShowM12Modal(false); navigate('/app/my-activities'); }}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 mb-2"
+              >
+                Ir para Atividades
+              </button>
+              <button onClick={() => setShowM12Modal(false)} className="w-full py-3 text-zinc-500 font-bold uppercase">Depois</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Configurações</h2>
-          <p className="text-zinc-500 font-medium text-lg italic">Console de controle da sua instância e perfil pessoal.</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-10">
-        <div className="lg:w-72 space-y-1.5 shrink-0">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-zinc-900 text-white shadow-xl border border-white/5' : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
-                }`}
-            >
-              <div className="flex items-center gap-4">
-                {tab.icon}
-                {tab.label}
-              </div>
-              {activeTab === tab.id && <ChevronRight size={14} className="text-blue-500" />}
-            </button>
-          ))}
-          <div className="pt-8 mt-8 border-t border-white/5">
-            <button className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold text-rose-500 hover:bg-rose-500/10 transition-all">
-              <LogOut size={18} /> Sair da Conta
-            </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Meu Perfil</h2>
+            <p className="text-zinc-500 font-medium text-lg italic">Mantenha seus dados atualizados.</p>
           </div>
         </div>
 
-        <div className="flex-1 bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
-          {loading ? (
+        <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
+          {loading && (
             <div className="py-20 flex flex-col items-center justify-center text-zinc-500 font-black tracking-[0.5em] animate-pulse">
-              Sincronizando Banco de Dados...
+              Sincronizando...
             </div>
-          ) : (
-            <>
-              {activeTab === 'PROFILE' && (
-                <div className="space-y-10 animate-in fade-in duration-300">
-                  <div className="flex flex-col md:flex-row md:items-center gap-8">
-                    <div className="relative group">
-                      <div className="relative">
-                        <img 
-                          src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`} 
-                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || activeUser.name || 'User')}&background=2563eb&color=fff&size=200`; }}
-                          className="w-32 h-32 rounded-[2.5rem] ring-4 ring-zinc-950 shadow-2xl object-cover transition-all group-hover:scale-95 group-hover:rounded-[3rem]" 
-                          alt="Avatar" 
-                        />
-                        <div className="absolute -bottom-2 -right-2 flex gap-1">
-                          <label htmlFor="avatar-upload-gallery" className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center justify-center cursor-pointer shadow-lg transition-all active:scale-90 border-2 border-zinc-950">
-                            <Smartphone size={18} />
-                          </label>
-                          <label htmlFor="avatar-upload-camera" className="w-10 h-10 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl flex items-center justify-center cursor-pointer shadow-lg transition-all active:scale-90 border-2 border-zinc-950">
-                            <Camera size={18} />
-                          </label>
-                        </div>
-                      </div>
-                      <input id="avatar-upload-gallery" type="file" accept="image/*" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />
-                      <input id="avatar-upload-camera" type="file" accept="image/*" capture="user" className="hidden" aria-hidden="true" onChange={handlePhotoSelect} disabled={saving} />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black text-white uppercase tracking-tight break-all">{profileData.name || activeUser.name}</h3>
-                      <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest mt-1">{member?.role || activeUser.role}</p>
+          )}
+
+          {!loading && (
+            <div className="space-y-10 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row md:items-center gap-8">
+                <div className="relative group">
+                  <img 
+                    src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=User&background=2563eb&color=fff&size=200`} 
+                    className="w-32 h-32 rounded-[2.5rem] ring-4 ring-zinc-950 shadow-2xl object-cover" 
+                    alt="Avatar" 
+                  />
+                  <div className="absolute -bottom-2 -right-2 flex gap-1">
+                    <label htmlFor="avatar-upload-gallery" className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center cursor-pointer border-2 border-zinc-950"><Smartphone size={18} /></label>
+                    <label htmlFor="avatar-upload-camera" className="w-10 h-10 bg-zinc-800 text-white rounded-2xl flex items-center justify-center cursor-pointer border-2 border-zinc-950"><Camera size={18} /></label>
+                  </div>
+                  <input id="avatar-upload-gallery" type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+                  <input id="avatar-upload-camera" type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoSelect} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase">{profileData.name || activeUser.name}</h3>
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{member?.role || activeUser.role}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Informações Básicas */}
+                <div className="space-y-4 md:col-span-2">
+                  <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Informações Básicas</h4>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User size={16} className="text-zinc-600" /></div>
+                    <input value={profileData.name || ''} onChange={e => setProfileData({ ...profileData, name: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">E-mail de Acesso</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Mail size={16} className="text-zinc-600" /></div>
+                    <input type="email" value={profileData.email || ''} onChange={e => setProfileData({ ...profileData, email: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Telefone / WhatsApp</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Phone size={16} className="text-zinc-600" /></div>
+                    <input type="tel" value={profileData.phone || ''} onChange={e => setProfileData({ ...profileData, phone: e.target.value })} placeholder="(11) 99999-9999" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CPF</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Target size={16} className="text-zinc-600" /></div>
+                    <input value={profileData.cpf || ''} onChange={e => setProfileData({ ...profileData, cpf: e.target.value })} placeholder="000.000.000-00" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Nascimento</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Calendar size={16} className="text-zinc-600" /></div>
+                    <input type="date" value={profileData.birthDate || ''} onChange={e => setProfileData({ ...profileData, birthDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Conversão</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Zap size={16} className="text-zinc-600" /></div>
+                    <input type="date" value={profileData.conversionDate || ''} onChange={e => setProfileData({ ...profileData, conversionDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                  </div>
+                </div>
+
+                {/* Vínculos & Família */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos & Família</h4>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Gênero</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Users size={16} className="text-zinc-600" /></div>
+                      <select value={profileData.sex || ''} onChange={e => setProfileData({ ...profileData, sex: e.target.value as any })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                        <option value="" className="bg-zinc-900">Selecionar Gênero</option>
+                        <option value="MASCULINO" className="bg-zinc-900">MASCULINO</option>
+                        <option value="FEMININO" className="bg-zinc-900">FEMININO</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Campos Básicos */}
-                    <div className="space-y-4 md:col-span-2">
-                      <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Informações Básicas</h4>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Estado Civil</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Heart size={16} className="text-zinc-600" /></div>
+                      <select
+                        value={profileData.maritalStatus || ''}
+                        onChange={(e) => setProfileData({ ...profileData, maritalStatus: e.target.value, spouseId: (['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(e.target.value)) ? profileData.spouseId : '' })}
+                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-zinc-900">Selecionar Estado Civil</option>
+                        {['Solteiro(a)', 'Casado(a)', 'Noivo(a)', 'Moram Juntos', 'Divorciado(a)', 'Viúvo(a)'].map(status => (
+                          <option key={status} value={status} className="bg-zinc-900">{status}</option>
+                        ))}
+                      </select>
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome de Exibição / Civil</label>
+                  {(['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(profileData.maritalStatus || '')) ? (
+                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cônjuge / Parceiro(a)</label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <User size={16} className="text-zinc-600" />
-                        </div>
-                        <input value={profileData.name || ''} onChange={e => setProfileData({ ...profileData, name: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">E-mail Ministerial de Acesso</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Mail size={16} className="text-zinc-600" />
-                        </div>
-                        <input type="email" value={profileData.email || ''} onChange={e => setProfileData({ ...profileData, email: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Telefone / WhatsApp</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Phone size={16} className="text-zinc-600" />
-                        </div>
-                        <input type="tel" value={profileData.phone || ''} onChange={e => setProfileData({ ...profileData, phone: e.target.value })} placeholder="(11) 99999-9999" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CPF</label>
-                       <div className="relative">
-                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                           <Target size={16} className="text-zinc-600" />
-                         </div>
-                         <input value={profileData.cpf || ''} onChange={e => setProfileData({ ...profileData, cpf: e.target.value })} placeholder="000.000.000-00" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Nascimento</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Calendar size={16} className="text-zinc-600" />
-                        </div>
-                        <input type="date" value={profileData.birthDate || ''} onChange={e => setProfileData({ ...profileData, birthDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
-                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos & Família</h4>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Gênero</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Users size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.sex || ''}
-                          onChange={e => setProfileData({ ...profileData, sex: e.target.value as any })}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900">Selecionar Gênero</option>
-                          <option value="MASCULINO" className="bg-zinc-900">MASCULINO</option>
-                          <option value="FEMININO" className="bg-zinc-900">FEMININO</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Estado Civil</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Heart size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.maritalStatus || ''}
-                          onChange={(e) => {
-                            const newStatus = e.target.value;
-                            setProfileData({ ...profileData, maritalStatus: newStatus, spouseId: (['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(newStatus)) ? profileData.spouseId : '' });
-                          }}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900">Selecionar Estado Civil</option>
-                          {['Solteiro(a)', 'Casado(a)', 'Noivo(a)', 'Moram Juntos', 'Divorciado(a)', 'Viúvo(a)'].map(status => (
-                            <option key={status} value={status} className="bg-zinc-900">{status}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {(['Casado(a)', 'Noivo(a)', 'Moram Juntos'].includes(profileData.maritalStatus || '')) && (
-                      <div className="space-y-2 animate-in slide-in-from-top-2">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cônjuge / Parceiro(a)</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <User size={16} className="text-zinc-600" />
-                          </div>
-                          <select
-                            value={profileData.spouseId || ''}
-                            onChange={(e) => setProfileData({ ...profileData, spouseId: e.target.value })}
-                            className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                          >
-                            <option value="" className="bg-zinc-900 text-zinc-500">Selecione o Parceiro</option>
-                            {allMembers
-                              .filter(m => {
-                                // 1. Não ser o próprio usuário
-                                if (m.id === member?.id) return false;
-                                
-                                // 2. Filtro de Gênero Oposto
-                                if (profileData.sex === 'MASCULINO') return m.sex === 'FEMININO';
-                                if (profileData.sex === 'FEMININO') return m.sex === 'MASCULINO';
-                                
-                                return true; // Se o usuário não definiu gênero, mostra todos (menos ele mesmo)
-                              })
-                              .filter(m => {
-                                // 3. Ocultar membros que já possuem cônjuge linkado (exceto se for o próprio usuário atual)
-                                // Se m.spouseId existe e não é o ID do usuário logado, ele já está comprometido
-                                return !m.spouseId || m.spouseId === member?.id;
-                              })
-                              .map(m => (
-                                <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
-                              ))
-                            }
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="md:col-span-2">
-                      <div className="p-6 bg-zinc-950 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500">
-                            <Baby size={24} />
-                          </div>
-                          <div>
-                            <p className="text-white font-black uppercase tracking-tight">Possui Filhos?</p>
-                            <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Habilite para cadastrar dependentes.</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setProfileData({ ...profileData, hasChildren: !profileData.hasChildren })}
-                          className={`w-14 h-7 rounded-full relative transition-all duration-300 ${profileData.hasChildren ? 'bg-blue-600' : 'bg-zinc-800'}`}
-                        >
-                          <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${profileData.hasChildren ? 'left-8' : 'left-1'}`} />
-                        </button>
-                      </div>
-
-                      {profileData.hasChildren && (
-                        <div className="mt-6 p-8 bg-zinc-950/50 border border-white/5 rounded-[2.5rem] space-y-8 animate-in slide-in-from-top-4">
-                           <div className="flex items-center justify-between">
-                              <h5 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dependentes / Filhos</h5>
-                              <button 
-                                onClick={() => {
-                                  const newChild = { id: Math.random().toString(36).substr(2, 9), name: '', birthDate: '', photo: '', cpf: '' };
-                                  setProfileData({ ...profileData, children: [...(profileData.children || []), newChild] });
-                                }}
-                                className="px-5 py-2.5 bg-blue-600/10 text-blue-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-500/10"
-                              >
-                                + Adicionar Dependente
-                              </button>
-                           </div>
-                           
-                           <div className="space-y-8">
-                              {(profileData.children || []).map((child: any, idx: number) => (
-                                <div key={child.id} className="p-8 bg-zinc-900/50 rounded-[2rem] border border-white/5 relative group overflow-hidden">
-                                   <button 
-                                      onClick={() => {
-                                        const next = (profileData.children || []).filter((_: any, i: number) => i !== idx);
-                                        setProfileData({ ...profileData, children: next });
-                                      }}
-                                      className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                                   >
-                                      <X size={18} />
-                                   </button>
-
-                                   <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-                                      {/* Foto do Filho */}
-                                      <div className="md:col-span-3 flex flex-col items-center gap-3">
-                                         <div 
-                                           onClick={() => document.getElementById(`avatar-child-${idx}`)?.click()}
-                                           className="relative w-28 h-28 rounded-[2rem] bg-zinc-950 border-2 border-dashed border-white/5 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-all overflow-hidden"
-                                         >
-                                            {child.photo ? (
-                                              <img src={child.photo} className="w-full h-full object-cover" alt="" />
-                                            ) : (
-                                              <div className="text-center">
-                                                <Camera size={20} className="text-zinc-800 mb-1 mx-auto" />
-                                                <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Subir Foto</span>
-                                              </div>
-                                            )}
-                                            <input 
-                                              id={`avatar-child-${idx}`} 
-                                              type="file" 
-                                              className="hidden" 
-                                              accept="image/*" 
-                                              onChange={async (e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                  try {
-                                                    const url = await memberService.uploadAvatar(file);
-                                                    const next = [...(profileData.children || [])];
-                                                    next[idx].photo = url;
-                                                    setProfileData({ ...profileData, children: next });
-                                                  } catch (error) { console.error(error); }
-                                                }
-                                              }} 
-                                            />
-                                         </div>
-                                         <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Foto</p>
-                                      </div>
-
-                                      {/* Dados do Filho */}
-                                      <div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                         <div className="md:col-span-2 space-y-1">
-                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">Nome Completo</label>
-                                            <input 
-                                              value={child.name} 
-                                              onChange={e => {
-                                                const next = [...(profileData.children || [])];
-                                                next[idx].name = e.target.value;
-                                                setProfileData({ ...profileData, children: next });
-                                              }}
-                                              placeholder="Nome completo do dependente"
-                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
-                                            />
-                                         </div>
-                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-zinc-600 uppercase ml-1 tracking-widest">Nascimento</label>
-                                            <input 
-                                              type="date"
-                                              value={child.birthDate} 
-                                              onChange={e => {
-                                                const next = [...(profileData.children || [])];
-                                                next[idx].birthDate = e.target.value;
-                                                setProfileData({ ...profileData, children: next });
-                                              }}
-                                              className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 appearance-none"
-                                            />
-                                         </div>
-
-                                         <div className="md:col-span-2 flex items-center justify-center p-4 bg-blue-600/5 rounded-2xl border border-blue-500/10">
-                                             <div className="flex flex-col items-center">
-                                                <span className="text-[10px] font-black text-blue-500/60 uppercase tracking-[0.3em] mb-1">Idade Atual</span>
-                                                <span className="text-4xl font-black text-blue-500 tracking-tighter">
-                                                   {child.birthDate ? `${calculateAge(child.birthDate)}` : '--'}
-                                                   <span className="text-sm ml-1 uppercase opacity-60">Anos</span>
-                                                </span>
-                                             </div>
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Minha Jornada Cristã */}
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
-                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Minha Jornada Cristã</h4>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Conversão</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Zap size={16} className="text-zinc-600" />
-                        </div>
-                        <input type="date" value={profileData.conversionDate || ''} onChange={e => setProfileData({ ...profileData, conversionDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Data de Batismo nas Águas</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Check size={16} className="text-zinc-600" />
-                        </div>
-                        <input type="date" value={profileData.baptismDate || ''} onChange={e => setProfileData({ ...profileData, baptismDate: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Como aceitou a Jesus Cristo?</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Globe size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.origin || ''}
-                          onChange={e => setProfileData({ ...profileData, origin: e.target.value })}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Origem</option>
-                          {winActivities.length > 0 ? (
-                            winActivities.map(act => (
-                              <option key={act.id} value={act.label} className="bg-zinc-900">{act.label}</option>
-                            ))
-                          ) : (
-                            ['EVANGELISMO', 'VISITA DE CÉLULA', 'PEDIDO DE ORAÇÃO', 'OUTRA IGREJA', 'REDES SOCIAIS', 'AMIGOS / FAMÍLIA', 'OUTROS'].map(origin => (
-                              <option key={origin} value={origin} className="bg-zinc-900">{origin}</option>
-                            ))
-                          )}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                          <ArrowUpRight size={14} className="text-zinc-700" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Vínculos Ministeriais */}
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
-                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos Ministeriais</h4>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Célula que Participa</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Users2 size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.cellId || ''}
-                          onChange={e => handleCellChange(e.target.value)}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Célula</option>
-                          {allCells.map(cell => (
-                            <option key={cell.id} value={cell.id} className="bg-zinc-900">{cell.name}</option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                          <ArrowUpRight size={14} className="text-zinc-700" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Discipulador</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <User size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.disciplerId || ''}
-                          onChange={e => setProfileData({ ...profileData, disciplerId: e.target.value })}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Discipulador</option>
-                          {(() => {
-                            const linkedCell = allCells.find(c => c.id === profileData.cellId);
-                            const cellLeaders = linkedCell ? linkedCell.leaderIds || [] : [];
-                            return allMembers
-                              .filter(m => m.id !== member?.id)
-                              .filter(m => cellLeaders.length === 0 || cellLeaders.includes(m.id))
-                              .map(m => (
-                                <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
-                              ));
-                          })()}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                          <ArrowUpRight size={14} className="text-zinc-700" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Pastor (Opcional)</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <ShieldCheck size={16} className="text-zinc-600" />
-                        </div>
-                        <select
-                          value={profileData.pastorId || ''}
-                          onChange={e => setProfileData({ ...profileData, pastorId: e.target.value })}
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="" className="bg-zinc-900 text-zinc-500">Selecionar Pastor</option>
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User size={16} className="text-zinc-600" /></div>
+                        <select value={profileData.spouseId || ''} onChange={(e) => setProfileData({ ...profileData, spouseId: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                          <option value="" className="bg-zinc-900 text-zinc-500">Selecione o Parceiro</option>
                           {allMembers
-                            .filter(m => m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
-                            .map(m => (
-                              <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>
-                            ))
+                            .filter(m => m.id !== member?.id)
+                            .filter(m => {
+                              if (profileData.sex === 'MASCULINO') return m.sex === 'FEMININO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
+                              if (profileData.sex === 'FEMININO') return m.sex === 'MASCULINO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
+                              return true;
+                            })
+                            .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
                           }
                         </select>
-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                          <ArrowUpRight size={14} className="text-zinc-700" />
-                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="space-y-2 opacity-50">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cônjuge / Parceiro(a)</label>
+                      <div className="bg-zinc-950/30 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-zinc-700 cursor-not-allowed">
+                        Não aplicável
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                    {/* Segurança e Alteração de Senha */}
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-rose-600 rounded-full" />
-                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Acesso e Segurança</h4>
+                <div className="md:col-span-2">
+                  <div className="p-6 bg-zinc-950 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500"><Baby size={24} /></div>
+                      <div>
+                        <p className="text-white font-black uppercase tracking-tight">Possui Filhos?</p>
+                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Habilite para cadastrar dependentes.</p>
                       </div>
                     </div>
+                    <button type="button" onClick={() => setProfileData({ ...profileData, hasChildren: !profileData.hasChildren })} className={`w-14 h-7 rounded-full relative transition-all duration-300 ${profileData.hasChildren ? 'bg-blue-600' : 'bg-zinc-800'}`}>
+                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${profileData.hasChildren ? 'left-8' : 'left-1'}`} />
+                    </button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nova Senha</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Lock size={16} className="text-zinc-600" />
-                        </div>
-                        <input 
-                          type="password" 
-                          value={profileData.newPassword || ''} 
-                          onChange={e => setProfileData({ ...profileData, newPassword: e.target.value })} 
-                          placeholder="Mínimo 6 caracteres"
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" 
-                        />
-                      </div>
+                  {profileData.hasChildren && (
+                    <div className="mt-6 p-8 bg-zinc-950/50 border border-white/5 rounded-[2.5rem] space-y-8 animate-in slide-in-from-top-4">
+                       <div className="flex items-center justify-between">
+                          <h5 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dependentes / Filhos</h5>
+                          <button onClick={() => setProfileData({ ...profileData, children: [...(profileData.children || []), { id: Math.random().toString(36).substr(2, 9), name: '', birthDate: '', photo: '' }] })} className="px-5 py-2.5 bg-blue-600/10 text-blue-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-500/10">+ Adicionar Dependente</button>
+                       </div>
+                       <div className="space-y-8">
+                          {(profileData.children || []).map((child: any, idx: number) => (
+                            <div key={child.id} className="p-6 bg-zinc-900/50 rounded-[2rem] border border-white/5 relative group">
+                               <button onClick={() => { const next = (profileData.children || []).filter((_: any, i: number) => i !== idx); setProfileData({ ...profileData, children: next }); }} className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><X size={18} /></button>
+                               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                                  <div className="md:col-span-3 flex flex-col items-center gap-2">
+                                     <div onClick={() => document.getElementById(`child-photo-${idx}`)?.click()} className="w-20 h-20 rounded-2xl bg-zinc-950 border border-white/5 flex items-center justify-center cursor-pointer overflow-hidden">
+                                        {child.photo ? <img src={child.photo} className="w-full h-full object-cover" alt="" /> : <Camera size={20} className="text-zinc-800" />}
+                                        <input id={`child-photo-${idx}`} type="file" className="hidden" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { const url = await memberService.uploadAvatar(file); const next = [...(profileData.children || [])]; next[idx].photo = url; setProfileData({ ...profileData, children: next }); } }} />
+                                     </div>
+                                     <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Foto</span>
+                                  </div>
+                                  <div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div className="md:col-span-2"><input value={child.name} onChange={e => { const next = [...(profileData.children || [])]; next[idx].name = e.target.value; setProfileData({ ...profileData, children: next }); }} placeholder="Nome completo" className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-4 py-3 text-xs text-white" /></div>
+                                     <div><input type="date" value={child.birthDate} onChange={e => { const next = [...(profileData.children || [])]; next[idx].birthDate = e.target.value; setProfileData({ ...profileData, children: next }); }} className="w-full bg-zinc-950/50 border border-white/5 rounded-xl px-4 py-3 text-xs text-white" /></div>
+                                     <div className="flex items-center gap-2 text-blue-500 font-black uppercase text-[10px] tracking-tight bg-blue-600/5 px-4 rounded-xl border border-blue-500/10">Idade: {child.birthDate ? calculateAge(child.birthDate) : '--'} Anos</div>
+                                  </div>
+                               </div>
+                            </div>
+                          ))}
+                       </div>
                     </div>
+                  )}
+                </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Confirmar Nova Senha</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Check size={16} className="text-zinc-600" />
-                        </div>
-                        <input 
-                          type="password" 
-                          value={profileData.confirmPassword || ''} 
-                          onChange={e => setProfileData({ ...profileData, confirmPassword: e.target.value })} 
-                          placeholder="Repita a nova senha"
-                          className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" 
-                        />
-                      </div>
-                    </div>
+                {/* FICHA MINISTERIAL (GANHAR) */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">FICHA MINISTERIAL (GANHAR)</h4>
+                  </div>
+                </div>
 
-                    {/* Endereço Residencial */}
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
-                        <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Endereço Residencial</h4>
-                      </div>
-                    </div>
-                    {/* Endereço Residencial Layout Otimizado */}
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <MapPin size={16} className="text-zinc-600" />
-                          </div>
-                          <input value={profileData.cep || ''} onChange={handleCepChange} maxLength={9} placeholder="00000-000" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                          {fetchingCep && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
-                        </div>
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rua / Logradouro</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Home size={16} className="text-zinc-600" />
-                          </div>
-                          <input value={profileData.street || ''} onChange={e => setProfileData({ ...profileData, street: e.target.value })} placeholder="Nome da rua" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Número</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <MapPin size={16} className="text-zinc-600" />
-                        </div>
-                        <input value={profileData.number || ''} onChange={e => setProfileData({ ...profileData, number: e.target.value })} placeholder="123" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Complemento</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Building size={16} className="text-zinc-600" />
-                        </div>
-                        <input value={profileData.complement || ''} onChange={e => setProfileData({ ...profileData, complement: e.target.value })} placeholder="Apto, Bloco, etc" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                      </div>
-                    </div>
-                    {/* Bairro, Cidade e UF na mesma linha */}
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-12 gap-6">
-                      <div className="space-y-2 md:col-span-5">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Bairro</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Map size={16} className="text-zinc-600" />
-                          </div>
-                          <input value={profileData.neighborhood || ''} onChange={e => setProfileData({ ...profileData, neighborhood: e.target.value })} placeholder="Bairro" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                        </div>
-                      </div>
-                      <div className="space-y-2 md:col-span-5">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cidade</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Building size={16} className="text-zinc-600" />
-                          </div>
-                          <input value={profileData.city || ''} onChange={e => setProfileData({ ...profileData, city: e.target.value })} placeholder="Cidade" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                        </div>
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">UF</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <MapPin size={16} className="text-zinc-600" />
-                          </div>
-                          <input value={profileData.state || ''} onChange={e => setProfileData({ ...profileData, state: e.target.value })} placeholder="SP" maxLength={2} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all uppercase placeholder:normal-case" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="md:col-span-2 pt-10 flex justify-end">
+                <div className="md:col-span-2 space-y-4">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Como nos conheceu / Como aceitou a Jesus?</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {((winActivities.find(a => a.configOptions && a.configOptions.length > 0)?.configOptions || (winActivities.length > 0 ? winActivities.map(a => a.label) : ['EVANGELISMO', 'VISITA', 'PEDIDO DE ORAÇÃO', 'OUTRA IGREJA', 'REDES SOCIAIS', 'AMIGOS / FAMÍLIA', 'OUTROS']))).map((option) => (
                       <button
-                        onClick={handleSave}
-                        disabled={saving || loading}
-                        className={`flex items-center gap-3 px-10 py-5 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/20 ${saving ? 'opacity-50 cursor-not-allowed' : ''} active:scale-95`}
+                        key={option}
+                        type="button"
+                        onClick={() => setProfileData({ ...profileData, origin: option })}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 group relative overflow-hidden ${
+                          profileData.origin === option 
+                            ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/50' 
+                            : 'bg-zinc-950 border-white/5 hover:border-white/10 hover:bg-white/5'
+                        }`}
                       >
-                        <Save size={20} /> {saving ? 'Salvando Perfil...' : 'Salvar Alterações do Perfil'}
+                        {profileData.origin === option && (
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center animate-in zoom-in-50 duration-300">
+                             <Check size={10} className="text-white font-black" />
+                          </div>
+                        )}
+                        <div className={`p-2 rounded-xl transition-all ${profileData.origin === option ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-500 group-hover:scale-110'}`}>
+                           <Globe size={16} />
+                        </div>
+                        <span className={`text-[9px] font-black uppercase tracking-tight text-center leading-tight ${profileData.origin === option ? 'text-white' : 'text-zinc-500'}`}>
+                          {option}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vínculos Ministeriais */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Vínculos Ministeriais</h4>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Célula</label>
+                  <select value={profileData.cellId || ''} onChange={e => handleCellChange(e.target.value)} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                    <option value="" className="bg-zinc-900">Selecionar Célula</option>
+                    {allCells.map(cell => <option key={cell.id} value={cell.id} className="bg-zinc-900">{cell.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Estágio na Escada (M12)</label>
+                  <div className="relative">
+                    <input 
+                      disabled 
+                      value={profileData.stage || 'GANHAR'} 
+                      className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl px-6 py-4 text-sm font-black text-zinc-500 outline-none cursor-not-allowed uppercase tracking-widest" 
+                    />
+                    <div className="absolute inset-y-0 right-4 flex items-center">
+                      <Lock size={14} className="text-zinc-700" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Discpulador</label>
+                  <select value={profileData.disciplerId || ''} onChange={e => setProfileData({ ...profileData, disciplerId: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                    <option value="" className="bg-zinc-900">Selecionar Discipulador</option>
+                    {allMembers
+                      .filter(m => m.id !== member?.id)
+                      .filter(m => {
+                        if (!profileData.sex) return true;
+                        return m.sex === profileData.sex;
+                      })
+                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
+                    }
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Meu Pastor</label>
+                  <select value={profileData.pastorId || ''} onChange={e => setProfileData({ ...profileData, pastorId: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                    <option value="" className="bg-zinc-900">Selecionar Pastor</option>
+                    {allMembers
+                      .filter(m => (m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN))
+                      .filter(m => {
+                        if (!profileData.sex) return true;
+                        return m.sex === profileData.sex;
+                      })
+                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
+                    }
+                  </select>
+                </div>
+
+                {/* Endereço */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Endereço Residencial</h4>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><MapPin size={16} className="text-zinc-600" /></div>
+                    <input value={profileData.cep || ''} onChange={handleCepChange} maxLength={9} placeholder="00000-000" className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-6 space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rua</label>
+                    <input value={profileData.street || ''} onChange={e => setProfileData({ ...profileData, street: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Número</label>
+                    <input value={profileData.number || ''} onChange={e => setProfileData({ ...profileData, number: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                  <div className="md:col-span-4 space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Complemento</label>
+                    <input value={profileData.complement || ''} onChange={e => setProfileData({ ...profileData, complement: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                </div>
+
+                {/* Bairro, Cidade, UF na mesma linha */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase">Bairro</label>
+                    <input value={profileData.neighborhood || ''} onChange={e => setProfileData({ ...profileData, neighborhood: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase">Cidade</label>
+                    <input value={profileData.city || ''} onChange={e => setProfileData({ ...profileData, city: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase">UF</label>
+                    <input value={profileData.state || ''} onChange={e => setProfileData({ ...profileData, state: e.target.value })} maxLength={2} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white" />
+                  </div>
+                </div>
+
+                {/* Segurança */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-rose-600 rounded-full" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Segurança</h4>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Senha Atual do Cadastro</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Shield size={16} className="text-zinc-600" /></div>
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        disabled 
+                        value={member?.password || '********'} 
+                        className="w-full bg-zinc-950/40 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-zinc-500 outline-none cursor-not-allowed" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors pointer-events-auto"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nova Senha (Mudar)</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Lock size={16} className="text-zinc-600" /></div>
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        value={profileData.newPassword || ''} 
+                        onChange={e => setProfileData({ ...profileData, newPassword: e.target.value })} 
+                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Confirmar Senha</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Lock size={16} className="text-zinc-600" /></div>
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        value={profileData.confirmPassword || ''} 
+                        onChange={e => setProfileData({ ...profileData, confirmPassword: e.target.value })} 
+                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {activeTab === 'CHURCH' && (
-                <div className={`space-y-10 animate-in fade-in duration-300 ${activeUser.role !== UserRole.CHURCH_ADMIN ? 'opacity-80 pointer-events-none' : ''}`}>
-                  <div className="flex flex-col md:flex-row md:items-center gap-8">
-                    <div className="w-32 h-32 rounded-[2rem] bg-zinc-950 border border-white/5 shadow-2xl flex items-center justify-center p-2 relative overflow-hidden group cursor-pointer">
-                      {churchData.logo ? (
-                        <img src={churchData.logo} className="w-full h-full object-contain" alt="Church Logo" />
-                      ) : (
-                        <Building size={48} className="text-zinc-800" />
-                      )}
-
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[10px] font-black uppercase text-white tracking-widest">Alterar Logo</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black text-white uppercase tracking-tight break-all">{churchData.name || 'Sua Igreja'}</h3>
-                      <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest mt-1">Tenant ID: {churchData.slug}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Razão Social / Nome da Igreja</label>
-                      <input value={churchData.name || ''} onChange={e => setChurchData({ ...churchData, name: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CNPJ Institucional</label>
-                      <input value={churchData.cnpj || ''} onChange={e => setChurchData({ ...churchData, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">E-mail de Contato da Igreja</label>
-                      <input type="email" value={churchData.email || ''} onChange={e => setChurchData({ ...churchData, email: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Responsável Legal</label>
-                      <input value={churchData.responsibleName || ''} onChange={e => setChurchData({ ...churchData, responsibleName: e.target.value })} placeholder="Nome do representante..." className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-
-                    {/* Endereço da Igreja */}
-                    <div className="space-y-4 md:col-span-2 pt-6">
-                      <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs border-b border-white/5 pb-2">Endereço da Instituição</h4>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CEP</label>
-                      <input value={churchData.addressDetails?.cep || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, cep: e.target.value } as any })} maxLength={9} placeholder="00000-000" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rua / Logradouro</label>
-                      <input value={churchData.addressDetails?.street || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, street: e.target.value } as any })} placeholder="Nome da rua" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Número</label>
-                      <input value={churchData.addressDetails?.number || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, number: e.target.value } as any })} placeholder="123" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Complemento</label>
-                      <input value={churchData.addressDetails?.complement || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, complement: e.target.value } as any })} placeholder="Apto, Bloco, etc" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Bairro</label>
-                      <input value={churchData.addressDetails?.neighborhood || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, neighborhood: e.target.value } as any })} placeholder="Bairro" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cidade</label>
-                      <input value={churchData.addressDetails?.city || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, city: e.target.value } as any })} placeholder="Cidade" className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">UF</label>
-                      <input value={churchData.addressDetails?.state || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, state: e.target.value } as any })} placeholder="UF" maxLength={2} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
-                    </div>
-                    <div className="md:col-span-2 pt-10 flex justify-end border-t border-white/5 mt-8">
-                      <button
-                        onClick={handleSave}
-                        disabled={saving || loading}
-                        className={`flex items-center gap-3 px-10 py-5 bg-emerald-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-2xl shadow-emerald-500/20 ${saving ? 'opacity-50 cursor-not-allowed' : ''} active:scale-95`}
-                      >
-                        <Save size={20} /> {saving ? 'Salvando Configurações...' : 'Salvar Dados da Igreja'}
-                      </button>
-                    </div>
-                  </div>
+                
+                <div className="md:col-span-2 pt-10 flex justify-end">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-3 px-12 py-5 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/20 active:scale-95"
+                  >
+                    <Save size={20} /> {saving ? 'Salvando Perfil...' : 'Salvar Alterações do Perfil'}
+                  </button>
                 </div>
-              )}
-
-              {activeTab === 'SECURITY' && (
-                <div className="space-y-10 animate-in fade-in duration-300">
-                  <div className="p-8 bg-zinc-950 rounded-[2rem] border border-white/5 shadow-inner">
-                    <div className="flex items-center gap-4 mb-6">
-                      <Zap size={24} className="text-amber-500" />
-                      <h4 className="text-lg font-black text-white uppercase tracking-tight">API Key Geral de Integração</h4>
-                    </div>
-                    <p className="text-zinc-500 text-sm mb-6 leading-relaxed italic">Esta chave habilita os módulos de Neural Insights e Sermão IA. O mantenedor gerencia esses tokens internamente. Mantenha-a em sigilo absoluto.</p>
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                      <input type="password" value="••••••••••••••••••••••••••••••" readOnly className="w-full sm:flex-1 bg-zinc-900 border border-white/5 rounded-2xl px-6 py-4 text-xs font-mono text-zinc-400" />
-                      <button className="w-full sm:w-auto px-6 py-4 bg-zinc-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all">Regerar T-Key</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab !== 'PROFILE' && activeTab !== 'CHURCH' && activeTab !== 'SECURITY' && (
-                <div className="py-20 flex flex-col items-center justify-center text-zinc-800 italic uppercase font-black tracking-[0.5em] animate-pulse">
-                  Em Desenvolvimento
-                </div>
-              )}
-            </>
+              </div>
+            </div>
           )}
         </div>
-      </div>
 
-      {isCropping && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 overflow-y-auto pt-4 md:pt-10">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCropCancel} />
-
-          <div className="relative w-full max-w-2xl bg-zinc-950 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
-              <div>
-                <h3 className="text-2xl font-black text-white tracking-tight">Recortar Foto</h3>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Ajuste a imagem para o perfil</p>
+        {isCropping && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCropCancel} />
+            <div className="relative w-full max-w-2xl bg-zinc-950 border border-white/10 rounded-[2rem] overflow-hidden h-[600px] flex flex-col">
+              <div className="p-6 bg-zinc-900 flex justify-between">
+                <h3 className="text-white font-black uppercase">Recortar Foto</h3>
+                <button onClick={handleCropCancel}><X /></button>
               </div>
-              <button onClick={handleCropCancel} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex flex-col h-[500px]">
-              <div className="relative flex-1 bg-zinc-950">
-                <Cropper
-                  image={photoPreview}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onCropComplete={onCropComplete}
-                  onZoomChange={setZoom}
-                  cropShape="round"
-                  showGrid={false}
-                />
+              <div className="relative flex-1">
+                <Cropper image={photoPreview} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} cropShape="round" />
               </div>
-              <div className="p-6 bg-zinc-900 border-t border-white/5 flex items-center gap-4">
-                <div className="flex-1">
-                  <input
-                    type="range"
-                    value={zoom}
-                    min={1}
-                    max={3}
-                    step={0.1}
-                    aria-labelledby="Zoom"
-                    onChange={(e) => setZoom(Number(e.target.value))}
-                    className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                </div>
-                <button
-                  onClick={handleCropCancel}
-                  className="px-6 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCropConfirm}
-                  disabled={isProcessingCrop}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                >
-                  {isProcessingCrop ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <><Check size={16} /> Confirmar & Salvar</>
-                  )}
-                </button>
+              <div className="p-6 bg-zinc-900 border-t border-white/5 flex gap-4">
+                <button onClick={handleCropConfirm} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-black uppercase">Confirmar</button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </React.Fragment>
   );
 };
 
