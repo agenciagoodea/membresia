@@ -1071,6 +1071,15 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                         </div>
                       </div>
                     </div>
+                    <div className="md:col-span-2 pt-10 flex justify-end">
+                      <button
+                        onClick={handleSave}
+                        disabled={saving || loading}
+                        className={`flex items-center gap-3 px-10 py-5 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/20 ${saving ? 'opacity-50 cursor-not-allowed' : ''} active:scale-95`}
+                      >
+                        <Save size={20} /> {saving ? 'Salvando Perfil...' : 'Salvar Alterações do Perfil'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1144,6 +1153,15 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">UF</label>
                       <input value={churchData.addressDetails?.state || ''} onChange={e => setChurchData({ ...churchData, addressDetails: { ...churchData.addressDetails, state: e.target.value } as any })} placeholder="UF" maxLength={2} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                    </div>
+                    <div className="md:col-span-2 pt-10 flex justify-end border-t border-white/5 mt-8">
+                      <button
+                        onClick={handleSave}
+                        disabled={saving || loading}
+                        className={`flex items-center gap-3 px-10 py-5 bg-emerald-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-2xl shadow-emerald-500/20 ${saving ? 'opacity-50 cursor-not-allowed' : ''} active:scale-95`}
+                      >
+                        <Save size={20} /> {saving ? 'Salvando Configurações...' : 'Salvar Dados da Igreja'}
+                      </button>
                     </div>
                   </div>
                 </div>
