@@ -136,17 +136,55 @@ export const memberService = {
 		const dbData = mapToDb(member);
 		const emailNormalized = (member.email || '').trim().toLowerCase();
 
-		// 0. Verificar se já existe um registro completo em members (e-mail real duplicado)
+		// ── PASSO 0: Verificar se o e-mail já existe na tabela members ────────
 		const existingMember = await this.getByEmail(emailNormalized);
+
 		if (existingMember) {
-			throw new Error('Este e-mail já está cadastrado. Acesse o sistema usando login e senha.');
+			// Cadastro completo real → bloquear com mensagem clara
+			if (existingMember.firstAccessCompleted === true) {
+				throw new Error('Este e-mail já está cadastrado. Acesse o sistema com seu login e senha.');
+			}
+
+			// Cadastro incompleto (firstAccessCompleted = false ou null) →
+			// Pode ser uma retentativa após falha. Tentar atualizar o registro existente.
+			console.warn('memberService.create: membro com cadastro incompleto encontrado. Retentando...');
+
+			// Tentar autenticar/recriar o Auth user (pode já existir)
+			if (member.email && member.password) {
+				await supabase.auth.signUp({
+					email: emailNormalized,
+					password: member.password,
+					options: { 
+						data: { 
+							name: member.name, 
+							role: member.role, 
+							church_id: member.church_id 
+						} 
+					}
+				});
+				// Ignoramos o erro do Auth — pode já existir (ghost user)
+			}
+
+			// Atualizar o registro incompleto com os novos dados enviados
+			const { data: updatedData, error: updateError } = await supabase
+				.from('members')
+				.update({
+					...dbData,
+					email: emailNormalized,
+					status: dbData.status || 'ACTIVE'
+				})
+				.eq('id', existingMember.id)
+				.select()
+				.single();
+
+			if (updateError) {
+				console.error('Erro ao atualizar membro incompleto:', updateError);
+				throw new Error('Erro ao finalizar cadastro. Tente novamente.');
+			}
+			return mapToFrontend(updatedData);
 		}
 
-		// 1. Tentar criar o usuário no Supabase Auth
-		//    Se retornar "already registered", pode ser um usuário fantasma (Auth criado,
-		//    mas o INSERT em members falhou em tentativa anterior). Nesse caso, ignoramos
-		//    o erro do Auth e seguimos para criar o registro em members.
-		let authUserAlreadyExisted = false;
+		// ── PASSO 1: Novo usuário — criar no Supabase Auth ────────────────────
 		if (member.email && member.password) {
 			const { error: authError } = await supabase.auth.signUp({
 				email: emailNormalized,
@@ -167,19 +205,16 @@ export const memberService = {
 					authError.message.toLowerCase().includes('email address is already') ||
 					authError.status === 422;
 
-				if (isAlreadyRegistered) {
-					// Usuário fantasma: Auth já existe mas members não tem registro
-					// Registramos no log e continuamos para criar o membro
-					console.warn('Auth: usuário já existia (tentativa anterior incompleta). Criando registro em members...');
-					authUserAlreadyExisted = true;
-				} else {
-					console.error('Erro ao registrar no Auth:', authError.message);
-					throw new Error(`Falha na autenticação: ${authError.message}`);
+				if (!isAlreadyRegistered) {
+					// Erro real de autenticação (senha fraca, email inválido, etc.)
+					throw new Error(`Falha no cadastro: ${authError.message}`);
 				}
+				// Ghost user: Auth existe mas members não tinha registro → continuar
+				console.warn('Auth: ghost user detectado. Criando apenas o registro members...');
 			}
 		}
 
-		// 2. Criar o registro na tabela members
+		// ── PASSO 2: Inserir na tabela members ────────────────────────────────
 		const { data, error } = await supabase
 			.from('members')
 			.insert([{
@@ -191,12 +226,8 @@ export const memberService = {
 			.single();
 
 		if (error) {
-			console.error('Erro ao criar membro:', error);
-			// Se havia usuário fantasma no Auth, reportar erro de DB de forma clara
-			if (authUserAlreadyExisted) {
-				throw new Error('Erro ao finalizar cadastro. Por favor, tente novamente ou entre em contato com o suporte.');
-			}
-			throw error;
+			console.error('Erro ao inserir membro:', error);
+			throw new Error('Erro ao salvar o cadastro. Verifique as informações e tente novamente.');
 		}
 		return mapToFrontend(data);
 	},
