@@ -8,9 +8,9 @@ const mapToFrontend = (m: any): Member => ({
 	phone: m.phone,
 	churchId: m.church_id,
 	role: m.role,
-	status: (m.status === 'PENDING' || !m.status) ? MemberStatus.PENDING : 
-	        (m.status === 'ACTIVE') ? MemberStatus.ACTIVE :
-	        (m.status === 'REJECTED') ? MemberStatus.REJECTED : m.status,
+	status: (m.status === 'PENDING' || m.status === 'PENDENTE' || !m.status) ? MemberStatus.PENDING : 
+	        (m.status === 'ACTIVE' || m.status === 'ATIVO') ? MemberStatus.ACTIVE :
+	        (m.status === 'REJECTED' || m.status === 'REJEITADO') ? MemberStatus.REJECTED : m.status,
 	stage: m.stage,
 	cellId: m.cell_id,
 	disciplerId: m.discipler_id,
@@ -163,7 +163,7 @@ export const memberService = {
 			.from('members')
 			.insert([{
 				...dbData,
-				status: dbData.status || 'PENDENTE'
+				status: dbData.status || 'PENDING'
 			}])
 			.select()
 			.single();
