@@ -425,7 +425,7 @@ const PublicRegistration = () => {
 									)}
 								</div>
 							</div>
-
+							
 							{/* Botão de envio */}
 							<div className="pt-4">
 								<button
@@ -447,6 +447,14 @@ const PublicRegistration = () => {
 									)}
 								</button>
 							</div>
+
+							<button
+								type="button"
+								onClick={() => navigate('/login')}
+								className="w-full py-4 bg-white/5 text-zinc-400 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.3em] hover:bg-white/10 hover:text-white transition-all my-2"
+							>
+								Já tenho um cadastro, fazer login
+							</button>
 
 							<p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-center leading-relaxed pt-2">
 								Ao criar sua conta, você concorda com os termos de uso da igreja.

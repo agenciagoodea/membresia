@@ -143,7 +143,7 @@ const Login: React.FC = () => {
                 </button>
               )}
               {!isForgotPassword && (
-                <button type="button" onClick={() => navigate('/cadastro')} className="text-[11px] font-black text-zinc-400 hover:text-white uppercase tracking-widest transition-colors mt-2">
+                <button type="button" onClick={() => navigate('/cadastro/mircentrosul')} className="text-[11px] font-black text-zinc-400 hover:text-white uppercase tracking-widest transition-colors mt-2">
                   Não é membro? <span className="text-blue-500 ml-1">Cadastre-se aqui</span>
                 </button>
               )}
