@@ -130,17 +130,16 @@ const PublicRegistration = () => {
 			setSubmitting(true);
 
 			const payload: any = {
-				name: formData.name,
+				name: formData.name.trim(),
 				email: formData.email.trim().toLowerCase(),
 				password: formData.password,
-				phone: '',
+				// phone, birthDate e avatar são opcionais — omitir em vez de enviar string vazia
+				// (string vazia causa erro 400 em colunas date/text com restrições no Supabase)
 				role: formData.role,
 				church_id: church.id,
 				joinedDate: new Date().toISOString(),
-				birthDate: '',
 				status: MemberStatus.ACTIVE,
 				stage: LadderStage.WIN,
-				avatar: '',
 				login: formData.email.trim().toLowerCase(),
 				completedMilestones: [],
 				stageHistory: [{

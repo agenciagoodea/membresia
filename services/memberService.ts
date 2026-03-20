@@ -134,11 +134,22 @@ export const memberService = {
 
 	async create(member: Omit<Member, 'id'> & { church_id?: string }) {
 		const dbData = mapToDb(member);
+		const emailNormalized = (member.email || '').trim().toLowerCase();
 
-		// 1. Tentar criar o usuário no Supabase Auth primeiro se houver email e senha
+		// 0. Verificar se já existe um registro completo em members (e-mail real duplicado)
+		const existingMember = await this.getByEmail(emailNormalized);
+		if (existingMember) {
+			throw new Error('Este e-mail já está cadastrado. Acesse o sistema usando login e senha.');
+		}
+
+		// 1. Tentar criar o usuário no Supabase Auth
+		//    Se retornar "already registered", pode ser um usuário fantasma (Auth criado,
+		//    mas o INSERT em members falhou em tentativa anterior). Nesse caso, ignoramos
+		//    o erro do Auth e seguimos para criar o registro em members.
+		let authUserAlreadyExisted = false;
 		if (member.email && member.password) {
 			const { error: authError } = await supabase.auth.signUp({
-				email: member.email,
+				email: emailNormalized,
 				password: member.password,
 				options: {
 					data: {
@@ -150,11 +161,21 @@ export const memberService = {
 			});
 
 			if (authError) {
-				console.error('Erro ao registrar no Auth:', authError.message);
-				if (authError.message.includes('already registered')) {
-					throw new Error('Este e-mail já está cadastrado no sistema.');
+				const isAlreadyRegistered =
+					authError.message.toLowerCase().includes('already registered') ||
+					authError.message.toLowerCase().includes('user already registered') ||
+					authError.message.toLowerCase().includes('email address is already') ||
+					authError.status === 422;
+
+				if (isAlreadyRegistered) {
+					// Usuário fantasma: Auth já existe mas members não tem registro
+					// Registramos no log e continuamos para criar o membro
+					console.warn('Auth: usuário já existia (tentativa anterior incompleta). Criando registro em members...');
+					authUserAlreadyExisted = true;
+				} else {
+					console.error('Erro ao registrar no Auth:', authError.message);
+					throw new Error(`Falha na autenticação: ${authError.message}`);
 				}
-				throw new Error(`Falha na autenticação: ${authError.message}`);
 			}
 		}
 
@@ -163,14 +184,23 @@ export const memberService = {
 			.from('members')
 			.insert([{
 				...dbData,
-				status: dbData.status || 'PENDING'
+				email: emailNormalized,
+				status: dbData.status || 'ACTIVE'
 			}])
 			.select()
 			.single();
 
-		if (error) throw error;
+		if (error) {
+			console.error('Erro ao criar membro:', error);
+			// Se havia usuário fantasma no Auth, reportar erro de DB de forma clara
+			if (authUserAlreadyExisted) {
+				throw new Error('Erro ao finalizar cadastro. Por favor, tente novamente ou entre em contato com o suporte.');
+			}
+			throw error;
+		}
 		return mapToFrontend(data);
 	},
+
 
 	async update(id: string, updates: Partial<Member>) {
 		const dbData = mapToDb(updates);
