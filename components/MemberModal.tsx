@@ -139,6 +139,30 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		}
 	}, [member, isOpen]);
 
+	const getDeduplicatedMembersOptions = (list: Member[]) => {
+		const processed = new Set<string>();
+		const options: { id: string, label: string }[] = [];
+
+		for (const m of list) {
+			if (processed.has(m.id)) continue;
+			processed.add(m.id);
+
+			const spouseId = m.spouseId || (m as any).spouse_id;
+			if (spouseId) {
+				const spouse = list.find(x => x.id === spouseId);
+				if (spouse) {
+					options.push({ id: m.id, label: `${m.name} e ${spouse.name}` });
+					processed.add(spouseId); // Evita gerar opção dupla se ambos estiverem na lista
+					continue;
+				}
+			}
+			
+			options.push({ id: m.id, label: m.name });
+		}
+
+		return options;
+	};
+
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
@@ -515,8 +539,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
 										<option value="" className="bg-zinc-950">Sem Discipulador</option>
-										{allMembers
-											.filter(m => {
+										{getDeduplicatedMembersOptions(
+											allMembers.filter(m => {
 												if (m.id === member?.id) return false;
 												// Mais permissivo nas roles para garantir visibilidade durante transição
 												const isLeader = m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === 'LEADER' || m.role === 'CELL_LEADER' || m.role === 'CELL_LEADER_DISCIPLE';
@@ -526,9 +550,9 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												if (formData.role === UserRole.PASTOR) return isAdmin;
 												return isLeader || isPastor || isAdmin;
 											})
-											.map(m => (
-												<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
-											))}
+										).map(opt => (
+											<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>
+										))}
 									</select>
 								</div>
 							</div>
@@ -543,22 +567,16 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 									>
 										<option value="" className="bg-zinc-950">Selecione os Pastores</option>
-										{allMembers
-											.filter(m => {
+										{getDeduplicatedMembersOptions(
+											allMembers.filter(m => {
 												if (m.id === member?.id) return false;
 												const isPastor = m.role === UserRole.PASTOR || m.role === 'PASTOR';
 												const isAdmin = m.role === UserRole.CHURCH_ADMIN || m.role === 'ADMIN' || m.role === 'CHURCH_ADMIN';
 												return isPastor || isAdmin;
 											})
-											.map(m => {
-												const spouse = allMembers.find(s => s.id === m.spouseId);
-												const label = (m.maritalStatus === 'Casado(a)' || m.marital_status === 'Casado(a)') && spouse 
-													? `${m.name} e ${spouse.name}` 
-													: m.name;
-												return (
-													<option key={m.id} value={m.id} className="bg-zinc-950">{label}</option>
-												);
-											})}
+										).map(opt => (
+											<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>
+										))}
 									</select>
 								</div>
 							</div>

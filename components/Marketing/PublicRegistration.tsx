@@ -92,10 +92,7 @@ const PublicRegistration = () => {
 							const cellLeaderIds = targetCell.leaderIds || (targetCell.leaderId ? [targetCell.leaderId] : []);
 							
 							// Format the leaders' names for display
-							const leaderNames = cellLeaderIds
-								.map(id => getCoupledNameFromList(id, fetchedMembers))
-								.filter(Boolean)
-								.join(' & ');
+							const leaderNames = getDeduplicatedCouplesLabel(cellLeaderIds, fetchedMembers);
 							
 							setInvitedCellLeadersLabel(leaderNames);
 							
@@ -122,14 +119,57 @@ const PublicRegistration = () => {
 		loadChurch();
 	}, [slug, search]);
 
-	const getCoupledNameFromList = (memberId: string, list: Member[]) => {
-		const m = list.find(x => x.id === memberId);
-		if (!m) return '';
-		const spouseId = m.spouseId || (m as any).spouse_id;
-		const spouse = spouseId ? list.find(x => x.id === spouseId) : null;
-		if (spouse) return `${m.name} e ${spouse.name}`;
-		return m.name;
+	const getDeduplicatedCouplesLabel = (ids: string[], list: Member[]) => {
+		const processed = new Set<string>();
+		const results: string[] = [];
+
+		for (const id of ids) {
+			if (!id || processed.has(id)) continue;
+			
+			const m = list.find(x => x.id === id);
+			if (!m) continue;
+
+			processed.add(id);
+
+			const spouseId = m.spouseId || (m as any).spouse_id;
+			if (spouseId) {
+				const spouse = list.find(x => x.id === spouseId);
+				if (spouse) {
+					results.push(`${m.name} e ${spouse.name}`);
+					processed.add(spouseId); // Evita duplicar no 'for' se o cônjuge também estiver array ids
+					continue;
+				}
+			}
+			
+			results.push(m.name);
+		}
+		return results.join(' & ');
 	};
+
+	const getDeduplicatedMembersOptions = (list: Member[]) => {
+		const processed = new Set<string>();
+		const options: { id: string, label: string }[] = [];
+
+		for (const m of list) {
+			if (processed.has(m.id)) continue;
+			processed.add(m.id);
+
+			const spouseId = m.spouseId || (m as any).spouse_id;
+			if (spouseId) {
+				const spouse = list.find(x => x.id === spouseId);
+				if (spouse) {
+					options.push({ id: m.id, label: `${m.name} e ${spouse.name}` });
+					processed.add(spouseId);
+					continue;
+				}
+			}
+			
+			options.push({ id: m.id, label: m.name });
+		}
+
+		return options;
+	};
+
 
 	const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		let cep = e.target.value.replace(/\D/g, '');
@@ -844,10 +884,7 @@ const PublicRegistration = () => {
 												const leaderData = members.find(m => m.id === primaryLeaderId);
 												
 												// Atualiza o label dos líderes para exibição automática
-												const leaderNames = leaderIds
-													.map(id => getCoupledNameFromList(id, members))
-													.filter(Boolean)
-													.join(' & ');
+												const leaderNames = getDeduplicatedCouplesLabel(leaderIds, members);
 												setInvitedCellLeadersLabel(leaderNames);
 
 												setFormData({ 
@@ -889,14 +926,14 @@ const PublicRegistration = () => {
 												}}
 											>
 												<option value="" className="bg-zinc-950">Selecionar Líder</option>
-												{members
-													.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
-													.map(m => (
-														<option key={m.id} value={m.id} className="bg-zinc-950">
-															{getCoupledNameFromList(m.id, members)}
-														</option>
-													))
-												}
+												{getDeduplicatedMembersOptions(
+													members.filter(m => m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN)
+												).map(opt => (
+													<option key={opt.id} value={opt.id} className="bg-zinc-950">
+														{opt.label}
+													</option>
+												))}
+
 											</select>
 										)}
 									</div>
@@ -908,7 +945,7 @@ const PublicRegistration = () => {
 										<ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={20} />
 										<div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl py-5 pl-14 pr-8 text-sm text-zinc-500 font-black uppercase whitespace-normal break-words leading-relaxed min-h-[62px] flex items-center">
 											{formData.pastorId ? (
-												formData.pastorId.split(',').map(id => getCoupledNameFromList(id.trim(), members)).filter(Boolean).join(' & ') || 'Nenhum pastor vinculado'
+												getDeduplicatedCouplesLabel(formData.pastorId.split(',').map(id => id.trim()), members) || 'Nenhum pastor vinculado'
 											) : (
 												'Nenhum pastor vinculado'
 											)}

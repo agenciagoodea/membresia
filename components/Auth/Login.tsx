@@ -19,7 +19,7 @@ const Login: React.FC = () => {
       const trimmedEmail = email.trim().toLowerCase();
       const response = await authService.signIn(trimmedEmail, password);
       
-      if (response.profile?.status === 'PENDENTE' || response.profile?.status === 'PENDING') {
+      if (response.profile?.status === 'PENDENTE' || response.profile?.status === MemberStatus.PENDING) {
         await authService.signOut();
         setError('Desculpe, não foi possivel fazer o login, entre em contato com o seu Líder ou Pastor para aprovação do cadastro');
         setLoading(false);
