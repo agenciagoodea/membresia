@@ -110,6 +110,12 @@ export interface Child {
   photo?: string;
 }
 
+export interface Visitor {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export interface StageHistory {
   stage: LadderStage;
   date: string;
@@ -166,6 +172,7 @@ export interface MeetingReport {
   presentMemberIds: string[];
   visitorCount: number;
   childrenCount: number;
+  visitors?: Visitor[]; // Repeater for visitors in report
   children?: Child[]; // Repeater for children in report
   photoUrl?: string;
   offeringAmount: number;

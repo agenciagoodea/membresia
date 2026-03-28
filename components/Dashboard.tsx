@@ -491,15 +491,17 @@ const LeaderDashboard = ({ user, members, cells, events }: { user: any, members:
     const dayName = dateObj.toLocaleString('pt-BR', { weekday: 'long' });
     const dayNum = dateObj.getDate();
     const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });
+    const yearName = dateObj.getFullYear();
+    const formattedDate = `${dayNum.toString().padStart(2, '0')} de ${monthName} de ${yearName}`;
 
-    const message = `Olá! 👋 Passando para lembrar da nossa próxima reunião da *Célula ${cellToNotify.name}*!
+    const message = `\uD83D\uDC4B Olá! Passando para lembrar da nossa próxima reunião da *Célula ${cellToNotify.name}*!
     
-🗓️ *Data:* ${dayName}, ${dayNum} de ${monthName}
-⏰ *Horário:* ${cellToNotify.meetingTime}
-🏠 *Local:* Casa do(a) ${cellToNotify.hostName}
-📍 *Endereço:* ${cellToNotify.address}
+\uD83D\uDCC5 *Data:* ${dayName}, ${formattedDate}
+\u23F0 *Horário:* ${cellToNotify.meetingTime}
+\uD83C\uDFE0 *Local:* Casa do(a) ${cellToNotify.hostName}
+\uD83D\uDCCD *Endereço:* ${cellToNotify.address}
 
-Esperamos por você! Vai ser um tempo precioso! 🔥`;
+Esperamos por você! Vai ser um tempo precioso! \uD83D\uDD25`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };

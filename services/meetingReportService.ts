@@ -14,6 +14,7 @@ const mapToFrontend = (r: any): MeetingReport => ({
 	report: r.report,
 	recordedBy: r.recorded_by,
 	children: r.children || [],
+	visitors: r.visitors || [],
 });
 
 const mapToDb = (r: Partial<MeetingReport>) => {
@@ -29,6 +30,7 @@ const mapToDb = (r: Partial<MeetingReport>) => {
 	if (r.report !== undefined) db.report = r.report;
 	if (r.recordedBy !== undefined) db.recorded_by = r.recordedBy;
 	if (r.children !== undefined) db.children = r.children;
+	if (r.visitors !== undefined) db.visitors = r.visitors;
 	return db;
 };
 
