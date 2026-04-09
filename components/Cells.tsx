@@ -80,78 +80,82 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
   });
 
   const handleCreateReport = () => {
-    console.log('--- Iniciando Criação de Relatório ---');
-    const myId = currentUser.id || currentUser.profile?.id;
-    // Consolidar todos os IDs de líderes vinculados à célula
-    const cellLeaderIds = Array.from(new Set([
+    console.log('--- RELATÓRIO: Início da Detecção (v6) ---');
+    const myId = String(currentUser.id || currentUser.profile?.id || '').toLowerCase();
+    const myName = String(currentUser.name || currentUser.profile?.name || '').trim().toLowerCase();
+    
+    // 1. Identificar IDs de líderes
+    const rawLeaderIds = [
       cell.leaderId, 
       ...(cell.leaderIds || []),
-      cell.hostId // Opcional: considerar anfitrião como fonte de filhos também?
-    ])).filter(Boolean).map(id => String(id));
+      cell.hostId
+    ].filter(Boolean).map(id => String(id).toLowerCase());
 
-    console.log('Líderes Identificados na Célula:', cellLeaderIds);
-
-    // Encontrar os objetos completos dos líderes na lista de membros (que contém os filhos)
-    const leadersWithData = allMembers.filter(m => cellLeaderIds.includes(String(m.id)));
+    const cellLeaderIds = Array.from(new Set(rawLeaderIds));
     
-    console.log('Líderes encontrados no Banco de Membros:', leadersWithData.map(l => l.name));
+    // 2. Tentar encontrar líderes no estado local primariamente
+    const leadersToScan = membersList.filter(m => {
+      const mId = String(m.id).toLowerCase();
+      const mName = String(m.name || '').trim().toLowerCase();
+      return cellLeaderIds.includes(mId) || (myName && mName === myName) || mId === myId;
+    });
 
-    // Marcar líderes como presentes por padrão
-    const defaultPresentIds = new Set(leadersWithData.map(l => l.id));
-    if (myId) defaultPresentIds.add(myId);
-    setPresentMemberIds(defaultPresentIds);
-    
     const initialChildren: any[] = [];
-    const processedChildNames = new Set<string>();
+    const processedNames = new Set<string>();
 
-    // Função auxiliar para evitar duplicidade e validar dados da criança
-    const addChild = (child: any, parentId: string) => {
-      if (!child || !child.name) return;
-      const normalizedName = child.name.trim().toLowerCase();
-      
-      const existing = initialChildren.find(c => c.name.trim().toLowerCase() === normalizedName);
-      if (existing) {
-        if (!existing.parentIds.includes(parentId)) {
-          existing.parentIds.push(parentId);
+    const scanForKids = (list: Member[]) => {
+      list.forEach(leader => {
+        const kids = leader.children || [];
+        if (Array.isArray(kids)) {
+          kids.forEach(child => {
+            const cName = String(child.name || '').trim();
+            if (cName && !processedNames.has(cName.toLowerCase())) {
+              processedNames.add(cName.toLowerCase());
+              initialChildren.push({
+                id: child.id || `auto-${Math.random().toString(36).substr(2, 9)}`,
+                name: cName,
+                birthDate: child.birthDate,
+                isAuto: true
+              });
+            }
+          });
         }
-      } else {
-        processedChildNames.add(normalizedName);
-        initialChildren.push({
-          id: child.id || Math.random().toString(36).substr(2, 9),
-          name: child.name,
-          birthDate: child.birthDate,
-          isAuto: true,
-          parentIds: [parentId]
-        });
-      }
+      });
     };
 
-    // 1. Processar filhos de TODOS os líderes encontrados na lista de membros
-    // Isso é mais robusto que usar o currentUser, pois allMembers vem do banco 'members' com tudo preenchido
-    leadersWithData.forEach(leader => {
-      const children = leader.children || [];
-      console.log(`Verificando filhos de ${leader.name}:`, children.length);
-      if (Array.isArray(children)) {
-        children.forEach(child => addChild(child, leader.id));
+    // Coleta inicial
+    scanForKids(leadersToScan);
+
+    // Se tiver cônjuges no local, scan neles também
+    leadersToScan.forEach(leader => {
+      if (leader.spouseId) {
+        const spouse = membersList.find(m => String(m.id).toLowerCase() === String(leader.spouseId).toLowerCase());
+        if (spouse && !leadersToScan.find(l => l.id === spouse.id)) {
+          scanForKids([spouse]);
+        }
       }
     });
 
-    // 2. Fallback: Se o usuário logado for líder mas NÃO estiver em allMembers (raro), 
-    // tenta usar os dados do perfil dele passados via prop
-    if (initialChildren.length === 0 && cellLeaderIds.includes(String(myId))) {
-      const userProfile = currentUser.profile || currentUser;
-      const userChildren = userProfile.children || currentUser.children || [];
-      console.log('Usando fallback do currentUser para filhos:', userChildren.length);
-      if (Array.isArray(userChildren)) {
-        userChildren.forEach(child => addChild(child, myId));
-      }
-    }
+    // 5. Presenças automáticas
+    const defaultPresent = new Set(leadersToScan.map(l => l.id));
+    if (myId) defaultPresent.add(myId);
+    setPresentMemberIds(defaultPresent);
 
-    console.log('Total de crianças auto-preenchidas:', initialChildren.length);
+    console.log(`Relatório aberto com ${initialChildren.length} crianças identificadas.`);
     setReportChildren(initialChildren);
     setReportVisitors([]);
     setIsEditingReport(false);
     setShowReportForm(true);
+
+    // Atualização em background (opcional e silenciosa) para garantir futuros relatórios
+    if (initialChildren.length === 0 && myId) {
+       memberService.getById(myId).then(fresh => {
+          if (fresh && fresh.children && fresh.children.length > 0) {
+             console.log('Dados frescos de filhos carregados para o próximo relatório');
+             setMembersList(prev => prev.map(m => m.id === fresh.id ? fresh : m));
+          }
+       }).catch(() => {});
+    }
   };
 
   const handleEditReport = (report: MeetingReport) => {

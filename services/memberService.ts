@@ -88,7 +88,7 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 };
 
 // Colunas essenciais para listagem e dashboard (evita payloads pesados mas mantém progresso M12 e hierarquia)
-const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed';
+const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children';
 
 export const memberService = {
 	async getAll(churchId: string, range?: { from: number; to: number }) {
