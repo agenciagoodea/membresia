@@ -82,7 +82,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [isProcessingCrop, setIsProcessingCrop] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let cep = e.target.value.replace(/\D/g, '');
@@ -760,22 +760,12 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Senha Atual do Cadastro</label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Shield size={16} className="text-zinc-600" /></div>
                       <input 
-                        type={showPassword ? "text" : "password"}
+                        type="password"
                         disabled 
                         value={member?.password || '********'} 
-                        className="w-full bg-zinc-950/40 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-zinc-500 outline-none cursor-not-allowed" 
+                        className="w-full bg-zinc-950/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-zinc-500 outline-none cursor-not-allowed" 
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors pointer-events-auto"
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -783,18 +773,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Lock size={16} className="text-zinc-600" /></div>
                       <input 
-                        type={showPassword ? "text" : "password"}
+                        type="password"
                         value={profileData.newPassword || ''} 
                         onChange={e => setProfileData({ ...profileData, newPassword: e.target.value })} 
-                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
+                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors"
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
                     </div>
                   </div>
                   
@@ -803,18 +786,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Lock size={16} className="text-zinc-600" /></div>
                       <input 
-                        type={showPassword ? "text" : "password"}
+                        type="password"
                         value={profileData.confirmPassword || ''} 
                         onChange={e => setProfileData({ ...profileData, confirmPassword: e.target.value })} 
-                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
+                        className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600" 
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-blue-500 transition-colors"
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
                     </div>
                   </div>
                 </div>

@@ -59,8 +59,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	const [isCropping, setIsCropping] = useState(false);
 	const [isProcessingCrop, setIsProcessingCrop] = useState(false);
 
-	const [showPassword, setShowPassword] = useState(false);
-	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
 	const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
 	const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -546,20 +545,13 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										<div className="relative">
 											<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<input
-												type={showPassword ? 'text' : 'password'}
+												type="password"
 												value={formData.password || ''}
 												onChange={(e) => setFormData({ ...formData, password: e.target.value })}
 												autoComplete="new-password"
-												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="••••••••"
 											/>
-											<button
-												type="button"
-												onClick={() => setShowPassword(!showPassword)}
-												className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-											>
-												{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-											</button>
 										</div>
 									</div>
 
@@ -568,19 +560,12 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										<div className="relative">
 											<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<input
-												type={showConfirmPassword ? 'text' : 'password'}
+												type="password"
 												value={confirmPassword}
 												onChange={(e) => setConfirmPassword(e.target.value)}
-												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="••••••••"
 											/>
-											<button
-												type="button"
-												onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-												className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-											>
-												{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-											</button>
 										</div>
 									</div>
 								</div>
