@@ -170,11 +170,18 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
   const cellMembers = membersList.filter(m => m.cellId === cell.id);
   const disciplesList = cellMembers.filter(m => !leadersList.find(l => l.id === m.id));
 
+  // Verifica se o usuário atual é líder DESTA célula específica
+  const currentUserId = currentUser.id || currentUser.profile?.id;
+  const isLeaderOfThisCell = 
+    cell.leaderId === currentUserId || 
+    (cell.leaderIds || []).includes(currentUserId) ||
+    cell.hostId === currentUserId;
+
   const isLeader = 
     currentUser.role === UserRole.MASTER_ADMIN || 
     currentUser.role === UserRole.CHURCH_ADMIN || 
     currentUser.role === UserRole.PASTOR || 
-    (currentUser.role === UserRole.CELL_LEADER_DISCIPLE && (cell.leaderId === currentUser.id || cell.leaderId === currentUser.profile?.id));
+    (currentUser.role === UserRole.CELL_LEADER_DISCIPLE && isLeaderOfThisCell);
 
   useEffect(() => {
     const loadReports = async () => {
