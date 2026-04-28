@@ -21,7 +21,8 @@ import {
   Tv,
   Users2,
   Calendar,
-  Target
+  Target,
+  Ticket
 } from 'lucide-react';
 export { PlanType } from './types';
 import { Member, Cell, LadderStage, ChurchTenant, FinancialRecord, UserRole, ChurchStatus, PlanType, MeetingReport, PrayerRequest, PrayerStatus, PlanLimits, MemberStatus } from './types';
@@ -70,6 +71,7 @@ export const PASTOR_NAV_ITEMS = [
   { id: 'ladder', label: 'Visão Celular M12', icon: <TrendingUp size={20} /> },
   { id: 'm12-config', label: 'Configurar M12', icon: <Settings size={20} /> },
   { id: 'events', label: 'Agenda & Eventos', icon: <Calendar size={20} /> },
+  { id: 'paid-events', label: 'Eventos Pagos', icon: <Ticket size={20} /> },
   { id: 'prayer-moderation', label: 'Moderação de Orações', icon: <HeartHandshake size={20} /> },
   { id: 'prayer-screen-link', label: 'Abrir Telão (Demo)', icon: <Tv size={20} /> },
   { id: 'finance', label: 'Financeiro', icon: <DollarSign size={20} /> },

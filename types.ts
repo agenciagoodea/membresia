@@ -293,3 +293,94 @@ export interface ChurchEvent {
   created_by: string;
   created_at: string;
 }
+
+// ═══════════════════════════════════════════════════════
+// Módulo: Eventos Pagos
+// ═══════════════════════════════════════════════════════
+
+export enum PaidEventStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  CLOSED = 'closed',
+  CANCELLED = 'cancelled'
+}
+
+export enum PaymentStatus {
+  AWAITING_PROOF = 'aguardando_comprovante',
+  PROOF_SENT = 'comprovante_enviado',
+  UNDER_REVIEW = 'em_analise',
+  CONFIRMED = 'pago_confirmado',
+  REJECTED = 'recusado',
+  CANCELLED = 'cancelado'
+}
+
+export interface PaidEvent {
+  id: string;
+  church_id: string;
+  created_by: string;
+  title: string;
+  slug: string;
+  description?: string;
+  banner_url?: string;
+  start_date: string;
+  end_date?: string;
+  location?: string;
+  price: number;
+  max_participants?: number;
+  pix_key?: string;
+  pix_receiver_name?: string;
+  pix_receiver_city?: string;
+  pix_qrcode_payload?: string;
+  confirmation_message?: string;
+  payment_instructions?: string;
+  status: PaidEventStatus;
+  is_featured: boolean;
+  public_link?: string;
+  created_at: string;
+  updated_at: string;
+  // Campos calculados (não no DB)
+  registrations_count?: number;
+  confirmed_count?: number;
+}
+
+export interface PaidEventRegistration {
+  id: string;
+  church_id: string;
+  event_id: string;
+  member_id?: string;
+  photo_url?: string;
+  full_name: string;
+  age?: number;
+  gender?: 'Masculino' | 'Feminino';
+  discipler_name?: string;
+  phone?: string;
+  pastor_name?: string;
+  shirt_size?: 'PP' | 'P' | 'M' | 'G' | 'GG' | 'XG' | 'XXG';
+  transport_type?: 'Carro' | 'Ônibus';
+  has_allergy: boolean;
+  allergy_description?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  prayer_request?: string;
+  observations?: string;
+  payment_proof_url?: string;
+  payment_status: PaymentStatus;
+  payment_confirmed_by?: string;
+  payment_confirmed_at?: string;
+  pdf_url?: string;
+  registration_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaidEventPaymentLog {
+  id: string;
+  church_id: string;
+  event_id: string;
+  registration_id: string;
+  previous_status?: string;
+  new_status: string;
+  changed_by: string;
+  note?: string;
+  created_at: string;
+}

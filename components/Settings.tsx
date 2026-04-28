@@ -34,7 +34,8 @@ import {
   ShieldCheck,
   Briefcase,
   Eye,
-  EyeOff
+  EyeOff,
+  Ticket
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
@@ -44,6 +45,7 @@ import { cellService } from '../services/cellService';
 import { supabase } from '../services/supabaseClient';
 import { m12Service } from '../services/m12Service';
 import { Member, ChurchTenant, UserRole, Cell, LadderStage, M12Activity } from '../types';
+import MemberPaidEvents from './Member/MemberPaidEvents';
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
   const navigate = useNavigate();
@@ -747,6 +749,18 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     <label className="text-[10px] font-black text-zinc-500 uppercase">UF</label>
                     <input value={profileData.state || ''} onChange={e => setProfileData({ ...profileData, state: e.target.value })} maxLength={2} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white" />
                   </div>
+                </div>
+
+                {/* Meus Eventos Pagos */}
+                <div className="space-y-4 md:col-span-2 pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-violet-600 rounded-full" />
+                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Meus Eventos Pagos</h4>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <MemberPaidEvents user={user} />
                 </div>
 
                 {/* Segurança */}

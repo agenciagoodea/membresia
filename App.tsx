@@ -58,6 +58,9 @@ const PublicRegistration = lazy(() => import('./components/Marketing/PublicRegis
 const Settings = lazy(() => import('./components/Settings'));
 const AdminsManager = lazy(() => import('./components/MasterAdmin/AdminsManager'));
 const Events = lazy(() => import('./components/Events/Events'));
+const PaidEventsManager = lazy(() => import('./components/PaidEvents/PaidEventsManager'));
+const PaidEventPublicPage = lazy(() => import('./components/PaidEvents/PaidEventPublicPage'));
+const PaidEventRegistrationForm = lazy(() => import('./components/PaidEvents/PaidEventRegistrationForm'));
 import CompleteProfileModal from './components/Shared/CompleteProfileModal';
 
 import { ChurchProvider } from './contexts/ChurchContext';
@@ -476,6 +479,9 @@ const App: React.FC = () => {
           <Route path="/prayer/new" element={<PrayerForm />} />
           <Route path="/prayer-screen" element={<PrayerScreen />} />
           <Route path="/cadastro" element={<PublicRegistration />} />
+          {/* Rotas públicas de Eventos Pagos */}
+          <Route path="/evento/:slug" element={<PaidEventPublicPage />} />
+          <Route path="/evento/:slug/inscricao" element={<PaidEventRegistrationForm />} />
 
           <Route path="/app/*" element={
             <ProtectedRoute user={currentUser} loading={loading}>
@@ -530,6 +536,10 @@ const App: React.FC = () => {
 
                       <Route path="/settings" element={<Settings user={currentUser} />} />
                       <Route path="/events" element={<Events user={currentUser} />} />
+                      {/* Rota de Eventos Pagos (Pastor/Admin) */}
+                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
+                        <Route path="/paid-events" element={<PaidEventsManager user={currentUser} />} />
+                      )}
 
                         {/* Rotas de Membro/Líder */}
                         <Route path="/my-activities" element={<MyM12Activities user={currentUser} />} />
