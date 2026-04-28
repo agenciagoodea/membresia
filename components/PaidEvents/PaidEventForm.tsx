@@ -15,6 +15,13 @@ interface PaidEventFormProps {
   userId: string;
 }
 
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="space-y-2">
+    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">{label}</label>
+    {children}
+  </div>
+);
+
 const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved, event, churchId, userId }) => {
   const [form, setForm] = useState<any>({
     title: '', description: '', start_date: '', end_date: '', location: '',
@@ -159,13 +166,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
 
   if (!isOpen) return null;
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">{label}</label>
-      {children}
-    </div>
-  );
-
+  // Field component movido para fora para não perder o foco
   const inputClass = "w-full bg-zinc-900 border border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-600 transition-all";
 
   return (
