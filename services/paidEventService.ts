@@ -76,10 +76,13 @@ export const paidEventService = {
 
   async update(id: string, updates: Partial<PaidEvent>): Promise<PaidEvent> {
     const updateData: any = { ...updates, updated_at: new Date().toISOString() };
-    // Não permitir alterar slug após criação
+    // Não permitir alterar chaves primárias ou relacionamentos base após criação
     delete updateData.slug;
     delete updateData.id;
     delete updateData.created_at;
+    delete updateData.created_by;
+    delete updateData.church_id;
+    delete updateData.public_link;
 
     const { data, error } = await supabase
       .from('paid_events')
