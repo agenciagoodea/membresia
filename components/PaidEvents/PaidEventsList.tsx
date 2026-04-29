@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Calendar, MapPin, Users, DollarSign, Eye, Edit2, Trash2, Link2, Copy, Check, Ticket, Search, Filter } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
+import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { PaidEvent, PaidEventStatus, UserRole } from '../../types';
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
