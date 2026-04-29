@@ -1375,9 +1375,15 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
   }
 
   const canEditCell = (cell: Cell) => {
-    if (user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN || user.role === UserRole.PASTOR) return true;
     const myId = user.id || user.profile?.id;
-    return (cell.leaderIds || []).includes(myId) || cell.leaderId === myId;
+    const isAdmin = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role);
+    if (isAdmin) return true;
+
+    if (user.role === UserRole.PASTOR || user.role === 'PASTOR') {
+      return cell.pastorId === myId || cell.supervisorId === myId;
+    }
+    
+    return (cell.leaderIds || []).includes(myId) || cell.leaderId === myId || cell.pastorId === myId || cell.supervisorId === myId;
   };
 
   return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, MapPin, AlignLeft, CalendarCheck2, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { eventService } from '../../services/eventService';
 import { cellService } from '../../services/cellService';
-import { ChurchEvent, UserRole, Cell, CellMeetingException } from '../../types';
+import { ChurchEvent, UserRole, Cell, CellMeetingException, Member } from '../../types';
 import { mergeAgendaItems } from '../../utils/agendaUtils';
 import { cellMeetingService } from '../../services/cellMeetingService';
 import EventModal from './EventModal';
@@ -15,20 +15,34 @@ const Events = ({ user }: { user: any }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ChurchEvent | null>(null);
   const [cellAnniversaries, setCellAnniversaries] = useState<any[]>([]);
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [cells, setCells] = useState<Cell[]>([]);
 
-  const canEdit = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE].includes(user.role);
+  const canEdit = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role);
+
+  const canManageEvent = (evt: ChurchEvent) => {
+    if ([UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role)) return true;
+    const myId = user.id || user.profile?.id;
+    return evt.created_by === myId || 
+           evt.responsible_pastor_id === myId || 
+           evt.coordinator_id === myId || 
+           (evt.assistant_ids || []).includes(myId);
+  };
 
   const loadEvents = async () => {
     try {
       setLoading(true);
       const churchId = user.churchId || user.church_id;
       
-      const [eventsData, cellsData, exceptionsData, allMembers] = await Promise.all([
+      const [eventsData, cellsData, exceptionsData, membersData] = await Promise.all([
         eventService.getAll(churchId),
         cellService.getAll(churchId),
         cellMeetingService.getExceptions(churchId),
         memberService.getAll(churchId)
       ]);
+
+      setAllMembers(membersData || []);
+      setCells(cellsData || []);
 
       // Lógica de Aniversariantes da Célula
       const currentYear = new Date().getFullYear();
@@ -36,7 +50,7 @@ const Events = ({ user }: { user: any }) => {
       const cellBdays: any[] = [];
 
       if (myCellId) {
-        const cellMembers = allMembers.filter(m => m.cellId === myCellId);
+        const cellMembers = membersData.filter(m => m.cellId === myCellId);
         cellMembers.forEach(m => {
           // Membro
           if (m.birthDate) {
@@ -75,8 +89,6 @@ const Events = ({ user }: { user: any }) => {
       setCellAnniversaries(cellBdays);
 
       const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, user);
-      // Incluir aniversários no set de eventos para a listagem se necessário, 
-      // mas a MonthlyAgenda cuida de mostrar no calendário.
       setEvents([...merged, ...cellBdays]);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
@@ -234,7 +246,7 @@ const Events = ({ user }: { user: any }) => {
                       </div>
                     </div>
 
-                    {(canEdit && !evt.id.startsWith('cell-') && (user.role === UserRole.MASTER_ADMIN || evt.created_by === user.id || evt.created_by === user.profile?.id)) && (
+                    {(canEdit && !evt.id.startsWith('cell-') && canManageEvent(evt)) && (
                       <div className="flex items-center gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity mt-4 md:mt-0">
                         <button onClick={() => openEditEvent(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5">
                           <Edit2 size={16} />
@@ -273,7 +285,7 @@ const Events = ({ user }: { user: any }) => {
                           <p className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-1">{formatDate(evt.date)}</p>
                           <h4 className="text-sm font-bold text-zinc-300 uppercase leading-snug">{evt.title}</h4>
                         </div>
-                         {(canEdit && !evt.id.startsWith('cell-') && (user.role === UserRole.MASTER_ADMIN || evt.created_by === user.id || evt.created_by === user.profile?.id)) && (
+                         {(canEdit && !evt.id.startsWith('cell-') && canManageEvent(evt)) && (
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
                             <button onClick={() => openEditEvent(evt)} className="p-1.5 text-zinc-500 hover:text-white">
                               <Edit2 size={12} />
@@ -297,6 +309,8 @@ const Events = ({ user }: { user: any }) => {
         event={selectedEvent}
         churchId={user.churchId || user.church_id}
         userId={user.id}
+        allMembers={allMembers}
+        cells={cells}
       />
     </div>
   );

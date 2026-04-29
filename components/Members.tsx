@@ -37,6 +37,15 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
   const currentTotal = members.length;
   const isLimitReached = currentTotal >= planLimit;
 
+  const canManageMember = (member: Member) => {
+    const myId = user.id || user.profile?.id;
+    const isAdmin = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.ADMINISTRADOR_IGREJA, 'ADMIN'].includes(user.role);
+    const isMyPastorate = member.pastorId === myId || member.disciplerId === myId;
+    const isSelf = member.id === myId;
+
+    return isAdmin || isMyPastorate || isSelf;
+  };
+
   useEffect(() => {
     if (location.state && (location.state as any).openNewMember) {
       if (!isLimitReached && !loading) {
@@ -308,14 +317,18 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                           <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-emerald-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">WhatsApp</span>
                         </a>
                       )}
-                      <button onClick={() => handleEditMember(member)} className="group/btn relative p-3 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
-                        <Edit2 size={16} />
-                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-amber-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">Editar</span>
-                      </button>
-                      <button onClick={() => handleDeleteMember(member.id)} className="group/btn relative p-3 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
-                        <Trash2 size={16} />
-                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-rose-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">Excluir</span>
-                      </button>
+                      {canManageMember(member) && (
+                        <>
+                          <button onClick={() => handleEditMember(member)} className="group/btn relative p-3 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
+                            <Edit2 size={16} />
+                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-amber-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">Editar</span>
+                          </button>
+                          <button onClick={() => handleDeleteMember(member.id)} className="group/btn relative p-3 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
+                            <Trash2 size={16} />
+                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-rose-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">Excluir</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -370,12 +383,16 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                       <Phone size={14} />
                     </a>
                   )}
-                  <button onClick={() => handleEditMember(member)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all text-[#10px]">
-                    <Edit2 size={14} />
-                  </button>
-                  <button onClick={() => handleDeleteMember(member.id)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all text-[#10px]">
-                    <Trash2 size={14} />
-                  </button>
+                  {canManageMember(member) && (
+                    <>
+                      <button onClick={() => handleEditMember(member)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all text-[#10px]">
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteMember(member.id)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all text-[#10px]">
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

@@ -31,7 +31,9 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 		meetingDay: 'Terça-feira',
 		meetingTime: '20:00',
 		status: 'ACTIVE',
-		logo: ''
+		logo: '',
+		supervisorId: '',
+		pastorId: ''
 	});
 	const [loading, setLoading] = useState(false);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -66,7 +68,9 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 				meetingDay: 'Terça-feira',
 				meetingTime: '20:00',
 				status: 'ACTIVE',
-				logo: ''
+				logo: '',
+				supervisorId: '',
+				pastorId: ''
 			});
 		}
 		setPhotoPreview('');
@@ -375,6 +379,55 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 											<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
 										))}
 									</select>
+								</div>
+							</div>
+
+							{/* Cobertura & Supervisão */}
+							<div className="md:col-span-2 pt-4 border-t border-white/5 space-y-6">
+								<div className="flex items-center gap-4 text-blue-500 font-black text-[10px] uppercase tracking-[0.3em] mb-2">
+									<div className="w-8 h-px bg-blue-500/30" />
+									<span className="flex items-center gap-2"><Heart size={14} /> Cobertura & Supervisão</span>
+									<div className="w-full h-px bg-blue-500/30 flex-1" />
+								</div>
+								
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div className="space-y-2">
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Pastor Responsável</label>
+										<div className="relative group">
+											<div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors">
+												<User size={18} />
+											</div>
+											<select
+												value={formData.pastorId || ''}
+												onChange={e => setFormData({ ...formData, pastorId: e.target.value })}
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
+											>
+												<option value="">Selecione o Pastor</option>
+												{allMembers.filter(m => m.role === 'PASTOR' || m.role === 'PASTOR').map(m => (
+													<option key={m.id} value={m.id}>{m.name}</option>
+												))}
+											</select>
+										</div>
+									</div>
+
+									<div className="space-y-2">
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Supervisor</label>
+										<div className="relative group">
+											<div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-blue-500 transition-colors">
+												<Users size={18} />
+											</div>
+											<select
+												value={formData.supervisorId || ''}
+												onChange={e => setFormData({ ...formData, supervisorId: e.target.value })}
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
+											>
+												<option value="">Selecione o Supervisor</option>
+												{allMembers.filter(m => m.role === 'SUPERVISOR' || m.role === 'PASTOR' || m.role === 'PASTOR').map(m => (
+													<option key={m.id} value={m.id}>{m.name}</option>
+												))}
+											</select>
+										</div>
+									</div>
 								</div>
 							</div>
 

@@ -186,6 +186,8 @@ export interface Cell {
   name: string;
   leaderId: string; // Primary leader or legacy
   leaderIds?: string[]; // Multiple leaders support
+  supervisorId?: string;
+  pastorId?: string;
   hostId?: string;
   hostName: string;
   address: string;
@@ -291,6 +293,10 @@ export interface ChurchEvent {
   location?: string;
   image_url?: string;
   created_by: string;
+  responsible_pastor_id?: string;
+  coordinator_id?: string;
+  assistant_ids?: string[];
+  cell_ids?: string[];
   created_at: string;
 }
 
