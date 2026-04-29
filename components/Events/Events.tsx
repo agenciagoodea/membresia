@@ -35,10 +35,10 @@ const Events = ({ user }: { user: any }) => {
       const churchId = user.churchId || user.church_id;
       
       const [eventsData, cellsData, exceptionsData, membersData] = await Promise.all([
-        eventService.getAll(churchId),
-        cellService.getAll(churchId),
+        eventService.getAll(churchId, user),
+        cellService.getAll(churchId, user),
         cellMeetingService.getExceptions(churchId),
-        memberService.getAll(churchId)
+        memberService.getAll(churchId, undefined, user)
       ]);
 
       setAllMembers(membersData || []);

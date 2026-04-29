@@ -52,11 +52,11 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
       const keys: string[] = [];
 
       if (!options?.partial || options.partial === 'members') {
-        promises.push(memberService.getAll(churchId).catch(() => []));
+        promises.push(memberService.getAll(churchId, undefined, user).catch(() => []));
         keys.push('members');
       }
       if (!options?.partial || options.partial === 'cells') {
-        promises.push(cellService.getAll(churchId).catch(() => []));
+        promises.push(cellService.getAll(churchId, user).catch(() => []));
         keys.push('cells');
       }
       if (!options?.partial || options.partial === 'prayers') {
@@ -65,7 +65,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
         keys.push('prayers');
       }
       if (!options?.partial || options.partial === 'events') {
-        promises.push(eventService.getAll(churchId).catch(() => []));
+        promises.push(eventService.getAll(churchId, user).catch(() => []));
         keys.push('events');
       }
       if (!options?.partial || options.partial === 'exceptions') {

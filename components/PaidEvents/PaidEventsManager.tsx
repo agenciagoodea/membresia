@@ -52,7 +52,7 @@ const PaidEventsManager: React.FC<{ user: any }> = ({ user }) => {
           onSaved={handleFormSaved}
           event={selectedEvent}
           churchId={churchId}
-          userId={user.id}
+          user={user}
         />
       );
 

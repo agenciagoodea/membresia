@@ -91,29 +91,91 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children';
 
 export const memberService = {
-	async getAll(churchId: string, range?: { from: number; to: number }) {
+	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
+		console.log('[DEBUG RBAC] memberService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
+		
 		let query = supabase
 			.from('members')
 			.select('*')
-			.eq('church_id', churchId)
-			.order('name');
+			.eq('church_id', churchId);
+
+		// Aplicar Filtros de Hierarquia Pastoral (RBAC)
+		if (currentUser) {
+			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+			const myId = currentUser.id;
+
+			if (!isAdmin) {
+				// Obter células sob gestão (pastor, líder ou auxiliar)
+				const { data: managedCells } = await supabase
+					.from('cells')
+					.select('id')
+					.or(`pastor_id.eq.${myId},leader_id.eq.${myId},leader_ids.cs.{${myId}},supervisor_id.eq.${myId}`);
+				
+				const allowedCellIds = (managedCells || []).map(c => c.id);
+				const myCellId = currentUser.cellId || currentUser.cell_id;
+				if (myCellId && !allowedCellIds.includes(myCellId)) {
+					allowedCellIds.push(myCellId);
+				}
+
+				// Filtro Unificado: EU + CÔNJUGE + MINHA REDE + MINHA CÉLULA
+				let filterStr = `id.eq.${myId},spouse_id.eq.${myId},pastor_id.eq.${myId},discipler_id.eq.${myId}`;
+				if (allowedCellIds.length > 0) {
+					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
+				}
+				query = query.or(filterStr);
+			}
+		}
+
+		query = query.order('name');
 
 		if (range) {
 			query = query.range(range.from, range.to);
 		}
 
-		const { data, error } = await query;
+		const { data, error, count } = await query;
 
-		if (error) throw error;
+		if (error) {
+			console.error('[DEBUG RBAC] memberService.getAll - Erro:', error);
+			throw error;
+		}
+
+		console.log('[DEBUG RBAC] memberService.getAll - Registros retornados:', data?.length || 0);
 		return (data || []).map(mapToFrontend);
 	},
 
-	async search(query: string) {
-		const { data, error } = await supabase
+	async search(queryStr: string, currentUser?: any) {
+		console.log('[DEBUG RBAC] memberService.search - Query:', queryStr);
+		let query = supabase
 			.from('members')
 			.select('*')
-			.or(`name.ilike.%${query}%,email.ilike.%${query}%`)
-			.limit(10);
+			.or(`name.ilike.%${queryStr}%,email.ilike.%${queryStr}%`);
+
+		if (currentUser) {
+			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+			const myId = currentUser.id;
+
+			if (!isAdmin) {
+				// Obter células sob gestão
+				const { data: managedCells } = await supabase
+					.from('cells')
+					.select('id')
+					.or(`pastor_id.eq.${myId},leader_id.eq.${myId},leader_ids.cs.{${myId}},supervisor_id.eq.${myId}`);
+				
+				const allowedCellIds = (managedCells || []).map(c => c.id);
+				const myCellId = currentUser.cellId || currentUser.cell_id;
+				if (myCellId && !allowedCellIds.includes(myCellId)) {
+					allowedCellIds.push(myCellId);
+				}
+
+				let filterStr = `id.eq.${myId},spouse_id.eq.${myId},pastor_id.eq.${myId},discipler_id.eq.${myId}`;
+				if (allowedCellIds.length > 0) {
+					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
+				}
+				query = query.or(filterStr);
+			}
+		}
+
+		const { data, error } = await query.limit(10);
 
 		if (error) throw error;
 		return (data || []).map(mapToFrontend);

@@ -12,7 +12,7 @@ interface PaidEventFormProps {
   onSaved: () => void;
   event: PaidEvent | null;
   churchId: string;
-  userId: string;
+  user: any;
 }
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -22,7 +22,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
   </div>
 );
 
-const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved, event, churchId, userId }) => {
+const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved, event, churchId, user }) => {
   const [form, setForm] = useState<any>({
     title: '', description: '', start_date: '', end_date: '', location: '',
     price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
@@ -44,7 +44,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
   useEffect(() => {
     if (isOpen && churchId) {
       import('../../services/memberService').then(({ memberService }) => {
-        memberService.getAll(churchId).then(list => {
+        memberService.getAll(churchId, undefined, user).then(list => {
           setMembersList(list.map(m => ({ id: m.id, name: m.name, role: m.role || 'Membro' })));
         }).catch(console.error);
       });

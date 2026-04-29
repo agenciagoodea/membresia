@@ -59,14 +59,39 @@ const mapToDb = (c: Partial<Cell> & { church_id?: string }) => {
 const CELL_LIST_COLUMNS = 'id, name, leader_id, leader_ids, host_id, host_name, address, cep, state, city, neighborhood, street, number, complement, meeting_day, meeting_time, members_count, status, logo, church_id, supervisor_id, pastor_id';
 
 export const cellService = {
-	async getAll(churchId: string) {
-		const { data, error } = await supabase
+	async getAll(churchId: string, currentUser?: any) {
+		console.log('[DEBUG RBAC] cellService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
+		
+		let query = supabase
 			.from('cells')
 			.select(CELL_LIST_COLUMNS)
-			.eq('church_id', churchId)
-			.order('name');
+			.eq('church_id', churchId);
 
-		if (error) throw error;
+		// Aplicar Filtros de Hierarquia Pastoral (RBAC)
+		if (currentUser) {
+			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+			const myId = currentUser.id;
+			const myCellId = currentUser.cellId || currentUser.cell_id;
+
+			if (!isAdmin) {
+				// Pastor vê sua rede, Líder vê suas células, Membro vê sua própria célula
+				let filterStr = `pastor_id.eq.${myId},leader_id.eq.${myId},supervisor_id.eq.${myId},leader_ids.cs.{${myId}}`;
+				if (myCellId) {
+					filterStr += `,id.eq.${myCellId}`;
+				}
+			}
+		}
+
+		query = query.order('name');
+
+		const { data, error } = await query;
+
+		if (error) {
+			console.error('[DEBUG RBAC] cellService.getAll - Erro:', error);
+			throw error;
+		}
+
+		console.log('[DEBUG RBAC] cellService.getAll - Registros retornados:', data?.length || 0);
 		return (data || []).map(mapToFrontend);
 	},
 

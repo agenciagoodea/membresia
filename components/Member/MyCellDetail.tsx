@@ -36,7 +36,7 @@ const MyCellDetail: React.FC<{ user: any }> = ({ user }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const cells = await cellService.getAll(churchId);
+        const cells = await cellService.getAll(churchId, user);
         const myCell = cells.find(c => c.id === cellId);
         if (myCell && !cancelled) {
           setCell(myCell);
@@ -46,7 +46,7 @@ const MyCellDetail: React.FC<{ user: any }> = ({ user }) => {
           }
 
           // Buscar Membros da Célula & Líderes
-          const membersData = await memberService.getAll(churchId);
+          const membersData = await memberService.getAll(churchId, undefined, user);
           const cellMembers = membersData.filter(m => m.cellId === cellId);
           if (!cancelled) setMembersCount(cellMembers.length);
 

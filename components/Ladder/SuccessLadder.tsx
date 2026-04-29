@@ -254,8 +254,8 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
       }
 
       const [membersData, cellsData, activitiesData] = await Promise.all([
-        memberService.getAll(churchId).catch(() => []),
-        cellService.getAll(churchId).catch(() => []),
+        memberService.getAll(churchId, undefined, user).catch(() => []),
+        cellService.getAll(churchId, user).catch(() => []),
         m12Service.getActivities(churchId).catch(() => [])
       ]);
       setMembers(membersData);

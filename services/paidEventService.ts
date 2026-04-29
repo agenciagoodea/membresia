@@ -20,16 +20,36 @@ function generateSlug(title: string): string {
 }
 
 export const paidEventService = {
-  async getAll(churchId: string): Promise<PaidEvent[]> {
+  async getAll(churchId: string, currentUser?: any): Promise<PaidEvent[]> {
     if (!churchId) return [];
+    console.log('[DEBUG RBAC] paidEventService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema');
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('paid_events')
       .select('*')
-      .eq('church_id', churchId)
-      .order('created_at', { ascending: false });
+      .eq('church_id', churchId);
 
-    if (error) throw error;
+    // Aplicar Filtros de Hierarquia Pastoral (RBAC)
+    if (currentUser) {
+      const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+      const myId = currentUser.id;
+
+      if (!isAdmin) {
+        // Pastor e Líder veem o que criaram OU o que está publicado
+        query = query.or(`created_by.eq.${myId},status.eq.published`);
+      }
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[DEBUG RBAC] paidEventService.getAll - Erro:', error);
+      throw error;
+    }
+
+    console.log('[DEBUG RBAC] paidEventService.getAll - Registros retornados:', data?.length || 0);
     return data || [];
   },
 

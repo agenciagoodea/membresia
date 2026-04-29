@@ -44,7 +44,7 @@ const PrayerModeration: React.FC<{ user: any }> = ({ user }) => {
 
       const [requestsData, membersData] = await Promise.all([
         prayerService.getAll(churchId),
-        memberService.getAll(churchId)
+        memberService.getAll(churchId, undefined, user)
       ]);
       setRequests(requestsData);
       setMemberEmails(new Set(membersData.map(m => m.email || '').map(e => e.toLowerCase()).filter(e => e)));

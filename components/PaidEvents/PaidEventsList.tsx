@@ -29,7 +29,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
   const loadEvents = async () => {
     try {
       setLoading(true);
-      const data = await paidEventService.getAll(churchId);
+      const data = await paidEventService.getAll(churchId, user);
       // Carregar stats de inscrição para cada evento
       const withStats = await Promise.all(
         data.map(async (evt) => {

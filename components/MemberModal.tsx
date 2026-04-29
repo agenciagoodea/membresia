@@ -100,8 +100,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				setLoadingData(true);
 				const churchId = user?.churchId || user?.church_id;
 				const [cellsData, membersData, activitiesData] = await Promise.all([
-					cellService.getAll(churchId),
-					memberService.getAll(churchId),
+					cellService.getAll(churchId, user),
+					memberService.getAll(churchId, undefined, user),
 					m12Service.getActivities(churchId)
 				]);
 				setCells(cellsData);

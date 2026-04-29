@@ -2,36 +2,76 @@ import { supabase } from './supabaseClient';
 import { ChurchEvent } from '../types';
 
 export const eventService = {
-  async getAll(churchId: string): Promise<ChurchEvent[]> {
+  async getAll(churchId: string, currentUser?: any): Promise<ChurchEvent[]> {
     if (!churchId) return [];
+    console.log('[DEBUG RBAC] eventService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema');
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
       .select('*')
-      .eq('church_id', churchId)
-      .order('date', { ascending: true })
+      .eq('church_id', churchId);
+
+    // Aplicar Filtros de Hierarquia Pastoral (RBAC)
+    if (currentUser) {
+      const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+      const myId = currentUser.id;
+
+      if (!isAdmin) {
+        // Pastor e Líder veem eventos públicos OU onde são responsáveis
+        // Nota: assistant_ids é um array no Postgres, usamos .cs (contains)
+        query = query.or(`created_by.eq.${myId},responsible_pastor_id.eq.${myId},coordinator_id.eq.${myId},assistant_ids.cs.{${myId}}`);
+      }
+    }
+
+    query = query.order('date', { ascending: true })
       .order('time', { ascending: true });
 
-    if (error) throw error;
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[DEBUG RBAC] eventService.getAll - Erro:', error);
+      throw error;
+    }
+
+    console.log('[DEBUG RBAC] eventService.getAll - Registros retornados:', data?.length || 0);
     return data || [];
   },
 
-  async getUpcoming(churchId: string, limit: number = 5): Promise<ChurchEvent[]> {
+  async getUpcoming(churchId: string, limit: number = 5, currentUser?: any): Promise<ChurchEvent[]> {
     if (!churchId) return [];
+    console.log('[DEBUG RBAC] eventService.getUpcoming - Iniciando busca para:', currentUser?.name || 'Sistema');
     
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
       .select('*')
       .eq('church_id', churchId)
-      .gte('date', today)
-      .order('date', { ascending: true })
+      .gte('date', today);
+
+    // Aplicar Filtros de Hierarquia Pastoral (RBAC)
+    if (currentUser) {
+      const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+      const myId = currentUser.id;
+
+      if (!isAdmin) {
+        query = query.or(`created_by.eq.${myId},responsible_pastor_id.eq.${myId},coordinator_id.eq.${myId},assistant_ids.cs.{${myId}}`);
+      }
+    }
+
+    query = query.order('date', { ascending: true })
       .order('time', { ascending: true })
       .limit(limit);
 
-    if (error) throw error;
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[DEBUG RBAC] eventService.getUpcoming - Erro:', error);
+      throw error;
+    }
+
+    console.log('[DEBUG RBAC] eventService.getUpcoming - Registros retornados:', data?.length || 0);
     return data || [];
   },
 

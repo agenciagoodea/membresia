@@ -44,11 +44,11 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
       }
 
       const [membersData, activitiesData] = await Promise.all([
-        memberService.getAll(churchId),
+        memberService.getAll(churchId, undefined, user),
         m12Service.getActivities(churchId)
       ]);
 
-      const cells = await cellService.getAll(churchId);
+      const cells = await cellService.getAll(churchId, user);
       
       const filtered = membersData.filter(m => {
         const isSelf = m.id === user.id;
