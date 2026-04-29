@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { PaidEventRegistration, PaidEvent } from '../types';
+import { paidEventRegistrationService } from './paidEventRegistrationService';
 
 export const pdfService = {
   /**
@@ -13,6 +14,9 @@ export const pdfService = {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const w = doc.internal.pageSize.getWidth();
     let y = 15;
+
+    const eventPeriod = paidEventRegistrationService.formatEventPeriod(event.start_date, event.end_date);
+    const photoBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
 
     // Header com fundo
     doc.setFillColor(24, 24, 27); // zinc-900
@@ -35,16 +39,15 @@ export const pdfService = {
     doc.setFont('helvetica', 'normal');
     doc.text('FICHA DE INSCRIÇÃO CONFIRMADA', churchLogo ? 44 : 10, 30);
 
-    const startDate = new Date(event.start_date).toLocaleDateString('pt-BR');
-    doc.text(`Data: ${startDate}  |  Local: ${event.location || 'A definir'}`, churchLogo ? 44 : 10, 36);
+    doc.text(`Período: ${eventPeriod}  |  Local: ${event.location || 'A definir'}`, churchLogo ? 44 : 10, 36);
 
     y = 55;
 
     // Foto do participante (se disponível)
     doc.setTextColor(0, 0, 0);
-    if (reg.photo_url) {
+    if (photoBase64) {
       try {
-        doc.addImage(reg.photo_url, 'JPEG', w - 45, 50, 35, 42);
+        doc.addImage(photoBase64, 'JPEG', w - 45, 50, 35, 42);
       } catch { /* skip */ }
     }
 
@@ -158,6 +161,9 @@ export const pdfService = {
   ): Promise<void> {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [54, 86] });
     
+    const bannerBase64 = event.banner_url ? await paidEventRegistrationService.getImageBase64('paid-event-banners', event.banner_url) : '';
+    const photoBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
+
     // Background color
     doc.setFillColor(24, 24, 27); // zinc-900
     doc.rect(0, 0, 54, 86, 'F');
@@ -165,10 +171,9 @@ export const pdfService = {
     // Topo Roxo / Banner
     doc.setFillColor(139, 92, 246); // violet-500
     doc.rect(0, 0, 54, 25, 'F');
-    if (event.banner_url) {
+    if (bannerBase64) {
       try {
-        doc.addImage(event.banner_url, 'JPEG', 0, 0, 54, 25);
-        // Overlay escuro translúcido via GState se suportado
+        doc.addImage(bannerBase64, 'JPEG', 0, 0, 54, 25);
         try {
           doc.setGState(new (doc as any).GState({opacity: 0.4}));
           doc.setFillColor(0, 0, 0);
@@ -187,14 +192,12 @@ export const pdfService = {
 
     // Participant Photo
     let photoY = 28;
-    if (reg.photo_url) {
+    if (photoBase64) {
       try {
-        // Draw white border for photo
         doc.setFillColor(255, 255, 255);
         doc.rect(13, photoY - 1, 28, 28, 'F');
-        doc.addImage(reg.photo_url, 'JPEG', 14, photoY, 26, 26);
+        doc.addImage(photoBase64, 'JPEG', 14, photoY, 26, 26);
       } catch {
-        // Placeholder if image fails
         doc.setFillColor(50, 50, 50);
         doc.rect(14, photoY, 26, 26, 'F');
       }
@@ -244,6 +247,8 @@ export const pdfService = {
     const w = doc.internal.pageSize.getWidth();
     let y = 20;
 
+    const eventPeriod = paidEventRegistrationService.formatEventPeriod(event.start_date, event.end_date);
+
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -252,6 +257,12 @@ export const pdfService = {
 
     doc.setFontSize(12);
     doc.text(event.title.toUpperCase(), w / 2, y, { align: 'center' });
+    y += 8;
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(eventPeriod, w / 2, y, { align: 'center' });
     y += 15;
 
     // Filters & Stats
@@ -261,6 +272,7 @@ export const pdfService = {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
     doc.text(`Total Confirmados: ${confirmed.length}`, 14, y);
     doc.text(`Masculino: ${male}  |  Feminino: ${female}`, 14, y + 5);
     
@@ -318,6 +330,8 @@ export const pdfService = {
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
+    const bannerBase64 = event.banner_url ? await paidEventRegistrationService.getImageBase64('paid-event-banners', event.banner_url) : '';
+
     // Dimensões do crachá CR-80
     const badgeW = 54;
     const badgeH = 86;
@@ -330,7 +344,6 @@ export const pdfService = {
 
     for (let i = 0; i < confirmed.length; i++) {
       const reg = confirmed[i];
-      const pageIndex = Math.floor(i / 9);
       const posOnPage = i % 9;
       const col = posOnPage % 3;
       const row = Math.floor(posOnPage / 3);
@@ -342,6 +355,8 @@ export const pdfService = {
       const x = marginX + (col * badgeW);
       const y = marginY + (row * badgeH);
 
+      const pBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
+
       // Fundo Escuro do Crachá
       doc.setFillColor(24, 24, 27); // zinc-900
       doc.roundedRect(x, y, badgeW, badgeH, 2, 2, 'F');
@@ -349,10 +364,9 @@ export const pdfService = {
       // Topo Roxo / Banner
       doc.setFillColor(139, 92, 246); // violet-500
       doc.rect(x, y, badgeW, 25, 'F');
-      if (event.banner_url) {
+      if (bannerBase64) {
         try {
-          doc.addImage(event.banner_url, 'JPEG', x, y, badgeW, 25);
-          // Overlay escuro via GState se suportado
+          doc.addImage(bannerBase64, 'JPEG', x, y, badgeW, 25);
           try {
             doc.setGState(new (doc as any).GState({opacity: 0.4}));
             doc.setFillColor(0, 0, 0);
@@ -369,21 +383,15 @@ export const pdfService = {
       const titleLines = doc.splitTextToSize(event.title.toUpperCase(), badgeW - 4);
       doc.text(titleLines, x + (badgeW / 2), y + 12, { align: 'center' });
 
-      // Foto do Participante (Placeholder de máscara circular via border grosso - JS PDF limitação)
-      // Desenhamos um quadrado, tentamos colocar a foto.
+      // Foto do Participante
       const photoY = y + 28;
       doc.setFillColor(50, 50, 50);
       doc.rect(x + 14, photoY, 26, 26, 'F');
-      if (reg.photo_url) {
+      if (pBase64) {
         try {
-          doc.addImage(reg.photo_url, 'JPEG', x + 14, photoY, 26, 26);
-        } catch (e) {
-          // Ignora se der erro de cors/carregamento
-        }
+          doc.addImage(pBase64, 'JPEG', x + 14, photoY, 26, 26);
+        } catch (e) {}
       }
-
-      // Máscara para simular foto redonda (4 cantos cinzas)
-      // JS PDF não permite clipping clip() nativo facialmente, então vamos adicionar o nome logo abaixo
 
       // Nome do Participante
       doc.setFontSize(11);

@@ -164,8 +164,8 @@ export const paidEventRegistrationService = {
     const name = `${churchId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
     const { error } = await supabase.storage.from('event-participant-photos').upload(name, file);
     if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from('event-participant-photos').getPublicUrl(name);
-    return publicUrl;
+    // Retornamos apenas o path para maior flexibilidade
+    return name;
   },
 
   async uploadProof(file: File, churchId: string): Promise<string> {
@@ -173,8 +173,58 @@ export const paidEventRegistrationService = {
     const name = `${churchId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
     const { error } = await supabase.storage.from('event-payment-proofs').upload(name, file);
     if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from('event-payment-proofs').getPublicUrl(name);
-    return publicUrl;
+    // Retornamos apenas o path para maior flexibilidade
+    return name;
+  },
+
+  getFileUrl(bucket: 'event-participant-photos' | 'event-payment-proofs' | 'paid-event-banners', path: string): string {
+    if (!path) return '';
+    if (path.startsWith('http')) return path; // Já é uma URL completa
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  /**
+   * Converte uma imagem para Base64 (útil para PDFs)
+   */
+  async getImageBase64(bucket: string, path: string): Promise<string> {
+    const url = this.getFileUrl(bucket as any, path);
+    if (!url) return '';
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error('Erro ao converter imagem para base64:', e);
+      return '';
+    }
+  },
+
+  formatEventPeriod(startDate: string, endDate?: string): string {
+    if (!startDate) return '';
+    const start = new Date(startDate + 'T12:00:00');
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    if (!endDate || startDate === endDate) {
+      return `${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
+    }
+
+    const end = new Date(endDate + 'T12:00:00');
+    
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `${start.getDate()} a ${end.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
+    }
+
+    if (start.getFullYear() === end.getFullYear()) {
+      return `${start.getDate()} de ${months[start.getMonth()]} a ${end.getDate()} de ${months[end.getMonth()]} de ${start.getFullYear()}`;
+    }
+
+    return `${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()} a ${end.getDate()} de ${months[end.getMonth()]} de ${end.getFullYear()}`;
   },
 
   async updatePdfUrl(registrationId: string, pdfUrl: string): Promise<void> {

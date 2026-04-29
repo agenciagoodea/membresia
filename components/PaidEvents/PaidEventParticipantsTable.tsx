@@ -135,9 +135,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     awaiting: registrations.filter(r => r.payment_status === 'aguardando_comprovante').length,
   };
   const maxParticipants = event.max_participants || 0;
-  const activeCount = stats.confirmed + stats.pending;
+  const activeCount = filtered.filter(r => r.payment_status !== 'cancelado' && r.payment_status !== 'recusado').length;
   const occupancy = maxParticipants > 0 ? Math.round((activeCount / maxParticipants) * 100) : null;
-  const spotsLeft = maxParticipants > 0 ? maxParticipants - activeCount : null;
+  const spotsLeft = maxParticipants > 0 ? maxParticipants - filtered.length : null; // total_inscritos (mesmo aguardando) bloqueiam vaga
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -148,8 +148,11 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h2 className="text-2xl font-black text-white tracking-tight uppercase">{event.title}</h2>
-            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Inscrições Recebidas</p>
+            <h2 className="text-2xl font-black text-white tracking-tight uppercase leading-tight">{event.title}</h2>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+              <Calendar size={12} className="text-zinc-600" />
+              {paidEventRegistrationService.formatEventPeriod(event.start_date, event.end_date)}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -169,7 +172,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
           <p className="text-2xl font-black text-white">{stats.total}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inscritos Total</p>
         </div>
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
           <p className="text-2xl font-black text-emerald-400">{stats.confirmed}</p>
@@ -182,8 +185,8 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
           {spotsLeft !== null ? (
             <>
-              <p className={`text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{spotsLeft}</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Restantes</p>
+              <p className={`text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{Math.max(0, spotsLeft)}</p>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
             </>
           ) : (
             <>
@@ -212,9 +215,12 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
               style={{ width: `${Math.min(occupancy, 100)}%` }}
             />
           </div>
-          <p className="text-[10px] text-zinc-600 font-bold">{stats.confirmed} de {maxParticipants} vagas confirmadas</p>
-          {spotsLeft !== null && spotsLeft <= 10 && (
-            <p className="flex items-center gap-1.5 text-[10px] font-black text-amber-400">
+          <div className="flex justify-between text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
+            <span>{activeCount} ocupadas</span>
+            <span>{maxParticipants} total</span>
+          </div>
+          {spotsLeft !== null && spotsLeft <= 10 && spotsLeft > 0 && (
+            <p className="flex items-center gap-1.5 text-[10px] font-black text-amber-400 uppercase tracking-widest">
               <AlertTriangle size={11} /> Atenção: restam apenas {spotsLeft} vagas!
             </p>
           )}
@@ -246,7 +252,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
 
       {/* Contagem do filtro */}
       {(search || filterStatus !== 'all' || filterTransport !== 'all') && (
-        <p className="text-[10px] text-zinc-500 font-bold">
+        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
           Exibindo <span className="text-white">{filtered.length}</span> de {registrations.length} inscrições
         </p>
       )}
@@ -259,104 +265,110 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
           <p className="text-zinc-500 font-black text-sm uppercase tracking-widest">Nenhuma inscrição encontrada</p>
         </div>
       ) : (
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 bg-zinc-950/50">
-                  <th className="text-left px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Participante</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden md:table-cell">Contato</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden lg:table-cell">Blusa</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden lg:table-cell">Transp.</th>
-                  <th className="text-center px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status</th>
-                  <th className="text-center px-4 py-3 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Ações</th>
+                  <th className="text-left px-4 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Participante</th>
+                  <th className="text-left px-4 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] hidden md:table-cell">Contato</th>
+                  <th className="text-left px-4 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] hidden lg:table-cell text-center">Blusa / Transp.</th>
+                  <th className="text-center px-4 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Status</th>
+                  <th className="text-center px-4 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(reg => {
                   const st = STATUS_CONFIG[reg.payment_status] || STATUS_CONFIG.aguardando_comprovante;
                   const isLoading = actionLoading === reg.id;
+                  const pUrl = paidEventRegistrationService.getFileUrl('event-participant-photos', reg.photo_url || '');
                   return (
-                    <tr key={reg.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {reg.photo_url ? (
-                            <img 
-                              src={reg.photo_url} 
-                              className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10 shrink-0" 
-                              alt="" 
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                e.currentTarget.nextElementSibling?.classList.add('flex');
-                              }}
-                            />
-                          ) : null}
-                          <div className={`w-9 h-9 rounded-full bg-zinc-800 items-center justify-center text-zinc-600 shrink-0 ${reg.photo_url ? 'hidden' : 'flex'}`}>
-                            <User size={16} />
+                    <tr key={reg.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            {reg.photo_url ? (
+                              <img 
+                                src={pUrl} 
+                                className="w-11 h-11 rounded-xl object-cover ring-2 ring-white/10 shrink-0 shadow-lg" 
+                                alt="" 
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                  e.currentTarget.nextElementSibling?.classList.add('flex');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-11 h-11 rounded-xl bg-zinc-800 items-center justify-center text-zinc-600 shrink-0 ${reg.photo_url ? 'hidden' : 'flex'} border border-white/5 shadow-inner`}>
+                              <User size={20} />
+                            </div>
+                            {reg.payment_status === 'pago_confirmado' && (
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-zinc-900 flex items-center justify-center">
+                                <CheckCircle2 size={10} className="text-white" />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-white text-sm truncate">{reg.full_name}</p>
-                            <p className="text-[10px] text-zinc-500 truncate">{reg.pastor_name || 'Sem pastor'} · <span className="font-mono text-zinc-600">{reg.registration_code}</span></p>
+                            <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5 truncate">{reg.pastor_name || 'Sem pastor'} · <span className="font-black text-zinc-700">{reg.registration_code}</span></p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <div className="space-y-0.5">
-                          <p className="text-zinc-400 text-xs">{reg.phone || '—'}</p>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        <div className="space-y-1">
+                          <p className="text-zinc-300 text-xs font-bold">{reg.phone || '—'}</p>
                           {reg.email && (
-                            <p className="text-zinc-600 text-[10px] truncate max-w-[160px]" title={reg.email}>
-                              <Mail size={10} className="inline mr-1 text-zinc-700" />{reg.email}
+                            <p className="text-zinc-600 text-[10px] uppercase font-black tracking-widest truncate max-w-[160px]" title={reg.email}>
+                              {reg.email}
                             </p>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-zinc-400 hidden lg:table-cell">
-                        <div className="flex items-center gap-1">
-                          <Shirt size={13} className="text-zinc-600" />
-                          <span className="text-xs font-bold">{reg.shirt_size || '—'}</span>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1 rounded-lg border border-white/5">
+                            <Shirt size={12} className="text-zinc-600" />
+                            <span className="text-[10px] font-black text-zinc-400">{reg.shirt_size || '—'}</span>
+                          </div>
+                          {reg.transport_type && (
+                            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${reg.transport_type === 'Carro' ? 'bg-blue-500/5 border-blue-500/10 text-blue-400' : 'bg-amber-500/5 border-amber-500/10 text-amber-400'}`}>
+                              {reg.transport_type === 'Carro' ? <Car size={12} /> : <Bus size={12} />}
+                              <span className="text-[9px] font-black uppercase tracking-widest">{reg.transport_type}</span>
+                            </div>
+                          )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        {reg.transport_type === 'Carro' ? (
-                          <span className="flex items-center gap-1 text-blue-400 text-xs font-bold"><Car size={13} /> Carro</span>
-                        ) : reg.transport_type === 'Ônibus' ? (
-                          <span className="flex items-center gap-1 text-amber-400 text-xs font-bold"><Bus size={13} /> Ônibus</span>
-                        ) : (
-                          <span className="text-zinc-600 text-xs">—</span>
-                        )}
+                      <td className="px-4 py-4 text-center">
+                        <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border ${st.bg} ${st.color} ${st.border} shadow-sm`}>{st.label}</span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${st.bg} ${st.color} ${st.border}`}>{st.label}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           {isLoading ? (
                             <Loader2 size={14} className="animate-spin text-violet-400" />
                           ) : (
                             <>
-                              <button onClick={() => setSelectedReg(reg)} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Ver detalhes"><Eye size={14} /></button>
+                              <button onClick={() => setSelectedReg(reg)} className="p-2.5 text-zinc-500 hover:text-white bg-zinc-950 hover:bg-zinc-800 rounded-xl border border-white/5 transition-all shadow-lg" title="Ver detalhes"><Eye size={16} /></button>
                               {reg.phone && (
-                                <button onClick={() => handleWhatsApp(reg)} className="p-2 text-emerald-600 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all" title="WhatsApp"><MessageCircle size={14} /></button>
+                                <button onClick={() => handleWhatsApp(reg)} className="p-2.5 text-emerald-600 hover:text-emerald-400 bg-zinc-950 hover:bg-emerald-500/10 rounded-xl border border-white/5 transition-all shadow-lg" title="WhatsApp"><MessageCircle size={16} /></button>
                               )}
                               {['comprovante_enviado', 'em_analise', 'aguardando_comprovante'].includes(reg.payment_status) && (
                                 <>
-                                  <button onClick={() => handleConfirm(reg)} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Confirmar pagamento"><CheckCircle2 size={14} /></button>
+                                  <button onClick={() => handleConfirm(reg)} className="p-2.5 text-emerald-500 hover:bg-emerald-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Confirmar pagamento"><CheckCircle2 size={16} /></button>
                                   {reg.payment_status !== 'aguardando_comprovante' && (
-                                    <button onClick={() => handleReject(reg)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all" title="Recusar"><XCircle size={14} /></button>
+                                    <button onClick={() => handleReject(reg)} className="p-2.5 text-rose-500 hover:bg-rose-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Recusar"><XCircle size={16} /></button>
                                   )}
                                 </>
                               )}
                               {reg.payment_status === 'pago_confirmado' && (
                                 <>
-                                  <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2 text-violet-400 hover:bg-violet-500/10 rounded-lg transition-all" title="Comprovante PDF"><FileText size={14} /></button>
-                                  <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Crachá PDF">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg>
+                                  <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2.5 text-violet-400 hover:bg-violet-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Comprovante PDF"><FileText size={16} /></button>
+                                  <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="p-2.5 text-amber-400 hover:bg-amber-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Crachá PDF">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg>
                                   </button>
                                 </>
                               )}
                               {canManage && (
-                                <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all ml-1" title="Excluir Inscrição"><Trash2 size={14} /></button>
+                                <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2.5 text-rose-600 hover:text-rose-400 bg-zinc-950 hover:bg-rose-500/10 rounded-xl border border-white/5 transition-all ml-1 shadow-lg" title="Excluir Inscrição"><Trash2 size={16} /></button>
                               )}
                             </>
                           )}

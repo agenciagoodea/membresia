@@ -148,22 +148,20 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
             return (
               <div key={evt.id} className="group bg-zinc-900 border border-white/5 hover:border-violet-500/30 rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-violet-500/5">
                 {/* Banner */}
-                {evt.banner_url ? (
-                  <div className="h-40 overflow-hidden relative">
-                    <img src={evt.banner_url} className="w-full h-full object-cover" alt={evt.title} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent" />
-                    <span className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color}`}>
-                      {statusInfo.label}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="h-24 bg-gradient-to-br from-violet-600/10 to-indigo-600/10 flex items-center justify-center relative">
-                    <Ticket size={32} className="text-violet-500/30" />
-                    <span className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color}`}>
-                      {statusInfo.label}
-                    </span>
-                  </div>
-                )}
+                <div className="h-40 overflow-hidden relative">
+                  <img 
+                    src={paidEventRegistrationService.getFileUrl('paid-event-banners', evt.banner_url || '')} 
+                    className="w-full h-full object-cover" 
+                    alt={evt.title} 
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000'; // Fallback
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
+                  <span className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color} shadow-lg backdrop-blur-md`}>
+                    {statusInfo.label}
+                  </span>
+                </div>
 
                 {/* Info */}
                 <div className="p-6 space-y-4">
@@ -171,7 +169,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
 
                   <div className="flex flex-wrap gap-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5">
-                      <Calendar size={11} className="text-zinc-400" /> {formatDate(evt.start_date)}
+                      <Calendar size={11} className="text-zinc-400" /> {paidEventRegistrationService.formatEventPeriod(evt.start_date, evt.end_date)}
                     </span>
                     {evt.location && (
                       <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 max-w-[180px] truncate">
@@ -184,17 +182,19 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                   </div>
 
                     <div className="flex gap-4">
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
                         <p className="text-lg font-black text-white">{evt.stats?.total || 0}</p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inscritos</p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
                       </div>
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
                         <p className="text-lg font-black text-emerald-400">{evt.stats?.confirmed || 0}</p>
                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
                       </div>
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
-                        <p className="text-lg font-black text-amber-400">{evt.max_participants ? evt.max_participants - ((evt.stats?.confirmed || 0) + (evt.stats?.pending || 0)) : '∞'}</p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas</p>
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
+                        <p className={`text-lg font-black ${evt.max_participants && (evt.max_participants - (evt.stats?.total || 0)) <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>
+                          {evt.max_participants ? Math.max(0, evt.max_participants - (evt.stats?.total || 0)) : '∞'}
+                        </p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
                       </div>
                     </div>
 
