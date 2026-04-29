@@ -206,16 +206,29 @@ export const paidEventRegistrationService = {
   },
 
   formatEventPeriod(startDate: string, endDate?: string): string {
-    if (!startDate) return '';
-    const start = new Date(startDate + 'T12:00:00');
+    if (!startDate) return 'Período não informado';
+    
     const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     
-    if (!endDate || startDate === endDate) {
+    // Função auxiliar para garantir data válida ignorando timezone local (meio-dia)
+    const parseDate = (d: string) => {
+      if (!d) return null;
+      // Se for apenas YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d + 'T12:00:00');
+      // Se for ISO completo, pega apenas a parte da data
+      const datePart = d.split('T')[0];
+      return new Date(datePart + 'T12:00:00');
+    };
+
+    const start = parseDate(startDate);
+    if (!start || isNaN(start.getTime())) return 'Data inválida';
+
+    const end = endDate ? parseDate(endDate) : null;
+    
+    if (!end || isNaN(end.getTime()) || startDate.split('T')[0] === (endDate || '').split('T')[0]) {
       return `${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
     }
 
-    const end = new Date(endDate + 'T12:00:00');
-    
     if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
       return `${start.getDate()} a ${end.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
     }
