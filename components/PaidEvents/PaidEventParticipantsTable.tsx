@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Download, FileText, CheckCircle2, XCircle, Eye, User, Shirt, Bus, Car, Loader2, Mail, MessageCircle, AlertTriangle, BarChart3, Trash2, Printer, Calendar } from 'lucide-react';
+import { ArrowLeft, Search, Download, FileText, CheckCircle2, XCircle, Eye, User, Shirt, Bus, Car, Loader2, Mail, MessageCircle, AlertTriangle, BarChart3, Trash2, Printer, Calendar, Edit2 } from 'lucide-react';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { pdfService } from '../../services/pdfService';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import PaidEventRegistrationDetailsModal from './PaidEventRegistrationDetailsModal';
+import PaidEventRegistrationEditModal from './PaidEventRegistrationEditModal';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
   aguardando_comprovante: { label: 'Aguardando', color: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-zinc-700' },
@@ -27,6 +28,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterTransport, setFilterTransport] = useState('all');
   const [selectedReg, setSelectedReg] = useState<PaidEventRegistration | null>(null);
+  const [editingReg, setEditingReg] = useState<PaidEventRegistration | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -368,6 +370,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                                 </>
                               )}
                               {canManage && (
+                                <button onClick={() => setEditingReg(reg)} className="p-2.5 text-blue-400 hover:bg-blue-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Editar inscrição"><Edit2 size={16} /></button>
+                              )}
+                              {canManage && (
                                 <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2.5 text-rose-600 hover:text-rose-400 bg-zinc-950 hover:bg-rose-500/10 rounded-xl border border-white/5 transition-all ml-1 shadow-lg" title="Excluir Inscrição"><Trash2 size={16} /></button>
                               )}
                             </>
@@ -403,6 +408,24 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
           user={user}
           onClose={() => setSelectedReg(null)}
           onStatusChanged={loadData}
+          onEdit={(reg) => {
+            setEditingReg(reg);
+            setSelectedReg(null); // Fecha o detalhes para abrir o edit
+          }}
+        />
+      )}
+      
+      {/* Modal Edição */}
+      {editingReg && (
+        <PaidEventRegistrationEditModal
+          isOpen={true}
+          onClose={() => setEditingReg(null)}
+          onSaved={() => {
+            loadData();
+            setEditingReg(null);
+          }}
+          registration={editingReg}
+          event={event}
         />
       )}
     </div>

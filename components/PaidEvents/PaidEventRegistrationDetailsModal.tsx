@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle2, XCircle, FileText, Download, Phone, User, Shirt, Bus, Car, Heart, AlertTriangle, Clock, Users, ExternalLink, Calendar, DollarSign } from 'lucide-react';
+import { X, CheckCircle2, XCircle, FileText, Download, Phone, User, Shirt, Bus, Car, Heart, AlertTriangle, Clock, Users, ExternalLink, Calendar, DollarSign, Edit2 } from 'lucide-react';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { pdfService } from '../../services/pdfService';
@@ -18,11 +18,13 @@ interface Props {
   event: PaidEvent;
   user: any;
   onClose: () => void;
-  onStatusChanged: () => void;
+  onStatusChanged?: () => void;
+  onEdit?: (reg: PaidEventRegistration) => void;
 }
 
-const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg, event, user, onClose, onStatusChanged }) => {
+const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg, event, user, onClose, onStatusChanged, onEdit }) => {
   const st = STATUS_CONFIG[reg.payment_status] || STATUS_CONFIG.aguardando_comprovante;
+  const canManage = user.role === 'MASTER_ADMIN' || user.role === 'CHURCH_ADMIN' || event.created_by === user.id;
 
   const photoUrl = paidEventRegistrationService.getFileUrl('event-participant-photos', reg.photo_url || '');
   const proofUrl = paidEventRegistrationService.getFileUrl('event-payment-proofs', reg.payment_proof_url || '');
@@ -32,7 +34,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
   const handleConfirm = async () => {
     try {
       await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.CONFIRMED, user.id, 'Pagamento confirmado', event);
-      onStatusChanged();
+      onStatusChanged?.();
     } catch (error) {
       alert('Erro ao confirmar pagamento.');
     }
@@ -43,7 +45,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
     if (reason === null) return;
     try {
       await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.REJECTED, user.id, reason || 'Comprovante recusado', event);
-      onStatusChanged();
+      onStatusChanged?.();
     } catch (error) {
       alert('Erro ao recusar pagamento.');
     }
@@ -99,7 +101,15 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
           
-          <div className="absolute top-6 right-6 flex gap-2">
+          <div className="absolute top-6 right-6 flex items-center gap-3">
+            {canManage && onEdit && (
+              <button
+                onClick={() => onEdit(reg)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+              >
+                <Edit2 size={14} /> Editar
+              </button>
+            )}
             <button onClick={onClose} className="p-3 bg-black/50 hover:bg-black/80 text-white rounded-2xl backdrop-blur-md border border-white/10 transition-all">
               <X size={20} />
             </button>

@@ -48,11 +48,14 @@ const PaidEventPublicPage: React.FC = () => {
     return () => { document.title = 'Ecclesia'; };
   }, [slug]);
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const formatDate = (d: string) => paidEventRegistrationService.formatDateOnly(d);
 
-  const formatDateShort = (d: string) =>
-    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase();
+  const formatDateShort = (d: string) => {
+    const parts = d.split('T')[0].split('-');
+    if (parts.length !== 3) return d;
+    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    return `${parts[2]} ${months[parseInt(parts[1]) - 1]}`;
+  };
 
   const formatCurrency = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

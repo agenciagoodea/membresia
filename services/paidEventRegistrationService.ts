@@ -205,33 +205,55 @@ export const paidEventRegistrationService = {
     }
   },
 
+  /**
+   * Helper para formatar data sem sofrer com timezone (evita voltar 1 dia)
+   */
+  formatDateOnly(dateString: string): string {
+    if (!dateString) return 'Data não informada';
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    // Pega apenas a parte YYYY-MM-DD
+    const parts = dateString.split('T')[0].split('-');
+    if (parts.length !== 3) return dateString;
+    
+    const year = parts[0];
+    const month = parseInt(parts[1]) - 1;
+    const day = parseInt(parts[2]);
+    
+    return `${day} de ${months[month]} de ${year}`;
+  },
+
   formatEventPeriod(startDate: string, endDate?: string): string {
     if (!startDate) return 'Período não informado';
     
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     
-    // Função auxiliar para garantir data válida ignorando timezone local (meio-dia)
-    const parseDate = (d: string) => {
-      if (!d) return null;
-      // Se for apenas YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d + 'T12:00:00');
-      // Se for ISO completo, pega apenas a parte da data
-      const datePart = d.split('T')[0];
-      return new Date(datePart + 'T12:00:00');
+    const parse = (d: string) => {
+      const parts = d.split('T')[0].split('-');
+      return {
+        year: parseInt(parts[0]),
+        month: parseInt(parts[1]) - 1,
+        day: parseInt(parts[2])
+      };
     };
 
-    const start = parseDate(startDate);
-    if (!start || isNaN(start.getTime())) return 'Data inválida';
-
-    const end = endDate ? parseDate(endDate) : null;
+    const s = parse(startDate);
+    const e = endDate ? parse(endDate) : null;
     
-    if (!end || isNaN(end.getTime()) || startDate.split('T')[0] === (endDate || '').split('T')[0]) {
-      return `${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
+    if (!e || (s.day === e.day && s.month === e.month && s.year === e.year)) {
+      return `${s.day} de ${months[s.month]} de ${s.year}`;
     }
 
-    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-      return `${start.getDate()} a ${end.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
+    if (s.month === e.month && s.year === e.year) {
+      return `${s.day} a ${e.day} de ${months[s.month]} de ${s.year}`;
     }
+
+    if (s.year === e.year) {
+      return `${s.day} de ${months[s.month]} a ${e.day} de ${months[e.month]} de ${s.year}`;
+    }
+
+    return `${s.day}/${s.month + 1}/${s.year} a ${e.day}/${e.month + 1}/${e.year}`;
+  },
 
     if (start.getFullYear() === end.getFullYear()) {
       return `${start.getDate()} de ${months[start.getMonth()]} a ${end.getDate()} de ${months[end.getMonth()]} de ${start.getFullYear()}`;
