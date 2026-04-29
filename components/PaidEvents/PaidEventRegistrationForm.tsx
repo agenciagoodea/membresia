@@ -43,6 +43,9 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
 
+  const [pastorsList, setPastorsList] = useState<{name: string}[]>([]);
+  const [disciplersList, setDisciplersList] = useState<{name: string}[]>([]);
+
   useEffect(() => {
     const load = async () => {
       if (!slug) return;
@@ -56,6 +59,17 @@ const PaidEventRegistrationForm: React.FC = () => {
           );
           setPixQR(qrCodeDataURL);
         }
+
+        // Carregar listas para autocomplete
+        import('../../services/supabaseClient').then(async ({ supabase }) => {
+          const [{ data: pData }, { data: dData }] = await Promise.all([
+            supabase.from('members').select('name').eq('church_id', data.church_id).in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN']).order('name'),
+            supabase.from('members').select('name').eq('church_id', data.church_id).order('name')
+          ]);
+          if (pData) setPastorsList(pData);
+          if (dData) setDisciplersList(dData);
+        });
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -259,8 +273,20 @@ const PaidEventRegistrationForm: React.FC = () => {
           </div>
 
           <div><label className={labelClass}>Telefone *</label><input required value={form.phone} onChange={e => setForm({...form, phone: applyPhoneMask(e.target.value)})} className={inputClass} placeholder="(11) 99999-9999" /></div>
-          <div><label className={labelClass}>Nome do Pastor *</label><input required value={form.pastor_name} onChange={e => setForm({...form, pastor_name: e.target.value})} className={inputClass} placeholder="Nome do seu pastor" /></div>
-          <div><label className={labelClass}>Nome do Discipulador</label><input value={form.discipler_name} onChange={e => setForm({...form, discipler_name: e.target.value})} className={inputClass} placeholder="Nome do seu discipulador" /></div>
+          <div>
+            <label className={labelClass}>Nome do Pastor *</label>
+            <input required list="pastors-list" value={form.pastor_name} onChange={e => setForm({...form, pastor_name: e.target.value})} className={inputClass} placeholder="Nome do seu pastor" />
+            <datalist id="pastors-list">
+              {pastorsList.map((p, i) => <option key={i} value={p.name} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className={labelClass}>Nome do Discipulador</label>
+            <input list="disciplers-list" value={form.discipler_name} onChange={e => setForm({...form, discipler_name: e.target.value})} className={inputClass} placeholder="Nome do seu discipulador" />
+            <datalist id="disciplers-list">
+              {disciplersList.map((d, i) => <option key={i} value={d.name} />)}
+            </datalist>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div><label className={labelClass}>Tamanho da Blusa *</label>

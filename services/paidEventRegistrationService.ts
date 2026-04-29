@@ -43,13 +43,13 @@ export const paidEventRegistrationService = {
     regData: Omit<PaidEventRegistration, 'id' | 'created_at' | 'updated_at' | 'registration_code' | 'payment_confirmed_by' | 'payment_confirmed_at' | 'pdf_url'>
   ): Promise<PaidEventRegistration> {
     const registration_code = generateRegistrationCode();
-    const { data, error } = await supabase
+    const payload = { ...regData, registration_code };
+    const { error } = await supabase
       .from('paid_event_registrations')
-      .insert([{ ...regData, registration_code }])
-      .select()
-      .single();
+      .insert([payload]);
+      
     if (error) throw error;
-    return data;
+    return payload as unknown as PaidEventRegistration;
   },
 
   async updatePaymentStatus(
