@@ -18,7 +18,7 @@ interface PaidEventsListProps {
 }
 
 const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEdit, onViewRegistrations }) => {
-  const [events, setEvents] = useState<(PaidEvent & { stats?: { total: number; confirmed: number } })[]>([]);
+  const [events, setEvents] = useState<(PaidEvent & { stats?: { total: number; confirmed: number; pending: number } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -35,9 +35,9 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
         data.map(async (evt) => {
           try {
             const stats = await paidEventService.getRegistrationStats(evt.id);
-            return { ...evt, stats: { total: stats.total, confirmed: stats.confirmed } };
+            return { ...evt, stats: { total: stats.total, confirmed: stats.confirmed, pending: stats.pending } };
           } catch {
-            return { ...evt, stats: { total: 0, confirmed: 0 } };
+            return { ...evt, stats: { total: 0, confirmed: 0, pending: 0 } };
           }
         })
       );
@@ -193,7 +193,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
                       </div>
                       <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
-                        <p className="text-lg font-black text-amber-400">{evt.max_participants ? evt.max_participants - (evt.stats?.confirmed || 0) : '∞'}</p>
+                        <p className="text-lg font-black text-amber-400">{evt.max_participants ? evt.max_participants - ((evt.stats?.confirmed || 0) + (evt.stats?.pending || 0)) : '∞'}</p>
                         <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas</p>
                       </div>
                     </div>

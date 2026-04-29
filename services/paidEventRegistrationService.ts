@@ -151,6 +151,14 @@ export const paidEventRegistrationService = {
     return data;
   },
 
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('paid_event_registrations')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   async uploadPhoto(file: File, churchId: string): Promise<string> {
     const ext = file.name.split('.').pop();
     const name = `${churchId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;

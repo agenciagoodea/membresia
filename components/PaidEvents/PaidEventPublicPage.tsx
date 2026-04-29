@@ -33,7 +33,7 @@ const PaidEventPublicPage: React.FC = () => {
         if (metaDesc) metaDesc.setAttribute('content', data.description?.substring(0, 155) || `Inscreva-se no evento ${data.title}`);
 
         if (data.max_participants) {
-          const count = await paidEventRegistrationService.countConfirmed(data.id);
+          const count = await paidEventRegistrationService.countActive(data.id);
           setSpotsLeft(data.max_participants - count);
         }
       } catch (err) {

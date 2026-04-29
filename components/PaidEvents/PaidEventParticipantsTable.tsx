@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Download, FileText, CheckCircle2, XCircle, Eye, User, Shirt, Bus, Car, Loader2, Mail, MessageCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Search, Download, FileText, CheckCircle2, XCircle, Eye, User, Shirt, Bus, Car, Loader2, Mail, MessageCircle, AlertTriangle, BarChart3, Trash2, Printer } from 'lucide-react';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { pdfService } from '../../services/pdfService';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
@@ -70,6 +70,24 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     }
   };
 
+  const canManage = user.role === 'MASTER_ADMIN' || user.role === 'CHURCH_ADMIN' || event.created_by === user.id;
+
+  const handleDeleteRegistration = async (id: string) => {
+    if (!canManage) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta inscrição? Esta ação não poderá ser desfeita.')) return;
+    
+    try {
+      setActionLoading(id);
+      await paidEventRegistrationService.delete(id);
+      loadData();
+    } catch (error) {
+      console.error('Erro ao excluir inscrição:', error);
+      alert('Erro ao excluir inscrição.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleWhatsApp = (reg: PaidEventRegistration) => {
     if (!reg.phone) return;
     const digits = reg.phone.replace(/\D/g, '');
@@ -117,8 +135,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     awaiting: registrations.filter(r => r.payment_status === 'aguardando_comprovante').length,
   };
   const maxParticipants = event.max_participants || 0;
-  const occupancy = maxParticipants > 0 ? Math.round((stats.confirmed / maxParticipants) * 100) : null;
-  const spotsLeft = maxParticipants > 0 ? maxParticipants - stats.confirmed : null;
+  const activeCount = stats.confirmed + stats.pending;
+  const occupancy = maxParticipants > 0 ? Math.round((activeCount / maxParticipants) * 100) : null;
+  const spotsLeft = maxParticipants > 0 ? maxParticipants - activeCount : null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -136,6 +155,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
         <div className="flex gap-2">
           <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex items-center gap-2 px-5 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
             <FileText size={14} /> Relatório
+          </button>
+          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex items-center gap-2 px-5 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
+            <Printer size={14} /> Crachás
           </button>
           <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
             <Download size={14} /> CSV
@@ -259,10 +281,20 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {reg.photo_url ? (
-                            <img src={reg.photo_url} className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10 shrink-0" alt="" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-600 shrink-0"><User size={16} /></div>
-                          )}
+                            <img 
+                              src={reg.photo_url} 
+                              className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10 shrink-0" 
+                              alt="" 
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                e.currentTarget.nextElementSibling?.classList.add('flex');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`w-9 h-9 rounded-full bg-zinc-800 items-center justify-center text-zinc-600 shrink-0 ${reg.photo_url ? 'hidden' : 'flex'}`}>
+                            <User size={16} />
+                          </div>
                           <div className="min-w-0">
                             <p className="font-bold text-white text-sm truncate">{reg.full_name}</p>
                             <p className="text-[10px] text-zinc-500 truncate">{reg.pastor_name || 'Sem pastor'} · <span className="font-mono text-zinc-600">{reg.registration_code}</span></p>
@@ -322,6 +354,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg>
                                   </button>
                                 </>
+                              )}
+                              {canManage && (
+                                <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all ml-1" title="Excluir Inscrição"><Trash2 size={14} /></button>
                               )}
                             </>
                           )}
