@@ -1308,23 +1308,21 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
   const planLimits = PLAN_CONFIGS[user.church_plan || 'PRO'];
   const isLimitReached = cells.length >= planLimits.maxCells;
 
-  // Filtro de visibilidade baseado no cargo
+  // Filtro de visibilidade baseado no cargo (Reforço do RBAC do serviço)
   const visibleCells = cells.filter(cell => {
-    if (user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN || user.role === UserRole.PASTOR) {
-      return true; // Admin e Pastores veem tudo
-    }
-    if (user.role === UserRole.CELL_LEADER_DISCIPLE) {
-      // Líder vê a célula que lidera, onde é membro OU onde é anfitrião
-      const myId = user.id || user.profile?.id;
-      const myCellId = user.cellId || user.profile?.cellId;
-      
-      const isLeaderOfThisCell = (cell.leaderIds || []).includes(myId) || cell.leaderId === myId;
-      const isHostOfThisCell = cell.hostId === myId;
-      const isMemberOfThisCell = myCellId === cell.id;
-      
-      return isLeaderOfThisCell || isMemberOfThisCell || isHostOfThisCell;
-    }
-    return false; // Outros cargos não veem rede de células (geralmente nem chegam aqui)
+    const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role);
+    if (isAdmin) return true;
+
+    const myId = user.id || user.profile?.id;
+    const myCellId = user.cellId || user.profile?.cellId;
+    
+    // Pastor/Líder/Discipulador vê apenas o que está vinculado a ele
+    const isLeaderOfThisCell = (cell.leaderIds || []).includes(myId) || cell.leaderId === myId;
+    const isHostOfThisCell = cell.hostId === myId;
+    const isMemberOfThisCell = myCellId === cell.id;
+    const isPastorOfThisCell = cell.pastorId === myId || cell.supervisorId === myId;
+    
+    return isLeaderOfThisCell || isMemberOfThisCell || isHostOfThisCell || isPastorOfThisCell;
   });
 
   const handleCreateCell = () => {
@@ -1379,11 +1377,11 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
     const isAdmin = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role);
     if (isAdmin) return true;
 
-    if (user.role === UserRole.PASTOR || user.role === 'PASTOR') {
-      return cell.pastorId === myId || cell.supervisorId === myId;
-    }
+    // Pastor só edita se for o pastor ou supervisor daquela célula específica
+    const isPastorOrSupervisor = cell.pastorId === myId || cell.supervisorId === myId;
+    const isLeader = (cell.leaderIds || []).includes(myId) || cell.leaderId === myId;
     
-    return (cell.leaderIds || []).includes(myId) || cell.leaderId === myId || cell.pastorId === myId || cell.supervisorId === myId;
+    return isPastorOrSupervisor || isLeader;
   };
 
   return (
@@ -1400,18 +1398,20 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
         <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
           <PageHeader
             title="Rede de Células"
-            subtitle={`Monitorando ${cells.length} de ${planLimits.maxCells} núcleos ativos.`}
+            subtitle={`Monitorando ${visibleCells.length} núcleos ativos.`}
             actions={
-              <button
-                onClick={handleCreateCell}
-                className={`flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all shadow-xl w-full md:w-auto justify-center ${isLimitReached
-                  ? 'bg-zinc-800 text-zinc-500 border border-white/5 cursor-not-allowed opacity-50'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
-                  }`}
-              >
-                {isLimitReached ? <Lock size={18} /> : <Plus size={18} />}
-                Nova Célula
-              </button>
+              (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.PASTOR || user.role === 'PASTOR') && (
+                <button
+                  onClick={handleCreateCell}
+                  className={`flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all shadow-xl w-full md:w-auto justify-center ${isLimitReached
+                    ? 'bg-zinc-800 text-zinc-500 border border-white/5 cursor-not-allowed opacity-50'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
+                    }`}
+                >
+                  {isLimitReached ? <Lock size={18} /> : <Plus size={18} />}
+                  Nova Célula
+                </button>
+              )
             }
           />
 

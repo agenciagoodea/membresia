@@ -60,30 +60,55 @@ const CELL_LIST_COLUMNS = 'id, name, leader_id, leader_ids, host_id, host_name, 
 
 export const cellService = {
 	async getAll(churchId: string, currentUser?: any) {
-		console.log('[DEBUG RBAC] cellService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
-		
+		const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser?.role);
+		const myId = currentUser?.id;
+		const myCellId = currentUser?.cellId || currentUser?.cell_id;
+
+		console.log('[DEBUG RBAC] cellService.getAll - Iniciando busca');
+		console.log('[DEBUG RBAC] Usuário:', currentUser?.name, '| Role:', currentUser?.role, '| ID:', myId);
+		console.log('[DEBUG RBAC] Church ID:', churchId);
+
 		let query = supabase
 			.from('cells')
 			.select(CELL_LIST_COLUMNS)
 			.eq('church_id', churchId);
 
-		// Aplicar Filtros de Hierarquia Pastoral (RBAC)
-		if (currentUser) {
-			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
-			const myId = currentUser.id;
-			const myCellId = currentUser.cellId || currentUser.cell_id;
+		if (currentUser && !isAdmin) {
+			// 1. Buscar IDs de discípulos diretos para expandir a rede (Pastor/Discipulador)
+			const { data: disciples } = await supabase
+				.from('members')
+				.select('id, cell_id')
+				.or(`pastor_id.eq.${myId},discipler_id.eq.${myId}`);
 
-			if (!isAdmin) {
-				// Pastor vê sua rede, Líder vê suas células, Membro vê sua própria célula
-				let filterStr = `pastor_id.eq.${myId},leader_id.eq.${myId},supervisor_id.eq.${myId},leader_ids.cs.{${myId}}`;
-				if (myCellId) {
-					filterStr += `,id.eq.${myCellId}`;
-				}
+			const discipleIds = (disciples || []).map(d => d.id);
+			const discipleCellIds = (disciples || []).map(d => d.cell_id).filter(Boolean);
+
+			// 2. Construir filtro OR exaustivo
+			let conditions = [
+				`pastor_id.eq.${myId}`,
+				`supervisor_id.eq.${myId}`,
+				`leader_id.eq.${myId}`,
+				`leader_ids.cs.{${myId}}`
+			];
+
+			if (discipleIds.length > 0) {
+				conditions.push(`leader_id.in.(${discipleIds.join(',')})`);
 			}
+
+			if (discipleCellIds.length > 0) {
+				conditions.push(`id.in.(${discipleCellIds.join(',')})`);
+			}
+
+			if (myCellId) {
+				conditions.push(`id.eq.${myCellId}`);
+			}
+
+			const filterStr = conditions.join(',');
+			console.log('[DEBUG RBAC] Aplicando filtro OR:', filterStr);
+			query = query.or(filterStr);
 		}
 
 		query = query.order('name');
-
 		const { data, error } = await query;
 
 		if (error) {
@@ -91,7 +116,7 @@ export const cellService = {
 			throw error;
 		}
 
-		console.log('[DEBUG RBAC] cellService.getAll - Registros retornados:', data?.length || 0);
+		console.log('[DEBUG RBAC] cellService.getAll - Células retornadas:', data?.length || 0);
 		return (data || []).map(mapToFrontend);
 	},
 
