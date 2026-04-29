@@ -144,6 +144,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filtered.map((evt) => {
             const statusInfo = STATUS_LABELS[evt.status] || STATUS_LABELS.draft;
+            const canManage = user.role === 'MASTER_ADMIN' || user.role === 'CHURCH_ADMIN' || evt.created_by === user.id;
             return (
               <div key={evt.id} className="group bg-zinc-900 border border-white/5 hover:border-violet-500/30 rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-violet-500/5">
                 {/* Banner */}
@@ -199,29 +200,35 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-2 border-t border-white/5">
-                    <button onClick={() => onViewRegistrations(evt)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all">
-                      <Users size={14} /> Inscritos
-                    </button>
-                    <button onClick={() => onEdit(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Editar">
-                      <Edit2 size={14} />
-                    </button>
+                    {canManage && (
+                      <button onClick={() => onViewRegistrations(evt)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all">
+                        <Users size={14} /> Inscritos
+                      </button>
+                    )}
+                    {canManage && (
+                      <button onClick={() => onEdit(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Editar">
+                        <Edit2 size={14} />
+                      </button>
+                    )}
                     {evt.status === 'published' && (
                       <>
                         <button onClick={() => {
                           const link = evt.public_link || `${window.location.origin}/#/evento/${evt.slug}`;
                           const text = `Inscreva-se no evento: ${evt.title}\n\nGaranta sua vaga aqui:\n${link}`;
                           window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-                        }} className="p-3 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 rounded-xl transition-all border border-white/5 hover:border-emerald-500/20" title="Compartilhar WhatsApp">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        }} className={canManage ? "p-3 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 rounded-xl transition-all border border-white/5 hover:border-emerald-500/20" : "flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all"} title="Compartilhar WhatsApp">
+                          {canManage ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> : <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> WhatsApp</>}
                         </button>
                         <button onClick={() => handleCopyLink(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Copiar link">
                           {copiedId === evt.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         </button>
                       </>
                     )}
-                    <button onClick={() => handleDelete(evt.id)} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all border border-rose-500/10" title="Excluir">
-                      <Trash2 size={14} />
-                    </button>
+                    {canManage && (
+                      <button onClick={() => handleDelete(evt.id)} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all border border-rose-500/10" title="Excluir">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
