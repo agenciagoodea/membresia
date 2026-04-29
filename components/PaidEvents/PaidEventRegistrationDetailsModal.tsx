@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle2, XCircle, FileText, Download, Phone, User, Shirt, Bus, Car, Heart, AlertTriangle, Clock, Users, ExternalLink } from 'lucide-react';
+import { X, CheckCircle2, XCircle, FileText, Download, Phone, User, Shirt, Bus, Car, Heart, AlertTriangle, Clock, Users, ExternalLink, Calendar } from 'lucide-react';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { pdfService } from '../../services/pdfService';

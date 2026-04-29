@@ -325,14 +325,14 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                         </div>
                       </td>
                       <td className="px-4 py-4 hidden lg:table-cell">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1 rounded-lg border border-white/5">
-                            <Shirt size={12} className="text-zinc-600" />
+                        <div className="flex flex-row items-center justify-center gap-2">
+                          <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-white/5">
+                            <Shirt size={11} className="text-zinc-600" />
                             <span className="text-[10px] font-black text-zinc-400">{reg.shirt_size || '—'}</span>
                           </div>
                           {reg.transport_type && (
-                            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${reg.transport_type === 'Carro' ? 'bg-blue-500/5 border-blue-500/10 text-blue-400' : 'bg-amber-500/5 border-amber-500/10 text-amber-400'}`}>
-                              {reg.transport_type === 'Carro' ? <Car size={12} /> : <Bus size={12} />}
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${reg.transport_type === 'Carro' ? 'bg-blue-500/5 border-blue-500/10 text-blue-400' : 'bg-amber-500/5 border-amber-500/10 text-amber-400'}`}>
+                              {reg.transport_type === 'Carro' ? <Car size={11} /> : <Bus size={11} />}
                               <span className="text-[9px] font-black uppercase tracking-widest">{reg.transport_type}</span>
                             </div>
                           )}
@@ -342,7 +342,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                         <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border ${st.bg} ${st.color} ${st.border} shadow-sm`}>{st.label}</span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <div className="flex items-center justify-center gap-1 transition-all">
                           {isLoading ? (
                             <Loader2 size={14} className="animate-spin text-violet-400" />
                           ) : (

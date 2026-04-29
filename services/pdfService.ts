@@ -183,12 +183,14 @@ export const pdfService = {
       } catch (e) {}
     }
 
-    // Event title
+    // Event title - REMOVED as per user request to leave banner clean
+    /*
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     const titleLines = doc.splitTextToSize(event.title.toUpperCase(), 50);
     doc.text(titleLines, 27, 12, { align: 'center' });
+    */
 
     // Participant Photo
     let photoY = 28;
@@ -376,12 +378,14 @@ export const pdfService = {
         } catch (e) {}
       }
 
-      // Nome do Evento no Topo
+      // Nome do Evento no Topo - REMOVED as per user request to leave banner clean
+      /*
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       const titleLines = doc.splitTextToSize(event.title.toUpperCase(), badgeW - 4);
       doc.text(titleLines, x + (badgeW / 2), y + 12, { align: 'center' });
+      */
 
       // Foto do Participante
       const photoY = y + 28;
