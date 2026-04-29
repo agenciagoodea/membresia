@@ -26,7 +26,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
 
   const handleConfirm = async () => {
     try {
-      await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.CONFIRMED, user.id, 'Pagamento confirmado');
+      await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.CONFIRMED, user.id, 'Pagamento confirmado', event);
       onStatusChanged();
       onClose();
     } catch (error) {
@@ -38,7 +38,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
     const reason = prompt('Motivo da recusa:');
     if (reason === null) return;
     try {
-      await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.REJECTED, user.id, reason || 'Comprovante recusado');
+      await paidEventRegistrationService.updatePaymentStatus(reg.id, PaymentStatus.REJECTED, user.id, reason || 'Comprovante recusado', event);
       onStatusChanged();
       onClose();
     } catch (error) {
@@ -172,9 +172,14 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
             </>
           )}
           {reg.payment_status === 'pago_confirmado' && (
-            <button onClick={handleDownloadPDF} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-violet-700 transition-all">
-              <FileText size={14} /> Gerar PDF
-            </button>
+            <>
+              <button onClick={handleDownloadPDF} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-violet-700 transition-all">
+                <FileText size={14} /> Gerar PDF
+              </button>
+              <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-amber-700 transition-all">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg> Crachá
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Upload, Loader2, CheckCircle2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Camera, Upload, Loader2, CheckCircle2, ArrowLeft, AlertTriangle, Mail, Search } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { pixService } from '../../services/pixService';
@@ -13,6 +13,102 @@ const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
 const TRANSPORT_OPTIONS = ['Carro', 'Ônibus'];
 const GENDER_OPTIONS = ['Masculino', 'Feminino'];
 
+// Componente de autocomplete com busca lazy (mínimo 3 caracteres)
+const LazyAutocomplete: React.FC<{
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  searchFn: (q: string) => Promise<string[]>;
+  inputClass: string;
+  labelClass: string;
+}> = ({ label, value, onChange, placeholder, required, searchFn, inputClass, labelClass }) => {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  const handleInput = (v: string) => {
+    setQuery(v);
+    onChange(v);
+    if (v.length < 3) { setSuggestions([]); setOpen(false); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const results = await searchFn(v);
+        setSuggestions(results);
+        setOpen(results.length > 0);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+  };
+
+  const handleSelect = (name: string) => {
+    setQuery(name);
+    onChange(name);
+    setSuggestions([]);
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className={labelClass}>{label}{required && ' *'}</label>
+      <div className="relative mt-1">
+        <input
+          required={required}
+          value={query}
+          onChange={e => handleInput(e.target.value)}
+          placeholder={placeholder}
+          className={inputClass}
+          autoComplete="off"
+        />
+        {loading && (
+          <div className="absolute right-4 inset-y-0 flex items-center">
+            <Loader2 size={14} className="animate-spin text-violet-400" />
+          </div>
+        )}
+        {!loading && query.length > 0 && query.length < 3 && (
+          <div className="absolute right-4 inset-y-0 flex items-center">
+            <span className="text-[10px] text-zinc-600 font-bold">{3 - query.length} letras</span>
+          </div>
+        )}
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl z-50 max-h-48 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => handleSelect(s)}
+              className="w-full text-left px-5 py-3 text-sm font-bold text-zinc-200 hover:bg-violet-600/10 hover:text-white transition-all border-b border-white/5 last:border-none"
+            >
+              <Search size={12} className="inline mr-2 text-violet-400" />
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PaidEventRegistrationForm: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -22,10 +118,11 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [regCode, setRegCode] = useState('');
   const [pixQR, setPixQR] = useState('');
+  const [churchId, setChurchId] = useState('');
 
   // Form state
   const [form, setForm] = useState({
-    full_name: '', age: '', gender: '', discipler_name: '', phone: '',
+    full_name: '', email: '', age: '', gender: '', discipler_name: '', phone: '',
     pastor_name: '', shirt_size: '', transport_type: '',
     has_allergy: false, allergy_description: '', emergency_contact_name: '',
     emergency_contact_phone: '', prayer_request: '', observations: ''
@@ -43,8 +140,8 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
 
-  const [pastorsList, setPastorsList] = useState<{name: string}[]>([]);
-  const [disciplersList, setDisciplersList] = useState<{name: string}[]>([]);
+  // Pastores para datalist (lista pequena — só pastores)
+  const [pastorsList, setPastorsList] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -53,6 +150,8 @@ const PaidEventRegistrationForm: React.FC = () => {
         const data = await paidEventService.getBySlug(slug);
         if (!data) { setLoading(false); return; }
         setEvent(data);
+        setChurchId(data.church_id);
+
         if (data.pix_key && data.pix_receiver_name && data.pix_receiver_city) {
           const { qrCodeDataURL } = await pixService.generatePixQRCode(
             data.pix_key, data.pix_receiver_name, data.pix_receiver_city, data.price
@@ -60,14 +159,15 @@ const PaidEventRegistrationForm: React.FC = () => {
           setPixQR(qrCodeDataURL);
         }
 
-        // Carregar listas para autocomplete
+        // Carregar só pastores (lista pequena)
         import('../../services/supabaseClient').then(async ({ supabase }) => {
-          const [{ data: pData }, { data: dData }] = await Promise.all([
-            supabase.from('members').select('name').eq('church_id', data.church_id).in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN']).order('name'),
-            supabase.from('members').select('name').eq('church_id', data.church_id).order('name')
-          ]);
-          if (pData) setPastorsList(pData);
-          if (dData) setDisciplersList(dData);
+          const { data: pData } = await supabase
+            .from('members')
+            .select('name, spouse_id')
+            .eq('church_id', data.church_id)
+            .in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN', 'ADMINISTRADOR DA IGREJA'])
+            .order('name');
+          if (pData) setPastorsList(pData.map((p: any) => p.name));
         });
 
       } catch (err) {
@@ -78,6 +178,20 @@ const PaidEventRegistrationForm: React.FC = () => {
     };
     load();
   }, [slug]);
+
+  // Função de busca lazy para discipulador (mínimo 3 chars)
+  const searchDisciplers = async (query: string): Promise<string[]> => {
+    if (!churchId || query.length < 3) return [];
+    const { supabase } = await import('../../services/supabaseClient');
+    const { data } = await supabase
+      .from('members')
+      .select('name')
+      .eq('church_id', churchId)
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+    return (data || []).map((m: any) => m.name);
+  };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -121,10 +235,9 @@ const PaidEventRegistrationForm: React.FC = () => {
 
     try {
       setSubmitting(true);
-      let photo_url = '';
-      if (photoFile) {
-        photo_url = await paidEventRegistrationService.uploadPhoto(photoFile, event.church_id);
-      }
+      const photo_url = photoFile
+        ? await paidEventRegistrationService.uploadPhoto(photoFile, event.church_id)
+        : '';
 
       let payment_proof_url = '';
       let payment_status: PaymentStatus = PaymentStatus.AWAITING_PROOF;
@@ -138,6 +251,7 @@ const PaidEventRegistrationForm: React.FC = () => {
         event_id: event.id,
         photo_url,
         full_name: form.full_name,
+        email: form.email || undefined,
         age: form.age ? parseInt(form.age) : undefined,
         gender: form.gender as any || undefined,
         discipler_name: form.discipler_name || undefined,
@@ -153,7 +267,7 @@ const PaidEventRegistrationForm: React.FC = () => {
         observations: form.observations || undefined,
         payment_proof_url: payment_proof_url || undefined,
         payment_status
-      });
+      }, event);
 
       setRegCode(result.registration_code);
       setSuccess(true);
@@ -193,6 +307,11 @@ const PaidEventRegistrationForm: React.FC = () => {
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Seu código de inscrição</p>
             <p className="text-2xl font-black text-violet-400 tracking-widest">{regCode}</p>
             <p className="text-sm text-zinc-400 mt-4">{event.confirmation_message || 'Sua inscrição foi recebida! Aguarde a confirmação do pagamento.'}</p>
+            {form.email && (
+              <p className="text-xs text-emerald-400 font-bold mt-2">
+                ✉️ Um e-mail de confirmação foi enviado para {form.email}
+              </p>
+            )}
           </div>
           <button onClick={() => navigate(`/evento/${slug}`)} className="text-sm text-zinc-500 hover:text-white transition-colors font-bold uppercase tracking-widest">
             ← Voltar ao evento
@@ -260,11 +379,35 @@ const PaidEventRegistrationForm: React.FC = () => {
 
         {/* Dados pessoais */}
         <div className="space-y-4">
-          <div><label className={labelClass}>Nome Completo *</label><input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass} placeholder="Seu nome completo" /></div>
+          <div>
+            <label className={labelClass}>Nome Completo *</label>
+            <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass} placeholder="Seu nome completo" />
+          </div>
+
+          <div>
+            <label className={labelClass}>E-mail</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Mail size={15} className="text-zinc-600" />
+              </div>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm({...form, email: e.target.value})}
+                className={`${inputClass} pl-11`}
+                placeholder="seuemail@exemplo.com (para notificações)"
+              />
+            </div>
+            <p className="text-[10px] text-zinc-600 font-bold ml-1 mt-1">Recomendado: você receberá confirmação por e-mail.</p>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelClass}>Idade</label><input type="number" min="1" max="120" value={form.age} onChange={e => setForm({...form, age: e.target.value})} className={inputClass} placeholder="Ex: 25" /></div>
-            <div><label className={labelClass}>Sexo *</label>
+            <div>
+              <label className={labelClass}>Idade</label>
+              <input type="number" min="1" max="120" value={form.age} onChange={e => setForm({...form, age: e.target.value})} className={inputClass} placeholder="Ex: 25" />
+            </div>
+            <div>
+              <label className={labelClass}>Sexo *</label>
               <select required value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} className={inputClass}>
                 <option value="">Selecione</option>
                 {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
@@ -272,30 +415,41 @@ const PaidEventRegistrationForm: React.FC = () => {
             </div>
           </div>
 
-          <div><label className={labelClass}>Telefone *</label><input required value={form.phone} onChange={e => setForm({...form, phone: applyPhoneMask(e.target.value)})} className={inputClass} placeholder="(11) 99999-9999" /></div>
+          <div>
+            <label className={labelClass}>Telefone *</label>
+            <input required value={form.phone} onChange={e => setForm({...form, phone: applyPhoneMask(e.target.value)})} className={inputClass} placeholder="(11) 99999-9999" />
+          </div>
+
+          {/* Pastor — datalist simples pois é lista pequena */}
           <div>
             <label className={labelClass}>Nome do Pastor *</label>
             <input required list="pastors-list" value={form.pastor_name} onChange={e => setForm({...form, pastor_name: e.target.value})} className={inputClass} placeholder="Nome do seu pastor" />
             <datalist id="pastors-list">
-              {pastorsList.map((p, i) => <option key={i} value={p.name} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className={labelClass}>Nome do Discipulador</label>
-            <input list="disciplers-list" value={form.discipler_name} onChange={e => setForm({...form, discipler_name: e.target.value})} className={inputClass} placeholder="Nome do seu discipulador" />
-            <datalist id="disciplers-list">
-              {disciplersList.map((d, i) => <option key={i} value={d.name} />)}
+              {pastorsList.map((p, i) => <option key={i} value={p} />)}
             </datalist>
           </div>
 
+          {/* Discipulador — busca lazy com mínimo 3 chars */}
+          <LazyAutocomplete
+            label="Nome do Discipulador"
+            value={form.discipler_name}
+            onChange={v => setForm({...form, discipler_name: v})}
+            placeholder="Digite 3+ letras para buscar..."
+            searchFn={searchDisciplers}
+            inputClass={inputClass}
+            labelClass={labelClass}
+          />
+
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelClass}>Tamanho da Blusa *</label>
+            <div>
+              <label className={labelClass}>Tamanho da Blusa *</label>
               <select required value={form.shirt_size} onChange={e => setForm({...form, shirt_size: e.target.value})} className={inputClass}>
                 <option value="">Selecione</option>
                 {SHIRT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div><label className={labelClass}>Transporte *</label>
+            <div>
+              <label className={labelClass}>Transporte *</label>
               <select required value={form.transport_type} onChange={e => setForm({...form, transport_type: e.target.value})} className={inputClass}>
                 <option value="">Selecione</option>
                 {TRANSPORT_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -311,19 +465,34 @@ const PaidEventRegistrationForm: React.FC = () => {
             <span className="text-sm font-bold text-zinc-300">Tem alergia a medicamento ou alimento?</span>
           </label>
           {form.has_allergy && (
-            <div><label className={labelClass}>Quais alergias?</label><input value={form.allergy_description} onChange={e => setForm({...form, allergy_description: e.target.value})} className={inputClass} placeholder="Descreva suas alergias" /></div>
+            <div>
+              <label className={labelClass}>Quais alergias?</label>
+              <input value={form.allergy_description} onChange={e => setForm({...form, allergy_description: e.target.value})} className={inputClass} placeholder="Descreva suas alergias" />
+            </div>
           )}
         </div>
 
         {/* Emergência */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label className={labelClass}>Contato de Emergência (Nome) *</label><input required value={form.emergency_contact_name} onChange={e => setForm({...form, emergency_contact_name: e.target.value})} className={inputClass} placeholder="Nome do parente" /></div>
-          <div><label className={labelClass}>Telefone de Emergência *</label><input required value={form.emergency_contact_phone} onChange={e => setForm({...form, emergency_contact_phone: applyPhoneMask(e.target.value)})} className={inputClass} placeholder="(11) 99999-9999" /></div>
+          <div>
+            <label className={labelClass}>Contato de Emergência (Nome) *</label>
+            <input required value={form.emergency_contact_name} onChange={e => setForm({...form, emergency_contact_name: e.target.value})} className={inputClass} placeholder="Nome do parente" />
+          </div>
+          <div>
+            <label className={labelClass}>Telefone de Emergência *</label>
+            <input required value={form.emergency_contact_phone} onChange={e => setForm({...form, emergency_contact_phone: applyPhoneMask(e.target.value)})} className={inputClass} placeholder="(11) 99999-9999" />
+          </div>
         </div>
 
         {/* Opcionais */}
-        <div><label className={labelClass}>Pedido de Oração (Opcional)</label><textarea value={form.prayer_request} onChange={e => setForm({...form, prayer_request: e.target.value})} rows={2} className={`${inputClass} resize-none`} placeholder="Seu pedido de oração..." /></div>
-        <div><label className={labelClass}>Observações (Opcional)</label><textarea value={form.observations} onChange={e => setForm({...form, observations: e.target.value})} rows={2} className={`${inputClass} resize-none`} placeholder="Alguma observação importante..." /></div>
+        <div>
+          <label className={labelClass}>Pedido de Oração (Opcional)</label>
+          <textarea value={form.prayer_request} onChange={e => setForm({...form, prayer_request: e.target.value})} rows={2} className={`${inputClass} resize-none`} placeholder="Seu pedido de oração..." />
+        </div>
+        <div>
+          <label className={labelClass}>Observações (Opcional)</label>
+          <textarea value={form.observations} onChange={e => setForm({...form, observations: e.target.value})} rows={2} className={`${inputClass} resize-none`} placeholder="Alguma observação importante..." />
+        </div>
 
         {/* Pagamento Pix */}
         {event.pix_key && (

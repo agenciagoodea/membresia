@@ -24,7 +24,7 @@ const MemberPaidEvents: React.FC<Props> = ({ user }) => {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await paidEventRegistrationService.getByMember(user.id);
+        const data = await paidEventRegistrationService.getByMemberOrEmail(user.id, user.email);
         setRegistrations(data);
       } catch (error) {
         console.error('Erro ao carregar eventos do membro:', error);
@@ -33,7 +33,7 @@ const MemberPaidEvents: React.FC<Props> = ({ user }) => {
       }
     };
     load();
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   const handleDownloadPDF = async (reg: any) => {
     try {

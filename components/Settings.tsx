@@ -46,6 +46,7 @@ import { supabase } from '../services/supabaseClient';
 import { m12Service } from '../services/m12Service';
 import { Member, ChurchTenant, UserRole, Cell, LadderStage, M12Activity } from '../types';
 import MemberPaidEvents from './Member/MemberPaidEvents';
+import SMTPSettings from './SMTPSettings';
 
 const Settings: React.FC<{ user: any }> = ({ user }) => {
   const navigate = useNavigate();
@@ -822,6 +823,13 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
             </div>
           )}
         </div>
+
+        {/* Configurações Avançadas (Apenas Admins e Pastores) */}
+        {(user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.PASTOR) && (
+          <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
+             <SMTPSettings />
+          </div>
+        )}
 
         {isCropping && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

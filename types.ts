@@ -336,6 +336,8 @@ export interface PaidEvent {
   status: PaidEventStatus;
   is_featured: boolean;
   public_link?: string;
+  coordenador_id?: string;
+  auxiliares_ids?: string[];
   created_at: string;
   updated_at: string;
   // Campos calculados (não no DB)
@@ -350,6 +352,7 @@ export interface PaidEventRegistration {
   member_id?: string;
   photo_url?: string;
   full_name: string;
+  email?: string;
   age?: number;
   gender?: 'Masculino' | 'Feminino';
   discipler_name?: string;

@@ -182,21 +182,20 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                     </span>
                   </div>
 
-                  {/* Stats */}
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
-                      <p className="text-lg font-black text-white">{evt.stats?.total || 0}</p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inscritos</p>
+                    <div className="flex gap-4">
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
+                        <p className="text-lg font-black text-white">{evt.stats?.total || 0}</p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inscritos</p>
+                      </div>
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
+                        <p className="text-lg font-black text-emerald-400">{evt.stats?.confirmed || 0}</p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
+                      </div>
+                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
+                        <p className="text-lg font-black text-amber-400">{evt.max_participants ? evt.max_participants - (evt.stats?.confirmed || 0) : '∞'}</p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas</p>
+                      </div>
                     </div>
-                    <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
-                      <p className="text-lg font-black text-emerald-400">{evt.stats?.confirmed || 0}</p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
-                    </div>
-                    <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl p-3 text-center">
-                      <p className="text-lg font-black text-amber-400">{evt.max_participants ? evt.max_participants - (evt.stats?.total || 0) : '∞'}</p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas</p>
-                    </div>
-                  </div>
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-2 border-t border-white/5">
@@ -207,9 +206,18 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                       <Edit2 size={14} />
                     </button>
                     {evt.status === 'published' && (
-                      <button onClick={() => handleCopyLink(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Copiar link">
-                        {copiedId === evt.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                      </button>
+                      <>
+                        <button onClick={() => {
+                          const link = evt.public_link || `${window.location.origin}/#/evento/${evt.slug}`;
+                          const text = `Inscreva-se no evento: ${evt.title}\n\nGaranta sua vaga aqui:\n${link}`;
+                          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                        }} className="p-3 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 rounded-xl transition-all border border-white/5 hover:border-emerald-500/20" title="Compartilhar WhatsApp">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        </button>
+                        <button onClick={() => handleCopyLink(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Copiar link">
+                          {copiedId === evt.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                        </button>
+                      </>
                     )}
                     <button onClick={() => handleDelete(evt.id)} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all border border-rose-500/10" title="Excluir">
                       <Trash2 size={14} />

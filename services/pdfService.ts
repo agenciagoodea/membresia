@@ -147,5 +147,151 @@ export const pdfService = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Gera PDF do Crachá CR-80 (54x86mm).
+   */
+  async downloadParticipantBadge(
+    reg: PaidEventRegistration,
+    event: PaidEvent,
+    churchLogo?: string
+  ): Promise<void> {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [54, 86] });
+    
+    // Background color
+    doc.setFillColor(24, 24, 27); // zinc-900
+    doc.rect(0, 0, 54, 86, 'F');
+
+    // Header strip
+    doc.setFillColor(139, 92, 246); // violet-500
+    doc.rect(0, 0, 54, 25, 'F');
+
+    // Event title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    const titleLines = doc.splitTextToSize(event.title.toUpperCase(), 50);
+    doc.text(titleLines, 27, 12, { align: 'center' });
+
+    // Participant Photo
+    let photoY = 28;
+    if (reg.photo_url) {
+      try {
+        // Draw white border for photo
+        doc.setFillColor(255, 255, 255);
+        doc.rect(13, photoY - 1, 28, 28, 'F');
+        doc.addImage(reg.photo_url, 'JPEG', 14, photoY, 26, 26);
+      } catch {
+        // Placeholder if image fails
+        doc.setFillColor(50, 50, 50);
+        doc.rect(14, photoY, 26, 26, 'F');
+      }
+    } else {
+      doc.setFillColor(50, 50, 50);
+      doc.rect(14, photoY, 26, 26, 'F');
+    }
+
+    // Participant Name
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    const nameLines = doc.splitTextToSize(reg.full_name, 50);
+    doc.text(nameLines, 27, 60, { align: 'center' });
+
+    // Code/Info
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(160, 160, 160);
+    doc.text(`CÓD: ${reg.registration_code}`, 27, 72, { align: 'center' });
+
+    if (reg.pastor_name) {
+      doc.text(`PASTOR: ${reg.pastor_name.toUpperCase()}`, 27, 76, { align: 'center' });
+    }
+
+    // Save
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cracha-${reg.registration_code}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Gera relatório PDF de todos os participantes confirmados.
+   */
+  async downloadEventReport(
+    event: PaidEvent,
+    registrations: PaidEventRegistration[],
+    churchLogo?: string
+  ): Promise<void> {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const w = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RELATÓRIO DE PARTICIPANTES', w / 2, y, { align: 'center' });
+    y += 8;
+
+    doc.setFontSize(12);
+    doc.text(event.title.toUpperCase(), w / 2, y, { align: 'center' });
+    y += 15;
+
+    // Filters & Stats
+    const confirmed = registrations.filter(r => r.payment_status === 'pago_confirmado');
+    const male = confirmed.filter(r => r.gender === 'Masculino').length;
+    const female = confirmed.filter(r => r.gender === 'Feminino').length;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Confirmados: ${confirmed.length}`, 14, y);
+    doc.text(`Masculino: ${male}  |  Feminino: ${female}`, 14, y + 5);
+    
+    y += 15;
+
+    // Table Header
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setFillColor(240, 240, 240);
+    doc.rect(14, y - 4, w - 28, 8, 'F');
+    doc.text('Nome', 16, y);
+    doc.text('Telefone', 80, y);
+    doc.text('T. Blusa', 120, y);
+    doc.text('Transp.', 140, y);
+    doc.text('Discipulador', 160, y);
+    y += 8;
+
+    // Table Rows
+    doc.setFont('helvetica', 'normal');
+    confirmed.forEach((reg, index) => {
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(reg.full_name.substring(0, 30), 16, y);
+      doc.text(reg.phone || '', 80, y);
+      doc.text(reg.shirt_size || '', 120, y);
+      doc.text(reg.transport_type || '', 140, y);
+      doc.text(reg.discipler_name?.substring(0, 15) || '', 160, y);
+      y += 6;
+      doc.setDrawColor(240, 240, 240);
+      doc.line(14, y - 4, w - 14, y - 4);
+    });
+
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio-${event.slug}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 };

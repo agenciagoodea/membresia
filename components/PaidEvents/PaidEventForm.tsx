@@ -28,7 +28,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
     price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
     pix_receiver_city: '', confirmation_message: 'Sua inscrição foi recebida! Aguarde a confirmação do pagamento.',
     payment_instructions: 'Realize o pagamento via Pix usando o QR Code abaixo e envie o comprovante no formulário.',
-    status: 'draft', is_featured: true
+    status: 'draft', is_featured: true, coordenador_id: '', auxiliares_ids: []
   });
   const [saving, setSaving] = useState(false);
   const [pixPreview, setPixPreview] = useState<string>('');
@@ -38,15 +38,27 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
+  
+  const [membersList, setMembersList] = useState<{id: string, name: string, role: string}[]>([]);
 
   useEffect(() => {
+    if (isOpen && churchId) {
+      import('../../services/memberService').then(({ memberService }) => {
+        memberService.getAll(churchId).then(list => {
+          setMembersList(list.map(m => ({ id: m.id, name: m.name, role: m.role || 'Membro' })));
+        }).catch(console.error);
+      });
+    }
+
     if (event) {
       setForm({
         ...event,
         price: event.price?.toString() || '',
         max_participants: event.max_participants?.toString() || '',
         start_date: event.start_date ? event.start_date.split('T')[0] : '',
-        end_date: event.end_date ? event.end_date.split('T')[0] : ''
+        end_date: event.end_date ? event.end_date.split('T')[0] : '',
+        coordenador_id: event.coordenador_id || '',
+        auxiliares_ids: event.auxiliares_ids || []
       });
       setBannerPreview(event.banner_url || '');
       if (event.pix_qrcode_payload) {
@@ -58,12 +70,12 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
         price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
         pix_receiver_city: '', confirmation_message: 'Sua inscrição foi recebida! Aguarde a confirmação do pagamento.',
         payment_instructions: 'Realize o pagamento via Pix usando o QR Code abaixo e envie o comprovante no formulário.',
-        status: 'draft', is_featured: true
+        status: 'draft', is_featured: true, coordenador_id: '', auxiliares_ids: []
       });
       setBannerPreview('');
       setPixPreview('');
     }
-  }, [event]);
+  }, [event, isOpen, churchId]);
 
   const handleGeneratePixPreview = async () => {
     if (!form.pix_key || !form.pix_receiver_name || !form.pix_receiver_city) return;
@@ -145,7 +157,9 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
         confirmation_message: form.confirmation_message || null,
         payment_instructions: form.payment_instructions || null,
         status,
-        is_featured: form.is_featured
+        is_featured: form.is_featured,
+        coordenador_id: form.coordenador_id || null,
+        auxiliares_ids: form.auxiliares_ids?.length > 0 ? form.auxiliares_ids : null,
       };
 
       if (event) {
@@ -235,6 +249,29 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
           <Field label="Local">
             <input value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Ex: Sítio Água Viva, Km 12" className={inputClass} />
           </Field>
+
+          <div className="grid grid-cols-1 gap-4 bg-violet-500/5 p-4 rounded-2xl border border-violet-500/10">
+            <h4 className="text-violet-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2"><Users size={14} /> Equipe do Evento</h4>
+            <Field label="Coordenador Principal">
+              <select value={form.coordenador_id || ''} onChange={e => setForm({ ...form, coordenador_id: e.target.value })} className={inputClass}>
+                <option value="">Nenhum</option>
+                {membersList.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Auxiliares (Segure CTRL para selecionar vários)">
+              <select multiple value={form.auxiliares_ids || []} onChange={e => {
+                const selected = Array.from(e.target.selectedOptions as HTMLCollectionOf<HTMLOptionElement>, (option: HTMLOptionElement) => option.value);
+                setForm({ ...form, auxiliares_ids: selected });
+              }} className={`${inputClass} min-h-[100px]`}>
+                {membersList.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Valor por Participante (R$) *">

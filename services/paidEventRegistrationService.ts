@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { PaidEventRegistration, PaymentStatus } from '../types';
+import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../types';
 
 function generateRegistrationCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -29,6 +29,27 @@ export const paidEventRegistrationService = {
     return data || [];
   },
 
+  async getByMemberOrEmail(memberId: string, email?: string): Promise<PaidEventRegistration[]> {
+    // Busca por member_id (inscrições feitas logado) OU por e-mail (inscrições no formúlário público)
+    let query = supabase
+      .from('paid_event_registrations')
+      .select('*, paid_events(*)')
+      .order('created_at', { ascending: false });
+
+    if (email) {
+      query = query.or(`member_id.eq.${memberId},email.ilike.${email}`);
+    } else {
+      query = query.eq('member_id', memberId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Remover duplicatas (inscrição com member_id E email coincidindo)
+    const seen = new Set<string>();
+    return (data || []).filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+  },
+
   async getById(id: string): Promise<PaidEventRegistration | null> {
     const { data, error } = await supabase
       .from('paid_event_registrations')
@@ -40,7 +61,8 @@ export const paidEventRegistrationService = {
   },
 
   async create(
-    regData: Omit<PaidEventRegistration, 'id' | 'created_at' | 'updated_at' | 'registration_code' | 'payment_confirmed_by' | 'payment_confirmed_at' | 'pdf_url'>
+    regData: Omit<PaidEventRegistration, 'id' | 'created_at' | 'updated_at' | 'registration_code' | 'payment_confirmed_by' | 'payment_confirmed_at' | 'pdf_url'>,
+    event?: PaidEvent
   ): Promise<PaidEventRegistration> {
     const registration_code = generateRegistrationCode();
     const payload = { ...regData, registration_code };
@@ -49,11 +71,36 @@ export const paidEventRegistrationService = {
       .insert([payload]);
       
     if (error) throw error;
+
+    // Send email notification if event is provided
+    if (event && payload.email) {
+      try {
+        const { smtpService } = await import('./smtpService');
+        await smtpService.sendEmail(
+          payload.church_id,
+          payload.email,
+          `Inscrição Recebida: ${event.title}`,
+          `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
+            <h2 style="color: #4f46e5;">Sua inscrição foi recebida!</h2>
+            <p>Olá <strong>${payload.full_name}</strong>, recebemos sua inscrição para o evento <strong>${event.title}</strong>.</p>
+            <p>Código da Inscrição: <strong>${registration_code}</strong></p>
+            <p>Aguardamos o envio do comprovante de pagamento para confirmarmos sua vaga.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 40px;">Este é um e-mail automático.</p>
+          </div>
+          `
+        );
+      } catch (e) {
+        console.error('Falha ao enviar email de inscrição:', e);
+      }
+    }
+
     return payload as unknown as PaidEventRegistration;
   },
 
   async updatePaymentStatus(
-    registrationId: string, newStatus: PaymentStatus, changedBy: string, note?: string
+    registrationId: string, newStatus: PaymentStatus, changedBy: string, note?: string,
+    event?: PaidEvent
   ): Promise<PaidEventRegistration> {
     const current = await this.getById(registrationId);
     if (!current) throw new Error('Inscrição não encontrada');
@@ -77,6 +124,29 @@ export const paidEventRegistrationService = {
       registration_id: registrationId, previous_status: current.payment_status,
       new_status: newStatus, changed_by: changedBy, note: note || null
     }]);
+
+    // Send confirmation email
+    if (newStatus === PaymentStatus.CONFIRMED && current.email && event) {
+      try {
+        const { smtpService } = await import('./smtpService');
+        await smtpService.sendEmail(
+          current.church_id,
+          current.email,
+          `Pagamento Confirmado: ${event.title}`,
+          `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
+            <h2 style="color: #10b981;">Pagamento Confirmado!</h2>
+            <p>Olá <strong>${current.full_name}</strong>, seu pagamento para o evento <strong>${event.title}</strong> foi confirmado com sucesso.</p>
+            <p>Código da Inscrição: <strong>${current.registration_code}</strong></p>
+            <p>Sua vaga está garantida! Em breve você poderá acessar seu crachá.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 40px;">Este é um e-mail automático.</p>
+          </div>
+          `
+        );
+      } catch (e) {
+        console.error('Falha ao enviar email de confirmação:', e);
+      }
+    }
 
     return data;
   },
@@ -112,7 +182,19 @@ export const paidEventRegistrationService = {
       .from('paid_event_registrations')
       .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId)
-      .not('payment_status', 'in', '("cancelado","recusado")');
+      .eq('payment_status', 'pago_confirmado');
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async countActive(eventId: string): Promise<number> {
+    // Conta todas as inscrições não canceladas/recusadas (para bloquear vagas)
+    const { count, error } = await supabase
+      .from('paid_event_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .not('payment_status', 'eq', 'cancelado')
+      .not('payment_status', 'eq', 'recusado');
     if (error) throw error;
     return count || 0;
   },
