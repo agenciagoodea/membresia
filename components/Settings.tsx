@@ -148,6 +148,9 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
     let cancelled = false;
     const fetchData = async () => {
+      let effectiveChurchId = user?.churchId;
+      let myProfile = null;
+
       setProfileData({
         name: user.name || user.user_metadata?.name || '',
         email: user.email || user.user_metadata?.email || '',
@@ -175,33 +178,47 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         waterBaptismDate: null,
       });
 
-      let effectiveChurchId = user.churchId;
-      let myProfile = null;
-
-      if (!effectiveChurchId || effectiveChurchId === 'undefined' || typeof effectiveChurchId !== 'string') {
-        const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
-        if (userEmail) {
-          myProfile = await memberService.getByEmail(userEmail).catch(() => null);
-          if (myProfile?.churchId) {
-            effectiveChurchId = myProfile.churchId;
-          }
-        }
-      }
-
-      if (!effectiveChurchId || effectiveChurchId === 'undefined' || effectiveChurchId.length < 30) {
-        if (myProfile) {
-          setMember(myProfile);
-          setProfileData(prev => ({ ...prev, ...myProfile }));
-        }
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
+        
+        // 1. Buscar Perfil via user_id (Nova abordagem segura)
+        if (user?.id) {
+          const { data: profileByUid, error: profileError } = await supabase
+            .from('members')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (profileError) console.error('Erro ao buscar perfil por UID:', profileError);
+          if (profileByUid) {
+            myProfile = await memberService.getById(profileByUid.id); // Usar getById para garantir mapeamento correto
+          }
+        }
+
+        // Fallback por e-mail se não encontrar por UID
+        if (!myProfile) {
+          const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
+          if (userEmail) {
+            myProfile = await memberService.getByEmail(userEmail).catch(() => null);
+          }
+        }
+
+        if (myProfile) {
+          effectiveChurchId = myProfile.churchId;
+        }
+
+        if (!effectiveChurchId || effectiveChurchId === 'undefined') {
+          if (myProfile) {
+            setMember(myProfile);
+            setProfileData(prev => ({ ...prev, ...myProfile }));
+          }
+          setLoading(false);
+          return;
+        }
+
         const [churchRes, membersList, cellsList, m12Acts] = await Promise.all([
           churchService.getBySlug(user.churchSlug || user.user_metadata?.church_slug).catch(() => null),
-          memberService.getAll(effectiveChurchId).catch(() => []),
+          memberService.getAll(effectiveChurchId, undefined, myProfile).catch(() => []),
           cellService.getAll(effectiveChurchId).catch(() => []),
           m12Service.getActivities(effectiveChurchId).catch(() => [])
         ]);
@@ -214,11 +231,6 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           setAllMembers(membersList);
           setAllCells(cellsList);
           setWinActivities(m12Acts.filter(a => a.stage === LadderStage.WIN && a.isActive));
-
-          if (!myProfile) {
-            const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
-            myProfile = membersList.find(m => m.email?.toLowerCase().trim() === userEmail);
-          }
 
           if (myProfile) {
             setMember(myProfile);
