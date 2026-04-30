@@ -87,6 +87,27 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [isProcessingCrop, setIsProcessingCrop] = useState(false);
 
 
+  const sanitizePayload = (data: any) => {
+    return Object.fromEntries(
+      Object.entries(data).filter(([key, value]) => {
+        // Remover campos de controle de UI ou senhas que não vão para o banco
+        if (['newPassword', 'confirmPassword', 'fetchingCep', 'isCropping', 'loading', 'saving'].includes(key)) return false;
+        // Remover undefined e null (deixar o mapToDb lidar com nulos se necessário, ou enviar explicitamente)
+        return value !== undefined;
+      }).map(([key, value]) => [key, value === '' ? null : value])
+    );
+  };
+
+  const formatDateToIso = (dateStr: string) => {
+    if (!dateStr) return null;
+    if (dateStr.includes('-')) return dateStr; // Já é ISO
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dateStr;
+  };
+
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let cep = e.target.value.replace(/\D/g, '');
     setProfileData((prev: any) => ({ ...prev, cep }));
@@ -260,12 +281,19 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
+      
+      // Higienizar dados
+      const sanitizedData = sanitizePayload(profileData);
+      
+      // Formatar datas para ISO
+      if (sanitizedData.birthDate) sanitizedData.birthDate = formatDateToIso(sanitizedData.birthDate);
+      if (sanitizedData.conversionDate) sanitizedData.conversionDate = formatDateToIso(sanitizedData.conversionDate);
+      
       if (member?.id) {
         const wasProfileIncomplete = member.firstAccessCompleted === false;
         const updateData: any = { 
-          ...profileData, 
+          ...sanitizedData, 
           firstAccessCompleted: true,
-          // Limpeza explícita conforme solicitado pelo usuário
           holySpiritBaptism: null,
           waterBaptismDate: null,
           waterBaptismPlace: null
@@ -274,24 +302,24 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         // Persistência Tripla para Sincronização M12
         const originAct = winActivities.find(a => a.label.toLowerCase().includes('origem') || a.label.toLowerCase().includes('conheceu') || a.label.toLowerCase().includes('aceitou'));
         if (originAct && profileData.origin) {
-          // 1. Salvar na tabela de respostas estruturadas
           await m12Service.saveMemberResponse(member.id, originAct.id, profileData.origin).catch(err => console.error('Erro ao sincronizar atividade:', err));
           
-          // 2. Sincronizar milestoneValues para compatibilidade com MyM12Activities
           updateData.milestoneValues = {
             ...(member.milestoneValues || {}),
             [originAct.label]: profileData.origin
           };
-          
-          // 3. Garantir que esteja marcado como concluído nas atividades
           updateData.completedMilestones = Array.from(new Set([...(member.completedMilestones || []), originAct.label]));
         }
 
         const updated = await memberService.update(member.id, updateData);
-        setMember(updated);
-        await supabase.auth.updateUser({
-          data: { profile: { ...user, ...updated, firstAccessCompleted: true } }
-        });
+        if (updated) {
+          setMember(updated);
+          // Sincronizar metadata do Auth (APENAS o perfil, não o objeto user inteiro)
+          await supabase.auth.updateUser({
+            data: { profile: updated }
+          });
+        }
+
         if (profileData.newPassword) {
           if (profileData.newPassword !== profileData.confirmPassword) {
             alert('As senhas não coincidem!');
@@ -302,30 +330,36 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           if (pwdError) throw pwdError;
           setProfileData(prev => ({ ...prev, newPassword: '', confirmPassword: '' }));
         }
+
         if (wasProfileIncomplete) setShowM12Modal(true);
         else alert('Perfil pessoal atualizado com sucesso!');
       } else {
+        // Se não houver member_id (usuário novo/sem vínculo), atualiza apenas o metadata do Auth
+        const authPayload: any = {
+          name: sanitizedData.name,
+          phone: sanitizedData.phone,
+          cpf: sanitizedData.cpf ? sanitizedData.cpf.replace(/\D/g, '') : undefined,
+          birth_date: sanitizedData.birthDate,
+          sex: sanitizedData.sex,
+          marital_status: sanitizedData.maritalStatus,
+          origin: sanitizedData.origin,
+        };
+
+        // Remover campos null ou undefined para evitar erro 422 no Auth
+        const cleanAuthPayload = Object.fromEntries(
+          Object.entries(authPayload).filter(([_, v]) => v != null)
+        );
+
         const { error: authError } = await supabase.auth.updateUser({
-          data: {
-            name: profileData.name,
-            phone: profileData.phone,
-            cpf: profileData.cpf,
-            birth_date: profileData.birthDate,
-            sex: profileData.sex,
-            marital_status: profileData.maritalStatus,
-            spouse_id: profileData.spouseId,
-            has_children: profileData.hasChildren,
-            children: profileData.children,
-            conversion_date: profileData.conversionDate,
-            origin: profileData.origin,
-          }
+          data: cleanAuthPayload
         });
+        
         if (authError) throw authError;
         alert('Perfil pessoal atualizado com sucesso!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar. Tente novamente.');
+      alert('Erro ao salvar: ' + (error.message || 'Tente novamente.'));
     } finally {
       setSaving(false);
     }

@@ -40,50 +40,70 @@ const mapToFrontend = (m: any): Member => ({
 	leadingCellIds: m.leading_cell_ids || [],
 	firstAccessCompleted: m.first_access_completed || false,
 	milestoneValues: m.milestone_values || {},
+	userId: m.user_id,
 });
 
 const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	const db: any = {};
+	
+	// Função auxiliar para higienizar valores
+	const sanitize = (val: any) => (val === undefined || val === '') ? null : val;
+
 	if (m.churchId) db.church_id = m.churchId;
 	if (m.church_id) db.church_id = m.church_id;
+	
 	if (m.name !== undefined) db.name = m.name;
 	if (m.email !== undefined) db.email = m.email;
 	if (m.phone !== undefined) db.phone = m.phone;
 	if (m.role !== undefined) db.role = m.role;
+	
 	if (m.status !== undefined) {
 		db.status = m.status === MemberStatus.ACTIVE ? 'ACTIVE' : 
 		            m.status === MemberStatus.PENDING ? 'PENDING' :
 		            m.status === MemberStatus.REJECTED ? 'REJECTED' : m.status;
 	}
+	
 	if (m.stage !== undefined) db.stage = m.stage;
-	if (m.cellId !== undefined) db.cell_id = m.cellId || null;
-	if (m.disciplerId !== undefined) db.discipler_id = m.disciplerId || null;
-	if (m.pastorId !== undefined) db.pastor_id = m.pastorId || null;
-	if (m.joinedDate !== undefined) db.joined_date = m.joinedDate;
-	if (m.avatar !== undefined) db.avatar = m.avatar;
+	if (m.cellId !== undefined) db.cell_id = sanitize(m.cellId);
+	if (m.disciplerId !== undefined) db.discipler_id = sanitize(m.disciplerId);
+	if (m.pastorId !== undefined) db.pastor_id = sanitize(m.pastorId);
+	if (m.joinedDate !== undefined) db.joined_date = sanitize(m.joinedDate);
+	if (m.avatar !== undefined) db.avatar = sanitize(m.avatar);
 	if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
 	if (m.completedMilestones !== undefined) db.completed_milestones = m.completedMilestones;
-	if (m.origin !== undefined) db.origin = m.origin;
-	if (m.cpf !== undefined) db.cpf = m.cpf;
-	if (m.cep !== undefined) db.cep = m.cep;
-	if (m.state !== undefined) db.state = m.state;
-	if (m.city !== undefined) db.city = m.city;
-	if (m.neighborhood !== undefined) db.neighborhood = m.neighborhood;
-	if (m.street !== undefined) db.street = m.street;
-	if (m.number !== undefined) db.number = m.number;
-	if (m.complement !== undefined) db.complement = m.complement;
-	if (m.maritalStatus !== undefined) db.marital_status = m.maritalStatus;
-	if (m.spouseId !== undefined) db.spouse_id = m.spouseId || null;
-	if (m.login !== undefined) db.login = m.login;
-	if (m.password !== undefined) db.password = m.password;
-	if (m.birthDate !== undefined) db.birth_date = m.birthDate;
-	if (m.sex !== undefined) db.sex = m.sex;
+	if (m.origin !== undefined) db.origin = sanitize(m.origin);
+	
+	// CPF sem máscara
+	if (m.cpf !== undefined) db.cpf = m.cpf ? m.cpf.replace(/\D/g, '') : null;
+	
+	if (m.cep !== undefined) db.cep = sanitize(m.cep);
+	if (m.state !== undefined) db.state = sanitize(m.state);
+	if (m.city !== undefined) db.city = sanitize(m.city);
+	if (m.neighborhood !== undefined) db.neighborhood = sanitize(m.neighborhood);
+	if (m.street !== undefined) db.street = sanitize(m.street);
+	if (m.number !== undefined) db.number = sanitize(m.number);
+	if (m.complement !== undefined) db.complement = sanitize(m.complement);
+	if (m.maritalStatus !== undefined) db.marital_status = sanitize(m.maritalStatus);
+	if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
+	if (m.login !== undefined) db.login = sanitize(m.login);
+	if (m.password !== undefined) db.password = sanitize(m.password);
+	
+	// Datas no formato YYYY-MM-DD (já deve vir assim do frontend ou ser formatado aqui)
+	if (m.birthDate !== undefined) db.birth_date = sanitize(m.birthDate);
+	if (m.conversionDate !== undefined) db.conversion_date = sanitize(m.conversionDate);
+	
+	if (m.sex !== undefined) db.sex = sanitize(m.sex);
 	if (m.hasChildren !== undefined) db.has_children = m.hasChildren;
 	if (m.children !== undefined) db.children = m.children;
 	if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
-	if (m.conversionDate !== undefined) db.conversion_date = m.conversionDate;
 	if (m.firstAccessCompleted !== undefined) db.first_access_completed = m.firstAccessCompleted;
 	if (m.milestoneValues !== undefined) db.milestone_values = m.milestoneValues;
+	if ((m as any).userId !== undefined) db.user_id = (m as any).userId;
+	if ((m as any).user_id !== undefined) db.user_id = (m as any).user_id;
+	
+	// Remover campos undefined finais (segurança extra)
+	Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
+	
 	return db;
 };
 
@@ -327,10 +347,13 @@ export const memberService = {
 			.update(dbData)
 			.eq('id', id)
 			.select()
-			.single();
+			.maybeSingle();
 
-		if (error) throw error;
-		return mapToFrontend(data);
+		if (error) {
+			console.error('Erro ao atualizar membro:', error);
+			throw error;
+		}
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async delete(id: string) {

@@ -142,6 +142,7 @@ export interface Member {
   origin?: string;
   joinedDate: string;
   cpf?: string;
+  userId?: string;
 
   sex?: 'MASCULINO' | 'FEMININO';
   hasChildren?: boolean;

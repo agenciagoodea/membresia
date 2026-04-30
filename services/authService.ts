@@ -16,7 +16,16 @@ export const authService = {
     const profile = await memberService.getByEmail(email);
     
     if (profile) {
-      // 2. Salvar no metadata para acessos subsequentes durante a sessão
+      // 2. Garantir que o user_id esteja vinculado na tabela members
+      if (!(profile as any).userId && user) {
+        await supabase
+          .from('members')
+          .update({ user_id: user.id })
+          .eq('id', profile.id);
+        (profile as any).userId = user.id;
+      }
+
+      // 3. Salvar no metadata para acessos subsequentes durante a sessão
       await supabase.auth.updateUser({
         data: { profile }
       });

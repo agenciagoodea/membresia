@@ -71,25 +71,27 @@ export const churchService = {
 	},
 
 	async getBySlug(slug: string) {
+		if (!slug) return null;
 		const { data, error } = await supabase
 			.from('churches')
 			.select('*')
 			.eq('slug', slug)
-			.single();
+			.maybeSingle();
 
 		if (error) throw error;
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async getById(id: string) {
+		if (!id) return null;
 		const { data, error } = await supabase
 			.from('churches')
 			.select('*')
 			.eq('id', id)
-			.single();
+			.maybeSingle();
 
 		if (error) throw error;
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async getFirst() {
@@ -97,10 +99,10 @@ export const churchService = {
 			.from('churches')
 			.select('*')
 			.limit(1)
-			.single();
+			.maybeSingle();
 
 		if (error) throw error;
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async update(id: string, updates: Partial<ChurchTenant>) {
@@ -110,10 +112,10 @@ export const churchService = {
 			.update(dbData)
 			.eq('id', id)
 			.select()
-			.single();
+			.maybeSingle();
 
 		if (error) throw error;
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	},
 
 	async create(church: Partial<ChurchTenant>) {
@@ -122,9 +124,9 @@ export const churchService = {
 			.from('churches')
 			.insert([dbData])
 			.select()
-			.single();
+			.maybeSingle();
 
 		if (error) throw error;
-		return mapToFrontend(data);
+		return data ? mapToFrontend(data) : null;
 	}
 };
