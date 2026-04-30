@@ -32,7 +32,8 @@ export const paidEventService = {
 
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
-      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
+      const normalizedRole = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN'].includes(normalizedRole);
       const myId = currentUser.id;
 
       if (!isAdmin) {

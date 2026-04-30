@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Save, Users, MapPin, Calendar, Clock, User, Heart, Camera, Check, Map, Home, Building, Upload } from 'lucide-react';
+import { X, Save, Users, MapPin, Calendar, Clock, User, Heart, Camera, Check, Map, Home, Building, Upload, Search, Plus } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { Cell, Member, UserRole } from '../types';
@@ -50,6 +50,31 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 	const [isProcessingCrop, setIsProcessingCrop] = useState(false);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const suggestionRef = useRef<HTMLDivElement>(null);
+	const [leaderSearch, setLeaderSearch] = useState('');
+	const [showLeaderSuggestions, setShowLeaderSuggestions] = useState(false);
+
+	// Fechar sugestões ao clicar fora
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+				setShowLeaderSuggestions(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
+
+	const leaderSuggestions = allMembers.filter(m => {
+		const role = normalizeRole(m.role);
+		const allowedRoles = [UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE];
+		if (!allowedRoles.includes(role as UserRole)) return false;
+		
+		const name = (m.fullName || m.name || '').toLowerCase();
+		const search = leaderSearch.toLowerCase();
+		
+		return search.length >= 3 && name.includes(search) && !(formData.leaderIds || []).includes(m.id);
+	});
 
 	useEffect(() => {
 		if (cell) {
@@ -334,27 +359,76 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 
 							<div className="space-y-2">
 								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Líderes Responsáveis</label>
-								<div className="relative">
-									<User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-									<div className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 pl-12 max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
-										{(availableLeaders || []).map(leader => (
-											<label key={leader.id} className="flex items-center gap-3 cursor-pointer group">
-												<input
-													type="checkbox"
-													checked={(formData.leaderIds || []).includes(leader.id) || formData.leaderId === leader.id}
-													onChange={(e) => {
-														const current = formData.leaderIds || (formData.leaderId ? [formData.leaderId] : []);
-														const next = e.target.checked 
-															? [...current, leader.id]
-															: current.filter(id => id !== leader.id);
-														setFormData({ ...formData, leaderIds: next, leaderId: next[0] || '' });
-													}}
-													className="w-4 h-4 rounded border-white/10 bg-zinc-950 text-blue-600 focus:ring-blue-500 transition-all"
-												/>
-												<span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{leader.fullName || leader.name}</span>
-											</label>
-										))}
+								<div className="relative group" ref={suggestionRef}>
+									<Search className="absolute left-4 top-5 text-zinc-600 group-focus-within:text-blue-500 transition-colors" size={18} />
+									<div className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-2 pl-12 min-h-[60px] flex flex-wrap gap-2 items-center">
+										{(formData.leaderIds || []).map(id => {
+											const leader = allMembers.find(m => m.id === id);
+											if (!leader) return null;
+											return (
+												<span key={id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 border border-blue-600/20 rounded-xl text-[10px] font-black text-blue-400 uppercase tracking-widest animate-in zoom-in-95">
+													{leader.fullName || leader.name}
+													<button 
+														type="button"
+														onClick={() => {
+															const next = (formData.leaderIds || []).filter(lid => lid !== id);
+															setFormData({ ...formData, leaderIds: next, leaderId: next[0] || '' });
+														}}
+														className="hover:text-blue-200 transition-colors"
+													>
+														<X size={12} />
+													</button>
+												</span>
+											);
+										})}
+										<input
+											type="text"
+											value={leaderSearch}
+											onChange={e => {
+												setLeaderSearch(e.target.value);
+												setShowLeaderSuggestions(true);
+											}}
+											onFocus={() => setShowLeaderSuggestions(true)}
+											placeholder={(formData.leaderIds || []).length === 0 ? "Buscar pastores ou líderes..." : ""}
+											className="flex-1 bg-transparent border-none outline-none text-sm text-white min-w-[150px] py-3"
+										/>
 									</div>
+
+									{/* Sugestões */}
+									{showLeaderSuggestions && leaderSearch.length >= 3 && (
+										<div className="absolute left-0 right-0 top-full mt-2 bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+											{leaderSuggestions.length > 0 ? (
+												<div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+													{leaderSuggestions.map(m => (
+														<button
+															key={m.id}
+															type="button"
+															onClick={() => {
+																const next = [...(formData.leaderIds || []), m.id];
+																setFormData({ ...formData, leaderIds: next, leaderId: next[0] || '' });
+																setLeaderSearch('');
+																setShowLeaderSuggestions(false);
+															}}
+															className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0 group"
+														>
+															<div className="flex flex-col">
+																<span className="text-[10px] font-black text-white uppercase tracking-widest">{m.fullName || m.name}</span>
+																{/* @ts-ignore - normalizeRole import is available */}
+																<span className="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter mt-0.5">
+																	{(m.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()}
+																</span>
+															</div>
+															<Plus size={14} className="text-zinc-600 group-hover:text-blue-500 transition-colors" />
+														</button>
+													))}
+												</div>
+											) : (
+												<div className="p-6 text-center text-zinc-500 font-black text-[10px] uppercase tracking-widest">
+													Nenhum líder encontrado
+												</div>
+											)}
+										</div>
+									)}
 								</div>
 							</div>
 
