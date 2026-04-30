@@ -31,6 +31,9 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
   const [selectedCellId, setSelectedCellId] = useState<string>('ALL');
   const [selectedStage, setSelectedStage] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   const planLimit = PLAN_CONFIGS[user.church_plan || 'PRO'].maxMembers;
