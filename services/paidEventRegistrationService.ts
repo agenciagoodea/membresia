@@ -255,13 +255,6 @@ export const paidEventRegistrationService = {
     return `${s.day}/${s.month + 1}/${s.year} a ${e.day}/${e.month + 1}/${e.year}`;
   },
 
-    if (start.getFullYear() === end.getFullYear()) {
-      return `${start.getDate()} de ${months[start.getMonth()]} a ${end.getDate()} de ${months[end.getMonth()]} de ${start.getFullYear()}`;
-    }
-
-    return `${start.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()} a ${end.getDate()} de ${months[end.getMonth()]} de ${end.getFullYear()}`;
-  },
-
   async updatePdfUrl(registrationId: string, pdfUrl: string): Promise<void> {
     const { error } = await supabase
       .from('paid_event_registrations')
