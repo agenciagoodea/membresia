@@ -5,6 +5,7 @@ import getCroppedImg from './Shared/cropImage';
 import { Cell, Member, UserRole } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { normalizeRole } from '../utils/roleUtils';
+import { getGroupedMemberOptions } from '../utils/memberDisplayUtils';
 
 interface CellModalProps {
 	isOpen: boolean;
@@ -404,11 +405,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="">Selecione o Pastor</option>
-												{allMembers.filter(m => {
+												{getGroupedMemberOptions(allMembers.filter(m => {
 													const r = normalizeRole(m.role);
 													return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'MASTER_ADMIN';
-												}).map(m => (
-													<option key={m.id} value={m.id}>{m.fullName || m.name}</option>
+												})).map(opt => (
+													<option key={opt.id} value={opt.id}>{opt.label}</option>
 												))}
 											</select>
 										</div>
@@ -426,11 +427,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="">Selecione o Supervisor</option>
-												{allMembers.filter(m => {
+												{getGroupedMemberOptions(allMembers.filter(m => {
 													const r = normalizeRole(m.role);
 													return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'CELL_LEADER_DISCIPLE' || r === 'SUPERVISOR';
-												}).map(m => (
-													<option key={m.id} value={m.id}>{m.fullName || m.name}</option>
+												})).map(opt => (
+													<option key={opt.id} value={opt.id}>{opt.label}</option>
 												))}
 											</select>
 										</div>

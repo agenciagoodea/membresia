@@ -36,11 +36,12 @@ export const paidEventService = {
       const myId = currentUser.id;
 
       if (!isAdmin) {
-        // 1. Obter Ecossistema Recursivo
+        // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         
         // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou OU o que está publicado
-        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),status.eq.published`);
+        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
+        query = query.or(`created_by.in.(${ecosystemFilter}),status.eq.published`);
       }
     }
 

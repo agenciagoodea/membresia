@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, AlignLeft, Save, Camera, Upload } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, AlignLeft, Save, Camera, Upload, Shield, User } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../Shared/cropImage';
 import { eventService } from '../../services/eventService';
-import { ChurchEvent } from '../../types';
+import { ChurchEvent, Member, Cell, UserRole } from '../../types';
 
 interface EventModalProps {
   isOpen: boolean;

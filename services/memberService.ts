@@ -152,73 +152,76 @@ export const memberService = {
 	},
 
 	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
-		console.log('[DEBUG RBAC] memberService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
+		console.log('[DEBUG RBAC] memberService.getAll - Iniciando busca para:', currentUser?.fullName || currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
 		
 		let query = supabase
 			.from('members')
 			.select('*')
 			.eq('church_id', churchId);
 
-		// Aplicar Filtros de Hierarquia Pastoral (RBAC)
+		// Aplicar Filtros de Hierarquia (RBAC)
 		if (currentUser) {
 			const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
 			const myId = currentUser.id;
 
 			if (!isAdmin) {
-				// 1. Obter Ecossistema Recursivo via RPC
+				// 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
 				const ecosystemIds = await this.getEcosystemIds(myId);
 				
-				// 2. Obter células ligadas a qualquer membro do ecossistema
+				// 2. Obter células vinculadas ao ecossistema
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
-					.or(`pastor_id.in.(${ecosystemIds.join(',')}),leader_id.in.(${ecosystemIds.join(',')}),supervisor_id.in.(${ecosystemIds.join(',')})`);
+					.or(`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`);
 				
 				const allowedCellIds = (managedCells || []).map(c => c.id);
 				const myCellId = currentUser.cellId || currentUser.cell_id;
+				
 				if (myCellId && !allowedCellIds.includes(myCellId)) {
 					allowedCellIds.push(myCellId);
 				}
 
-				// Incluir Pastor e Discipulador do próprio usuário para que apareçam nos selects de perfil
+				// Incluir Pastor e Discipulador do próprio usuário para visibilidade
 				const leaderIds = [];
 				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
 				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
 
-				// 3. Filtro Unificado: Todo o Ecossistema + Células Ligadas + Meus Líderes
-				let filterStr = `id.in.(${[...ecosystemIds, ...leaderIds].join(',')}),spouse_id.eq.${myId}`;
+				// 3. Filtro Unificado
+				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds]));
+				let filterStr = `id.in.(${combinedIds.join(',')}),spouse_id.eq.${myId}`;
+				
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
 				}
+				
 				query = query.or(filterStr);
 			}
 		}
 
-		query = query.order('name');
+		query = query.order('full_name', { ascending: true });
 
 		if (range) {
 			query = query.range(range.from, range.to);
 		}
 
-		const { data, error, count } = await query;
+		const { data, error } = await query;
 
 		if (error) {
 			console.error('[DEBUG RBAC] memberService.getAll - Erro:', error);
 			throw error;
 		}
 
-		console.log('[DEBUG RBAC] memberService.getAll - Registros retornados:', data?.length || 0);
 		return (data || []).map(mapToFrontend);
 	},
 
 	async getEcosystemIds(rootMemberId: string): Promise<string[]> {
 		if (!rootMemberId) return [];
-		const { data, error } = await supabase.rpc('get_member_ecosystem', { root_member_id: rootMemberId });
+		const { data, error } = await supabase.rpc('get_ministerial_ecosystem', { root_member_id: rootMemberId });
 		if (error) {
-			console.error('Erro ao buscar ecossistema:', error);
-			return [rootMemberId]; // Fallback para apenas o próprio membro
+			console.error('Erro ao buscar ecossistema ministerial:', error);
+			return [rootMemberId]; 
 		}
-		return data.map((item: any) => item.id);
+		return (data || []).map((item: any) => item.member_id);
 	},
 
 	async search(queryStr: string, currentUser?: any) {
@@ -233,28 +236,25 @@ export const memberService = {
 			const myId = currentUser.id;
 
 			if (!isAdmin) {
-				// 1. Obter Ecossistema Recursivo
 				const ecosystemIds = await this.getEcosystemIds(myId);
-
-				// 2. Obter células ligadas
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
-					.or(`pastor_id.in.(${ecosystemIds.join(',')}),leader_id.in.(${ecosystemIds.join(',')}),supervisor_id.in.(${ecosystemIds.join(',')})`);
+					.or(`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`);
 				
 				const allowedCellIds = (managedCells || []).map(c => c.id);
 				const myCellId = currentUser.cellId || currentUser.cell_id;
+				
 				if (myCellId && !allowedCellIds.includes(myCellId)) {
 					allowedCellIds.push(myCellId);
 				}
 
-				// Incluir líderes do usuário na busca
 				const leaderIds = [];
 				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
 				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
 
-				// 3. Filtro Unificado Recursivo + Líderes
-				let filterStr = `id.in.(${[...ecosystemIds, ...leaderIds].join(',')}),spouse_id.eq.${myId}`;
+				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds]));
+				let filterStr = `id.in.(${combinedIds.join(',')}),spouse_id.eq.${myId}`;
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
 				}
@@ -263,7 +263,6 @@ export const memberService = {
 		}
 
 		const { data, error } = await query.limit(10);
-
 		if (error) throw error;
 		return (data || []).map(mapToFrontend);
 	},

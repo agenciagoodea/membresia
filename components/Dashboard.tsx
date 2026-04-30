@@ -179,7 +179,7 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
               </div>
             ) : (
               <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center shrink-0">
-                <span className="text-sm font-black text-amber-500 leading-none">{evt.date.split('-')[2]}</span>
+                <span className="text-sm font-black text-amber-500 leading-none">{(evt.date || '').split('-')[2] || '--'}</span>
                 <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">{new Date(evt.date + 'T12:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase()}</span>
               </div>
             )}
@@ -527,7 +527,7 @@ Esperamos por você! Vai ser um tempo precioso! \uD83D\uDD25`;
               {new Date(meeting.date + 'T12:00:00').toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}
             </p>
             <p className="text-2xl tracking-tighter leading-none mt-1">
-              {meeting.date.split('-')[2]}
+              {(meeting.date || '').split('-')[2] || '--'}
             </p>
           </div>
           <div className="flex-1 min-w-0">

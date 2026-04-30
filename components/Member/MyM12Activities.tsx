@@ -201,7 +201,7 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
     );
   }
 
-  const filteredMembers = members.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredMembers = members.filter(m => (m.fullName || m.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">

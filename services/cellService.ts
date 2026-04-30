@@ -71,22 +71,22 @@ export const cellService = {
 			.eq('church_id', churchId);
 
 		if (currentUser && !isAdmin) {
-			console.log('[DEBUG RBAC] cellService.getAll - Chamando RPC get_cells_by_member_ecosystem');
-			const { data, error } = await supabase.rpc('get_cells_by_member_ecosystem', { root_member_id: myId });
+			console.log('[DEBUG RBAC] cellService.getAll - Chamando RPC get_cells_by_ministerial_ecosystem');
+			const { data, error } = await supabase.rpc('get_cells_by_ministerial_ecosystem', { root_member_id: myId });
 			
 			if (error) {
 				console.error('[DEBUG RBAC] Erro na RPC de células:', error);
-				// Fallback para comportamento anterior se falhar
+				// Fallback robusto se a RPC falhar
 				const ecosystemIds = await memberService.getEcosystemIds(myId);
 				let conditions = [
-					`pastor_id.in.(${ecosystemIds.join(',')})`,
-					`supervisor_id.in.(${ecosystemIds.join(',')})`,
-					`leader_id.in.(${ecosystemIds.join(',')})`
+					`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`,
+					`supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`,
+					`leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`
 				];
-				if (myCellId) conditions.push(`id.eq.${myCellId}`);
+				if (myCellId && myCellId.length > 10) conditions.push(`id.eq.${myCellId}`);
 				query = query.or(conditions.join(','));
 			} else {
-				return (data || []).map(mapToFrontend);
+				return (data || []).map(mapToFrontend).sort((a: any, b: any) => a.name.localeCompare(b.name));
 			}
 		}
 

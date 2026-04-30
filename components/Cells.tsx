@@ -49,6 +49,7 @@ import { generateCellOccurrences } from '../utils/agendaUtils';
 import { cellMeetingService } from '../services/cellMeetingService';
 import MemberProfileModal from './MemberProfileModal';
 import { normalizeRole } from '../utils/roleUtils';
+import { getCoupleDisplayName } from '../utils/memberDisplayUtils';
 const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, onInvite }: { cell: Cell, onBack: () => void, members: Member[], user: any, onInvite: (cell: Cell, date?: string) => void }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [membersList, setMembersList] = useState<Member[]>(allMembers);
@@ -1185,7 +1186,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
                           className="w-5 h-5 rounded-full" 
                           alt="" 
                         />
-                        <span className="text-[10px] font-black text-blue-400 uppercase">{m.name.split(' ')[0]}</span>
+                        <span className="text-[10px] font-black text-blue-400 uppercase">{(m.fullName || m.name || '').split(' ')[0]}</span>
                       </div>
                     ) : null;
                   })}
@@ -1431,7 +1432,19 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
                 <tbody className="divide-y divide-white/5">
                   {visibleCells.map((cell) => {
                     const leadersList = members.filter(m => (cell.leaderIds || []).includes(m.id) || m.id === cell.leaderId);
-                    const leaderNames = leadersList.length > 0 ? leadersList.map(l => l.fullName || l.name).join(' & ') : 'Sem Líder';
+                    
+                    // Deduplicar nomes de casais na exibição da listagem
+                    const processedNames = new Set<string>();
+                    const uniqueNames: string[] = [];
+                    leadersList.forEach(l => {
+                      const name = getCoupleDisplayName(l, members);
+                      if (!processedNames.has(name)) {
+                        processedNames.add(name);
+                        uniqueNames.push(name);
+                      }
+                    });
+
+                    const leaderNames = uniqueNames.length > 0 ? uniqueNames.join(' e ') : 'Sem Líder';
                     const isLeader = canEditCell(cell);
 
                     return (
@@ -1580,7 +1593,7 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
                         
                         let formattedDate = cell.meetingDay;
                         if (dateStr) {
-                          const [year, month, day] = dateStr.split('-');
+                          const [year, month, day] = (dateStr || '').split('-');
                           const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0);
                           const dayNum = dateObj.getDate();
                           const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });

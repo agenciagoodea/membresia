@@ -416,7 +416,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
         const updated = await memberService.update(member.id, {
           stage: nextStage,
           stageHistory: [
-            ...member.stageHistory,
+            ...(member.stageHistory || []),
             {
               stage: member.stage,
               date: new Date().toISOString(),
@@ -445,7 +445,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
         const updated = await memberService.update(member.id, {
           stage: prevStage,
           stageHistory: [
-            ...member.stageHistory,
+            ...(member.stageHistory || []),
             {
               stage: prevStage,
               date: new Date().toISOString(),

@@ -12,6 +12,7 @@ import { toDateInputValue } from '../utils/dateUtils';
 import { getAvatarUrl } from '../utils/avatarUtils';
 import { getRoleLabel, normalizeRole } from '../utils/roleUtils';
 import { dbToMember } from '../services/memberService';
+import { getGroupedMemberOptions } from '../utils/memberDisplayUtils';
 
 interface MemberModalProps {
 	isOpen: boolean;
@@ -198,21 +199,6 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		}
 	}, [isOpen, member?.id, user?.churchId, user?.church_id]);
 
-	const getDeduplicatedMembersOptions = (list: Member[]) => {
-		const processed = new Set<string>();
-		const options: { id: string, label: string }[] = [];
-
-		for (const m of list) {
-			if (processed.has(m.id)) continue;
-			processed.add(m.id);
-			options.push({ 
-				id: m.id, 
-				label: `${m.fullName} (${getRoleLabel(m)})` 
-			});
-		}
-
-		return options.sort((a, b) => a.label.localeCompare(b.label));
-	};
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -712,7 +698,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="" className="bg-zinc-950">Sem Discipulador</option>
-												{getDeduplicatedMembersOptions(
+												{getGroupedMemberOptions(
 													allMembers.filter(m => {
 														if (m.id === (member?.id || formData.id)) return false;
 														const norm = normalizeRole(m.role);
@@ -738,7 +724,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="" className="bg-zinc-950">Selecione os Pastores</option>
-												{getDeduplicatedMembersOptions(
+												{getGroupedMemberOptions(
 													allMembers.filter(m => {
 														if (m.id === (member?.id || formData.id)) return false;
 														const norm = normalizeRole(m.role);

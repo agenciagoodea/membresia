@@ -18,11 +18,12 @@ export const eventService = {
       const myId = currentUser.id;
 
       if (!isAdmin) {
-        // 1. Obter Ecossistema Recursivo
+        // 1. Obter Ecossistema Ministerial Recursivo + Conjugal
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         
         // 2. Pastor e Líder veem eventos públicos OU onde qualquer membro do ecossistema é responsável
-        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),responsible_pastor_id.in.(${ecosystemIds.join(',')}),coordinator_id.in.(${ecosystemIds.join(',')}),assistant_ids.cs.{${myId}}`);
+        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
+        query = query.or(`created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
       }
     }
 
@@ -60,7 +61,8 @@ export const eventService = {
 
       if (!isAdmin) {
         const ecosystemIds = await memberService.getEcosystemIds(myId);
-        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),responsible_pastor_id.in.(${ecosystemIds.join(',')}),coordinator_id.in.(${ecosystemIds.join(',')}),assistant_ids.cs.{${myId}}`);
+        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
+        query = query.or(`created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
       }
     }
 

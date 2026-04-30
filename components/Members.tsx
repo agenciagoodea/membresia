@@ -26,6 +26,7 @@ import PageHeader from './Shared/PageHeader';
 import { useChurch } from '../contexts/ChurchContext';
 import { getAvatarUrl } from '../utils/avatarUtils';
 import { getRoleLabel, normalizeRole } from '../utils/roleUtils';
+import { getCoupleDisplayName, getGroupedMemberOptions } from '../utils/memberDisplayUtils';
 const Members: React.FC<{ user: any }> = ({ user }) => {
   const { members, cells, loading, refreshData } = useChurch();
   const location = useLocation();
@@ -87,9 +88,10 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     // 6. Busca Textual
     const cellName = cells.find(c => c.id === m.cellId)?.name || 'Sem Célula';
     const pastorName = members.find(p => p.id === m.pastorId)?.fullName || 'Sem Pastor';
+    const displayName = getCoupleDisplayName(m, members);
 
     const matchesSearch = !searchTerm || 
-      m.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (m.email && m.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       cellName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pastorName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -97,10 +99,10 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     return matchesSearch;
   });
 
-  const availablePastors = members.filter(m => {
+  const availablePastorOptions = getGroupedMemberOptions(members.filter(m => {
     const r = normalizeRole(m.role);
     return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'MASTER_ADMIN';
-  }).sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }));
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -306,8 +308,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                   onChange={(e) => setSelectedPastorId(e.target.value)}
                 >
                   <option className="bg-zinc-900" value="ALL">Todos os Pastores</option>
-                  {availablePastors.map(p => (
-                    <option className="bg-zinc-900" key={p.id} value={p.id}>{p.fullName}</option>
+                  {availablePastorOptions.map(opt => (
+                    <option className="bg-zinc-900" key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
               </div>
@@ -396,7 +398,9 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                         )}
                       </div>
                       <div>
-                        <p className="text-base font-black text-white tracking-tight uppercase leading-none mb-1">{member.fullName}</p>
+                        <p className="text-base font-black text-white tracking-tight uppercase leading-none mb-1">
+                          {getCoupleDisplayName(member, members)}
+                        </p>
                         <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase">{member.email || 'Sem e-mail'}</p>
                       </div>
                     </div>
