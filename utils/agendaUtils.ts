@@ -1,4 +1,5 @@
-import { Cell, ChurchEvent, UserRole, CellMeetingException } from '../types';
+import { Cell, ChurchEvent, UserRole, CellMeetingException, PaidEvent } from '../types';
+import { isBefore, isAfter, addDays, format, parseISO } from 'date-fns';
 
 const DAYS_MAP: Record<string, number> = {
   'domingo': 0,
@@ -103,12 +104,78 @@ export const generateCellOccurrences = (
 };
 
 /**
+ * Normaliza qualquer tipo de evento para o formato da Agenda.
+ */
+export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_event' | 'paid_event' | 'birthday'): any => {
+  if (type === 'paid_event') {
+    return {
+      id: `paid-${item.id}`,
+      title: item.title,
+      description: item.description,
+      date: item.start_date?.split('T')[0],
+      endDate: item.end_date?.split('T')[0],
+      time: item.start_date?.split('T')[1]?.substring(0, 5),
+      location: item.location,
+      image_url: item.banner_url,
+      type: 'paid_event',
+      isSpecial: true,
+      publicLink: item.public_link,
+      raw: item
+    };
+  }
+  
+  if (type === 'church_event') {
+    return {
+      ...item,
+      type: 'church_event',
+      isSpecial: item.is_special || false,
+      raw: item
+    };
+  }
+
+  return { ...item, type, raw: item };
+};
+
+/**
+ * Expande eventos que duram múltiplos dias para aparecerem em todas as datas.
+ */
+export const expandMultiDayEvents = (events: any[]): any[] => {
+  const expanded: any[] = [];
+  
+  events.forEach(event => {
+    if (event.endDate && event.endDate !== event.date) {
+      try {
+        let current = parseISO(event.date);
+        const end = parseISO(event.endDate);
+        
+        while (!isAfter(current, end)) {
+          expanded.push({
+            ...event,
+            date: format(current, 'yyyy-MM-dd'),
+            isMultiDayOccurrence: true
+          });
+          current = addDays(current, 1);
+        }
+      } catch (e) {
+        console.error('Erro ao expandir evento multi-dia:', event.title, e);
+        expanded.push(event);
+      }
+    } else {
+      expanded.push(event);
+    }
+  });
+  
+  return expanded;
+};
+
+/**
  * Filters and merges church events with cell meetings based on user role
  */
 export const mergeAgendaItems = (
   events: ChurchEvent[],
   cells: Cell[],
   exceptions: CellMeetingException[],
+  paidEvents: PaidEvent[] = [],
   user: any
 ): (ChurchEvent | any)[] => {
   let filteredCells = cells;
@@ -136,11 +203,18 @@ export const mergeAgendaItems = (
     }
   }
 
-  const cellMeetings = filteredCells.flatMap(cell => generateCellOccurrences(cell, exceptions));
+  const cellMeetings = filteredCells.flatMap(cell => generateCellOccurrences(cell, exceptions)).map(e => normalizeEventForAgenda(e, 'cell_event'));
+  const normalizedChurchEvents = events.map(e => normalizeEventForAgenda(e, 'church_event'));
+  const normalizedPaidEvents = paidEvents.map(e => normalizeEventForAgenda(e, 'paid_event'));
   
-  // Combine and sort
-  const combined = [...events, ...cellMeetings];
-  return combined.sort((a, b) => {
+  // Combine
+  const combined = [...normalizedChurchEvents, ...cellMeetings, ...normalizedPaidEvents];
+  
+  // Expand multi-day
+  const expanded = expandMultiDayEvents(combined);
+  
+  // Sort
+  return expanded.sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
     return (a.time || '').localeCompare(b.time || '');
   });

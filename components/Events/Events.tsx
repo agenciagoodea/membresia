@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, MapPin, AlignLeft, CalendarCheck2, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { eventService } from '../../services/eventService';
 import { cellService } from '../../services/cellService';
-import { ChurchEvent, UserRole, Cell, CellMeetingException, Member } from '../../types';
+import { paidEventService } from '../../services/paidEventService';
+import { ChurchEvent, UserRole, Cell, CellMeetingException, Member, PaidEvent } from '../../types';
 import { mergeAgendaItems } from '../../utils/agendaUtils';
 import { cellMeetingService } from '../../services/cellMeetingService';
+import { Sparkles, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ExternalLink } from 'lucide-react';
 import EventModal from './EventModal';
 import MonthlyAgenda from '../Member/MonthlyAgenda';
 import { memberService } from '../../services/memberService';
@@ -17,6 +19,7 @@ const Events = ({ user }: { user: any }) => {
   const [cellAnniversaries, setCellAnniversaries] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [cells, setCells] = useState<Cell[]>([]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
 
   const canEdit = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE, 'ADMIN', 'ADMINISTRADOR_IGREJA'].includes(user.role);
 
@@ -34,11 +37,12 @@ const Events = ({ user }: { user: any }) => {
       setLoading(true);
       const churchId = user.churchId || user.church_id;
       
-      const [eventsData, cellsData, exceptionsData, membersData] = await Promise.all([
+      const [eventsData, cellsData, exceptionsData, membersData, paidEventsData] = await Promise.all([
         eventService.getAll(churchId, user),
         cellService.getAll(churchId, user),
         cellMeetingService.getExceptions(churchId),
-        memberService.getAll(churchId, undefined, user)
+        memberService.getAll(churchId, undefined, user),
+        paidEventService.getAll(churchId, user)
       ]);
 
       setAllMembers(membersData || []);
@@ -94,7 +98,7 @@ const Events = ({ user }: { user: any }) => {
       }
       setCellAnniversaries(cellBdays);
 
-      const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, user);
+      const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, paidEventsData, user);
       setEvents([...merged, ...cellBdays]);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
@@ -171,6 +175,97 @@ const Events = ({ user }: { user: any }) => {
           </button>
         )}
       </div>
+
+      {/* Destaques / Eventos Especiais */}
+      {events.filter(e => e.isSpecial).length > 0 && (
+        <div className="relative group mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Sparkles className="text-amber-400 animate-pulse" size={24} />
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter">Eventos em Destaque</h3>
+          </div>
+          
+          <div className="overflow-hidden rounded-[2.5rem] bg-zinc-950 border border-white/5 shadow-2xl">
+            {events.filter(e => e.isSpecial).reduce((acc: any[], curr) => {
+               if (!acc.find(a => a.id === curr.id)) acc.push(curr);
+               return acc;
+            }, []).map((evt, idx) => (
+              <div 
+                key={evt.id} 
+                className={`transition-all duration-700 ${idx === featuredIndex ? 'opacity-100 translate-x-0' : 'hidden'}`}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                  <div className="h-64 md:h-full relative">
+                    <img 
+                      src={evt.image_url || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000'} 
+                      className="w-full h-full object-cover"
+                      alt={evt.title}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-zinc-950" />
+                  </div>
+                  <div className="p-8 md:p-12 flex flex-col justify-center">
+                    <span className="inline-block px-4 py-1.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] mb-6 w-fit">
+                      {evt.type === 'paid_event' ? 'Inscrições Abertas' : 'Destaque'}
+                    </span>
+                    <h4 className="text-3xl font-black text-white uppercase tracking-tight mb-4 leading-tight">
+                      {evt.title}
+                    </h4>
+                    <p className="text-zinc-500 text-sm font-medium leading-relaxed mb-8 line-clamp-3 italic">
+                      "{evt.description || 'Não perca este evento especial preparado para você.'}"
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      {evt.publicLink && (
+                        <a 
+                          href={evt.publicLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 px-8 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-200 transition-all shadow-xl shadow-white/5"
+                        >
+                          <ExternalLink size={14} /> Fazer Inscrição
+                        </a>
+                      )}
+                      <button 
+                        onClick={() => openEditEvent(evt)}
+                        className="px-8 py-4 bg-zinc-900 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all"
+                      >
+                        Ver Detalhes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {events.filter(e => e.isSpecial).reduce((acc: any[], curr) => {
+             if (!acc.find(a => a.id === curr.id)) acc.push(curr);
+             return acc;
+          }, []).length > 1 && (
+            <>
+              <button 
+                onClick={() => setFeaturedIndex(prev => (prev === 0 ? events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 : prev - 1))}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-zinc-800"
+              >
+                <ChevronLeftIcon size={20} />
+              </button>
+              <button 
+                onClick={() => setFeaturedIndex(prev => (prev === events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 ? 0 : prev + 1))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-zinc-800"
+              >
+                <ChevronRightIcon size={20} />
+              </button>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                {events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className={`h-1.5 rounded-full transition-all ${idx === featuredIndex ? 'w-8 bg-amber-500 shadow-lg shadow-amber-500/50' : 'w-2 bg-zinc-800'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="mb-10">
         <MonthlyAgenda 

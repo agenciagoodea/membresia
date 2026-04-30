@@ -290,6 +290,7 @@ export interface ChurchEvent {
   title: string;
   description?: string;
   date: string;
+  end_date?: string;
   time?: string;
   location?: string;
   image_url?: string;

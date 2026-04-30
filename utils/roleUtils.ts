@@ -52,3 +52,41 @@ export const getRoleLabel = (member: Partial<Member>): string => {
 
   return 'Membro / Visitante';
 };
+
+/**
+ * Verifica se o usuário pode editar um evento pago.
+ */
+export const canEditPaidEvent = (user: any, event: any): boolean => {
+  if (!user || !event) return false;
+  const role = normalizeRole(user.role);
+  if (role === UserRole.MASTER_ADMIN || role === UserRole.CHURCH_ADMIN) return true;
+  
+  const myId = user.id || user.profile?.id;
+  return event.created_by === myId || 
+         event.coordenador_id === myId || 
+         (event.auxiliares_ids || []).includes(myId);
+};
+
+/**
+ * Verifica se o usuário pode excluir um evento pago.
+ */
+export const canDeletePaidEvent = (user: any, event: any): boolean => {
+  if (!user || !event) return false;
+  const role = normalizeRole(user.role);
+  if (role === UserRole.MASTER_ADMIN || role === UserRole.CHURCH_ADMIN) return true;
+  
+  const myId = user.id || user.profile?.id;
+  return event.created_by === myId;
+};
+
+/**
+ * Verifica se o usuário pode compartilhar um evento pago.
+ */
+export const canSharePaidEvent = (user: any, event: any): boolean => {
+  if (!user || !event) return false;
+  if (event.status !== 'published') return false;
+  
+  const role = normalizeRole(user.role);
+  // Admin, Pastor e Líder podem compartilhar eventos publicados
+  return [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR, UserRole.CELL_LEADER_DISCIPLE].includes(role as UserRole);
+};

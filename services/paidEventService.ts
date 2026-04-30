@@ -33,22 +33,24 @@ export const paidEventService = {
 
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
-      const normalizedRole = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN'].includes(normalizedRole);
+      const role = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN'].includes(role);
       const myId = currentUser.id;
 
       if (!isAdmin && isUUID(myId)) {
         // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
         const ecosystemIds = await memberService.getEcosystemIds(myId);
-        
-        // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou OU o que está publicado
         const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
+        
+        // 2. Lógica: Vê o que criou, o que é do ecossistema OU o que está publicado na igreja
+        let orConditions = `status.eq.published`;
         if (validEcosystemIds.length > 0) {
           const ecosystemFilter = validEcosystemIds.map(id => `'${id}'`).join(',');
-          query = query.or(`created_by.in.(${ecosystemFilter}),status.eq.published`);
+          orConditions += `,created_by.in.(${ecosystemFilter}),coordenador_id.in.(${ecosystemFilter})`;
         } else {
-          query = query.eq('status', 'published');
+          orConditions += `,created_by.eq.${myId}`;
         }
+        query = query.or(orConditions);
       }
     }
 

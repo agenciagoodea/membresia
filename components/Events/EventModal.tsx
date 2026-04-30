@@ -250,6 +250,18 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
                     />
                   </div>
                   <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Término (Opcional)</label>
+                    <input
+                      type="date"
+                      value={formData.end_date || ''}
+                      onChange={e => setFormData({ ...formData, end_date: e.target.value })}
+                      className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 px-4 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Horário</label>
                     <input
                       type="time"
@@ -280,6 +292,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
                 onSelect={(m) => setFormData({ ...formData, coordinator_id: m.id })}
                 onRemove={() => setFormData({ ...formData, coordinator_id: '' })}
                 placeholder="Buscar coordenador..."
+                roleFilter={[UserRole.PASTOR, UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, UserRole.CELL_LEADER_DISCIPLE]}
               />
 
               <MemberAutocomplete
