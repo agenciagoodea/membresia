@@ -59,18 +59,15 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   
   if (m.fullName !== undefined) {
     db.full_name = sanitize(m.fullName);
-    db.name = db.full_name; // Sincronizar legacy
   }
   
   if (m.gender !== undefined) {
     db.gender = sanitize(m.gender);
-    db.sex = db.gender; // Sincronizar legacy
   }
   
   if (m.email !== undefined) db.email = sanitize(m.email);
   if (m.phone !== undefined) {
     db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
-    db.telefone = db.phone; // Sincronizar legacy
   }
   
   if (m.role !== undefined) db.role = m.role;
@@ -88,8 +85,7 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   
   if (m.avatarUrl !== undefined) {
     db.avatar_url = sanitize(m.avatarUrl);
-    db.avatar = db.avatar_url; // Sincronizar legacy
-    db.photo_url = db.avatar_url; // Sincronizar legacy
+    // Nota: photo_url removido por não existir na tabela members
   }
 
   if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
