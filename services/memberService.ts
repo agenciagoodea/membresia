@@ -57,7 +57,9 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.sex !== undefined) db.sex = m.sex;
 	
 	if (m.email !== undefined) db.email = m.email;
-	if (m.phone !== undefined) db.phone = m.phone;
+	if (m.phone !== undefined) {
+		db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
+	}
 	if (m.role !== undefined) db.role = m.role;
 	
 	if (m.status !== undefined) {

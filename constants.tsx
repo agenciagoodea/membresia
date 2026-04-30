@@ -58,7 +58,6 @@ export const MASTER_NAV_ITEMS = [
   { id: 'churches', label: 'Igrejas / Clientes', icon: <Globe size={20} /> },
   { id: 'admins', label: 'Administradores', icon: <Users2 size={20} /> },
   { id: 'plans', label: 'Planos & Assinaturas', icon: <CreditCard size={20} /> },
-  { id: 'events', label: 'Agenda Global', icon: <Calendar size={20} /> },
   { id: 'security', label: 'Segurança & Auditoria', icon: <ShieldAlert size={20} /> },
   { id: 'master-settings', label: 'Configurações SaaS', icon: <Settings size={20} /> },
 ];
