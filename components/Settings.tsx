@@ -147,10 +147,10 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   useEffect(() => {
     if (!user?.churchId) {
       setProfileData({
-        name: user?.name || user?.user_metadata?.name || '',
+        fullName: user?.fullName || user?.user_metadata?.fullName || user?.user_metadata?.name || '',
         email: user?.email || user?.user_metadata?.email || '',
         phone: user?.phone || '',
-        avatar: user?.avatar || user?.user_metadata?.avatar_url || ''
+        avatarUrl: user?.avatarUrl || user?.user_metadata?.avatar_url || ''
       });
       setLoading(false);
       return;
@@ -162,13 +162,13 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       let myProfile = null;
 
       setProfileData({
-        name: user.name || user.user_metadata?.name || '',
+        fullName: user.fullName || user.user_metadata?.fullName || user.user_metadata?.name || '',
         email: user.email || user.user_metadata?.email || '',
         phone: user.phone || user.user_metadata?.phone || '',
-        avatar: user.avatar || user.user_metadata?.avatar_url || '',
+        avatarUrl: user.avatarUrl || user.user_metadata?.avatar_url || '',
         cpf: user.cpf || user.user_metadata?.cpf || '',
         birthDate: user.birthDate || user.user_metadata?.birth_date || '',
-        sex: user.sex || user.user_metadata?.sex || '',
+        gender: user.gender || user.user_metadata?.gender || user.user_metadata?.sex || '',
         maritalStatus: user.maritalStatus || user.user_metadata?.marital_status || '',
         spouseId: user.spouseId || user.user_metadata?.spouse_id || '',
         hasChildren: user.hasChildren || user.user_metadata?.has_children || false,
@@ -250,15 +250,15 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
             const originAct = winActs.find(a => a.label.toLowerCase().includes('origem') || a.label.toLowerCase().includes('conheceu') || a.label.toLowerCase().includes('aceitou'));
             const originResponse = originAct ? responses.find(r => r.activity_id === originAct.id)?.value : null;
 
-            const normalizedSex = (myProfile.sex === 'M' ? 'MASCULINO' : (myProfile.sex === 'F' ? 'FEMININO' : myProfile.sex)) || 'MASCULINO';
+            const normalizedGender = (myProfile.gender === 'M' ? 'MASCULINO' : (myProfile.gender === 'F' ? 'FEMININO' : myProfile.gender)) || 'MASCULINO';
 
             setProfileData(prev => ({
               ...prev,
               ...myProfile,
-              name: myProfile.name || prev.name,
+              fullName: myProfile.fullName || prev.fullName,
               email: myProfile.email || prev.email,
               phone: myProfile.phone || prev.phone,
-              sex: normalizedSex as any,
+              gender: normalizedGender as any,
               origin: originResponse || myProfile.origin || prev.origin
             }));
           }
@@ -281,7 +281,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       // Filtrar líderes pelo gênero do usuário para definir o discipulador
       const leaders = linkedCell.leaderIds
         .map(id => allMembers.find(m => m.id === id))
-        .filter(m => m && m.sex === profileData.sex);
+        .filter(m => m && m.gender === profileData.gender);
 
       if (leaders.length > 0) {
         const leaderMember = leaders[0];
@@ -290,7 +290,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           if (leaderMember.pastorId) {
             // Verificar gênero do pastor também
             const pastorMember = allMembers.find(m => m.id === leaderMember.pastorId);
-            if (pastorMember && pastorMember.sex === profileData.sex) {
+            if (pastorMember && pastorMember.gender === profileData.gender) {
               updates.pastorId = pastorMember.id;
             }
           }
@@ -355,11 +355,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       } else {
         // Se não houver member_id (usuário novo/sem vínculo), atualiza apenas o metadata do Auth
         const authPayload: any = {
-          name: sanitizedData.name,
+          full_name: sanitizedData.fullName,
           phone: sanitizedData.phone,
           cpf: sanitizedData.cpf ? sanitizedData.cpf.replace(/\D/g, '') : undefined,
           birth_date: sanitizedData.birthDate,
-          sex: sanitizedData.sex,
+          gender: sanitizedData.gender,
           marital_status: sanitizedData.maritalStatus,
           origin: sanitizedData.origin,
         };
@@ -432,8 +432,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
   const activeUser = user.role === UserRole.MASTER_ADMIN ? {
     ...user,
-    name: user.name || 'Agência Goodea',
-    avatar: user.avatar || user.avatar_url || 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
+    name: user.fullName || 'Agência Goodea',
+    avatarUrl: user.avatarUrl || user.avatar_url || 'https://ui-avatars.com/api/?name=Agencia+Goodea&background=2563eb&color=fff&size=200'
   } : user;
 
   return (
@@ -477,7 +477,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               <div className="flex flex-col md:flex-row md:items-center gap-8">
                 <div className="relative group">
                   <img 
-                    src={profileData.avatar || activeUser.avatar || `https://ui-avatars.com/api/?name=User&background=2563eb&color=fff&size=200`} 
+                    src={profileData.avatarUrl || activeUser.avatarUrl || `https://ui-avatars.com/api/?name=User&background=2563eb&color=fff&size=200`} 
                     className="w-32 h-32 rounded-[2.5rem] ring-4 ring-zinc-950 shadow-2xl object-cover" 
                     alt="Avatar" 
                   />
@@ -561,7 +561,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Gênero</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Users size={16} className="text-zinc-600" /></div>
-                      <select value={profileData.sex || ''} onChange={e => setProfileData({ ...profileData, sex: e.target.value as any })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
+                      <select value={profileData.gender || ''} onChange={e => setProfileData({ ...profileData, gender: e.target.value as any })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
                         <option value="" className="bg-zinc-900">Selecionar Gênero</option>
                         <option value="MASCULINO" className="bg-zinc-900">MASCULINO</option>
                         <option value="FEMININO" className="bg-zinc-900">FEMININO</option>
@@ -596,11 +596,11 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                           {allMembers
                             .filter(m => m.id !== member?.id)
                             .filter(m => {
-                              if (profileData.sex === 'MASCULINO') return m.sex === 'FEMININO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
-                              if (profileData.sex === 'FEMININO') return m.sex === 'MASCULINO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
+                              if (profileData.gender === 'MASCULINO') return m.gender === 'FEMININO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
+                              if (profileData.gender === 'FEMININO') return m.gender === 'MASCULINO' && (!m.spouseId || m.spouseId === '' || m.spouseId === member?.id);
                               return true;
                             })
-                            .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
+                            .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.fullName}</option>)
                           }
                         </select>
                       </div>
@@ -735,10 +735,10 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     {allMembers
                       .filter(m => m.id !== member?.id)
                       .filter(m => {
-                        if (!profileData.sex) return true;
-                        return m.sex === profileData.sex;
+                        if (!profileData.gender) return true;
+                        return m.gender === profileData.gender;
                       })
-                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
+                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.fullName}</option>)
                     }
                   </select>
                 </div>
@@ -750,10 +750,10 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                     {allMembers
                       .filter(m => (m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN))
                       .filter(m => {
-                        if (!profileData.sex) return true;
-                        return m.sex === profileData.sex;
+                        if (!profileData.gender) return true;
+                        return m.gender === profileData.gender;
                       })
-                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.name}</option>)
+                      .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.fullName}</option>)
                     }
                   </select>
                 </div>

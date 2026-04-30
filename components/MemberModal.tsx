@@ -20,14 +20,14 @@ interface MemberModalProps {
 
 const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, member, user }) => {
 	const [formData, setFormData] = useState<Partial<Member>>({
-		name: '',
+		fullName: '',
 		email: '',
 		phone: '',
 		role: UserRole.MEMBER_VISITOR,
 		stage: LadderStage.WIN,
 		cellId: '',
 		disciplerId: '',
-		avatar: '',
+		avatarUrl: '',
 		origin: '',
 		cpf: '',
 		cep: '',
@@ -43,7 +43,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		login: '',
 		password: '',
 		status: MemberStatus.ACTIVE,
-		sex: 'MASCULINO',
+		gender: 'MASCULINO',
 		hasChildren: false,
 		children: [],
 		leadingCellIds: [],
@@ -144,7 +144,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				stage: LadderStage.WIN,
 				cellId: '',
 				disciplerId: '',
-				avatar: '',
+				avatarUrl: '',
 				origin: '',
 				cpf: '',
 				cep: '',
@@ -160,7 +160,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 				login: '',
 				password: '',
 				status: MemberStatus.ACTIVE,
-				sex: 'MASCULINO',
+				gender: 'MASCULINO',
 				hasChildren: false,
 				children: [],
 				leadingCellIds: [],
@@ -185,13 +185,13 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 			if (spouseId) {
 				const spouse = list.find(x => x.id === spouseId);
 				if (spouse) {
-					options.push({ id: m.id, label: `${m.name} e ${spouse.name}` });
+					options.push({ id: m.id, label: `${m.fullName} e ${spouse.fullName}` });
 					processed.add(spouseId); // Evita gerar opção dupla se ambos estiverem na lista
 					continue;
 				}
 			}
 			
-			options.push({ id: m.id, label: m.name });
+			options.push({ id: m.id, label: m.fullName });
 		}
 
 		return options;
@@ -832,7 +832,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 													{allMembers
 														.filter(m => m.id !== member?.id && (m.maritalStatus === 'Casado(a)' || m.marital_status === 'Casado(a)'))
 														.map(m => (
-															<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
+															<option key={m.id} value={m.id} className="bg-zinc-950">{m.fullName}</option>
 														))}
 												</select>
 											</div>

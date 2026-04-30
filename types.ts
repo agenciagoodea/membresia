@@ -126,7 +126,7 @@ export interface StageHistory {
 
 export interface Member {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   phone: string;
   churchId?: string;
@@ -136,7 +136,7 @@ export interface Member {
   cellId: string; // "Célula que Participa"
   leadingCellIds?: string[]; // "Células que Lidera" (Multiple allowed)
   disciplerId?: string;
-  avatar: string;
+  avatarUrl: string;
   stageHistory: StageHistory[];
   completedMilestones?: string[];
   origin?: string;
@@ -144,7 +144,7 @@ export interface Member {
   cpf?: string;
   userId?: string;
 
-  sex?: 'MASCULINO' | 'FEMININO';
+  gender?: 'MASCULINO' | 'FEMININO';
   hasChildren?: boolean;
   children?: Child[];
 

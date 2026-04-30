@@ -3,7 +3,7 @@ import { Member, MemberStatus, UserRole } from '../types';
 
 const mapToFrontend = (m: any): Member => ({
 	id: m.id,
-	name: m.name,
+	fullName: m.full_name || m.name,
 	email: m.email,
 	phone: m.phone,
 	churchId: m.church_id,
@@ -17,7 +17,7 @@ const mapToFrontend = (m: any): Member => ({
 	pastorId: m.pastor_id,
 	conversionDate: m.conversion_date,
 	joinedDate: m.joined_date,
-	avatar: m.avatar,
+	avatarUrl: m.avatar_url || m.avatar,
 	stageHistory: m.stage_history || [],
 	completedMilestones: m.completed_milestones || [],
 	origin: m.origin,
@@ -34,7 +34,7 @@ const mapToFrontend = (m: any): Member => ({
 	login: m.login,
 	password: m.password,
 	birthDate: m.birth_date,
-	sex: m.sex,
+	gender: m.gender || m.sex,
 	hasChildren: m.has_children,
 	children: m.children || [],
 	leadingCellIds: m.leading_cell_ids || [],
@@ -46,17 +46,24 @@ const mapToFrontend = (m: any): Member => ({
 const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	const db: any = {};
 	
-	// Função auxiliar para higienizar valores
-	const sanitize = (val: any) => (val === undefined || val === '') ? null : val;
+	// Função auxiliar para higienizar valores de insert/update
+	// undefined significa 'ignorar' (não atualiza o campo)
+	// '' (string vazia) ou null significa 'limpar campo no banco' (salvar como null)
+	const sanitize = (val: any) => (val === undefined) ? undefined : (val === '' ? null : val);
 
-	if (m.churchId) db.church_id = m.churchId;
-	if (m.church_id) db.church_id = m.church_id;
+	if (m.churchId !== undefined) db.church_id = sanitize(m.churchId);
+	if (m.church_id !== undefined) db.church_id = sanitize(m.church_id);
 	
-	// Mapeamento explícito para as colunas reais do banco (name e sex)
-	if (m.name !== undefined) db.name = m.name;
-	if (m.sex !== undefined) db.sex = m.sex;
+	// Mapeamento explícito para as colunas reais e novas
+	if (m.fullName !== undefined) db.full_name = sanitize(m.fullName);
+	// Legacy fallback: se enviarem 'name', salvar em full_name também
+	if ((m as any).name !== undefined && m.fullName === undefined) db.full_name = sanitize((m as any).name);
+
+	if (m.gender !== undefined) db.gender = sanitize(m.gender);
+	// Legacy fallback
+	if ((m as any).sex !== undefined && m.gender === undefined) db.gender = sanitize((m as any).sex);
 	
-	if (m.email !== undefined) db.email = m.email;
+	if (m.email !== undefined) db.email = sanitize(m.email);
 	if (m.phone !== undefined) {
 		db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
 	}
@@ -73,7 +80,11 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.disciplerId !== undefined) db.discipler_id = sanitize(m.disciplerId);
 	if (m.pastorId !== undefined) db.pastor_id = sanitize(m.pastorId);
 	if (m.joinedDate !== undefined) db.joined_date = sanitize(m.joinedDate);
-	if (m.avatar !== undefined) db.avatar = sanitize(m.avatar);
+	
+	if (m.avatarUrl !== undefined) db.avatar_url = sanitize(m.avatarUrl);
+	// Legacy fallback
+	if ((m as any).avatar !== undefined && m.avatarUrl === undefined) db.avatar_url = sanitize((m as any).avatar);
+
 	if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
 	if (m.completedMilestones !== undefined) db.completed_milestones = m.completedMilestones;
 	if (m.origin !== undefined) db.origin = sanitize(m.origin);
@@ -95,7 +106,7 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
 	if (m.login !== undefined) db.login = sanitize(m.login);
 	
-	// IMPORTANTE: Só envia password se tiver valor
+	// IMPORTANTE: Só envia password se tiver valor (nunca envia null/empty string)
 	if (m.password && m.password.trim().length > 0) {
 		db.password = m.password;
 	}
@@ -109,21 +120,23 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
 	if (m.firstAccessCompleted !== undefined) db.first_access_completed = m.firstAccessCompleted;
 	if (m.milestoneValues !== undefined) db.milestone_values = m.milestoneValues;
-	if ((m as any).userId !== undefined) db.user_id = (m as any).userId;
-	if ((m as any).user_id !== undefined) db.user_id = (m as any).user_id;
 	
-	// Segurança: Remover campos que definitivamente não pertencem à tabela
+	if (m.userId !== undefined) db.user_id = sanitize(m.userId);
+	if ((m as any).user_id !== undefined && db.user_id === undefined) db.user_id = sanitize((m as any).user_id);
+	
+	// Segurança: Remover campos que definitivamente não pertencem à tabela members
 	delete db.confirmPassword;
 	delete db.confirm_password;
+	delete db.id; // Nunca atualizar o ID
 	
-	// Remover campos undefined finais
+	// Remover todos os campos cujo valor resultou em 'undefined' (para não quebrar a query do Supabase)
 	Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
 	
 	return db;
 };
 
 // Colunas essenciais para listagem e dashboard
-const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children';
+const ESSENTIAL_COLUMNS = 'id, full_name, name, email, phone, role, status, stage, cell_id, avatar_url, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children, gender, sex';
 
 export const memberService = {
 	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
@@ -201,7 +214,7 @@ export const memberService = {
 		let query = supabase
 			.from('members')
 			.select('*')
-			.or(`name.ilike.%${queryStr}%,email.ilike.%${queryStr}%`);
+			.or(`full_name.ilike.%${queryStr}%,name.ilike.%${queryStr}%,email.ilike.%${queryStr}%`);
 
 		if (currentUser) {
 			const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
@@ -272,7 +285,7 @@ export const memberService = {
 					password: member.password,
 					options: { 
 						data: { 
-							name: member.name, 
+							name: member.fullName, 
 							role: member.role, 
 							church_id: member.church_id 
 						} 
@@ -304,7 +317,7 @@ export const memberService = {
 				password: member.password,
 				options: {
 					data: {
-						name: member.name,
+						name: member.fullName,
 						role: member.role,
 						church_id: member.church_id
 					}
@@ -425,7 +438,7 @@ export const memberService = {
 			m.role === 'PASTOR' || 
 			m.role === 'CHURCH_ADMIN' || 
 			m.role === 'ADMINISTRADOR_IGREJA'
-		).sort((a, b) => a.name.localeCompare(b.name));
+		).sort((a, b) => a.fullName.localeCompare(b.fullName));
 	},
 
 	async getByEmail(email: string) {

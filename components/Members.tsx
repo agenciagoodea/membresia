@@ -84,10 +84,10 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
 
     // 6. Busca Textual
     const cellName = cells.find(c => c.id === m.cellId)?.name || 'Sem Célula';
-    const pastorName = members.find(p => p.id === m.pastorId)?.name || 'Sem Pastor';
+    const pastorName = members.find(p => p.id === m.pastorId)?.fullName || 'Sem Pastor';
 
     const matchesSearch = !searchTerm || 
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (m.email && m.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       cellName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pastorName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -98,7 +98,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
   const availablePastors = members.filter(m => 
     m.role === UserRole.PASTOR || 
     m.role === UserRole.CHURCH_ADMIN
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  ).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -111,7 +111,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
   const handleExport = () => {
     const headers = ['Nome', 'Email', 'Telefone', 'Perfil', 'Nível', 'Célula', 'Status'];
     const rows = filteredMembers.map(m => [
-      m.name,
+      m.fullName,
       m.email || '',
       m.phone || '',
       m.role,
@@ -198,7 +198,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
           stageHistory: [{
             stage: finalFormData.stage || LadderStage.WIN,
             date: new Date().toISOString(),
-            recordedBy: user.name,
+            recordedBy: user.fullName || user.user_metadata?.fullName || user.name || 'Admin',
             notes: 'Membro registrado manualmente'
           }]
         } as any);
@@ -305,7 +305,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 >
                   <option className="bg-zinc-900" value="ALL">Todos os Pastores</option>
                   {availablePastors.map(p => (
-                    <option className="bg-zinc-900" key={p.id} value={p.id}>{p.name}</option>
+                    <option className="bg-zinc-900" key={p.id} value={p.id}>{p.fullName}</option>
                   ))}
                 </select>
               </div>
@@ -382,8 +382,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                     <div className="flex items-center gap-5">
                       <div className="relative">
                         <img 
-                          src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
-                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`; }}
+                          src={member.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`; }}
                           alt="" 
                           className="w-14 h-14 rounded-full ring-2 ring-white/10 group-hover:ring-blue-600 transition-all shadow-xl object-cover aspect-square" 
                         />
@@ -394,7 +394,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                         )}
                       </div>
                       <div>
-                        <p className="text-base font-black text-white tracking-tight uppercase leading-none mb-1">{member.name}</p>
+                        <p className="text-base font-black text-white tracking-tight uppercase leading-none mb-1">{member.fullName}</p>
                         <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase">{member.email || 'Sem e-mail'}</p>
                       </div>
                     </div>
@@ -465,8 +465,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative shrink-0">
                     <img 
-                      src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`; }}
+                      src={member.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`; }}
                       alt="" 
                       className="w-12 h-12 rounded-full ring-2 ring-white/10 shadow-xl object-cover aspect-square" 
                     />
@@ -477,7 +477,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-white tracking-tight uppercase leading-none mb-1 truncate">{member.name}</p>
+                    <p className="text-sm font-black text-white tracking-tight uppercase leading-none mb-1 truncate">{member.fullName}</p>
                     <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase truncate">{member.email || 'Sem e-mail'}</p>
                     <p className="text-[10px] text-zinc-400 mt-1 uppercase truncate font-bold"><span className="text-zinc-600">Célula:</span> {cells.find(c => c.id === member.cellId)?.name || 'Nenhuma'}</p>
                   </div>
