@@ -34,6 +34,7 @@ export const eventService = {
           const myCellId = currentUser.cellId || currentUser.cell_id;
           
           let orConditions = [
+            `is_published.eq.true`,
             `created_by.in.(${ecosystemFilter})`,
             `responsible_pastor_id.in.(${ecosystemFilter})`,
             `coordinator_id.in.(${ecosystemFilter})`,
@@ -87,7 +88,7 @@ export const eventService = {
       if (!isAdmin) {
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         const ecosystemFilter = ecosystemIds.join(',');
-        query = query.or(`created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
+        query = query.or(`is_published.eq.true,created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
       }
     }
 

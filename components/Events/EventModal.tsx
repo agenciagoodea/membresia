@@ -363,7 +363,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
                 className="w-full bg-zinc-900 border border-white/5 rounded-[2rem] p-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all resize-none font-medium"
               />
             </div>
-            </div>
+          </div>
 
             <div className="flex flex-col sm:flex-row gap-6 p-6 bg-zinc-900/50 rounded-[2rem] border border-white/5">
               <label className="flex items-center gap-3 cursor-pointer group">
@@ -400,7 +400,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
                 </div>
               </label>
             </div>
-          </div>
 
           <div className="pt-4 border-t border-white/5 flex justify-end gap-4">
             <button type="button" onClick={onClose} className="px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors">
