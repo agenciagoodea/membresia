@@ -149,5 +149,19 @@ export const cellService = {
 
 	async getAvailableCellsForFilter(churchId: string, currentUser: any) {
 		return this.getAll(churchId, currentUser);
+	},
+
+	async getCellsByLeader(leaderId: string) {
+		const { data, error } = await supabase
+			.from('cells')
+			.select(CELL_LIST_COLUMNS)
+			.or(`leader_id.eq.${leaderId},leader_ids.cs.{${leaderId}}`);
+
+		if (error) {
+			console.error('Erro ao buscar células lideradas:', error);
+			return [];
+		}
+
+		return (data || []).map(mapToFrontend);
 	}
 };

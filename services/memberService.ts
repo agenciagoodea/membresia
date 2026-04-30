@@ -21,7 +21,7 @@ export const dbToMember = (row: any): Member => {
     status: (row.status === 'PENDING' || row.status === 'PENDENTE' || !row.status) ? MemberStatus.PENDING : 
             (row.status === 'ACTIVE' || row.status === 'ATIVO') ? MemberStatus.ACTIVE :
             (row.status === 'REJECTED' || row.status === 'REJEITADO') ? MemberStatus.REJECTED : row.status,
-    stage: row.stage || row.escada || LadderStage.WIN,
+    stage: row.stage || row.escada || 'GANHAR',
     cellId: row.cell_id || row.celula_id || '',
     pastorId: row.pastor_id || null,
     disciplerId: row.discipler_id || row.discipulador_id || null,
@@ -57,23 +57,23 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   if (m.churchId !== undefined) db.church_id = sanitize(m.churchId);
   if (m.church_id !== undefined) db.church_id = sanitize(m.church_id);
   
-  if (m.fullName !== undefined) db.full_name = sanitize(m.fullName);
-  // Se fullName vier vazio mas tivermos name na interface legacy
-  if ((m as any).name !== undefined && (m.fullName === undefined || m.fullName === '')) db.full_name = sanitize((m as any).name);
-  // Manter campo name preenchido para queries legacy que usam .eq('name', ...)
-  if (db.full_name !== undefined) db.name = db.full_name;
-
+  if (m.fullName !== undefined) {
+    db.full_name = sanitize(m.fullName);
+    db.name = db.full_name; // Sincronizar legacy
+  }
+  
   if (m.gender !== undefined) {
     db.gender = sanitize(m.gender);
-    db.sex = db.gender; // Duplicar para compatibilidade
+    db.sex = db.gender; // Sincronizar legacy
   }
   
   if (m.email !== undefined) db.email = sanitize(m.email);
   if (m.phone !== undefined) {
     db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
+    db.telefone = db.phone; // Sincronizar legacy
   }
-  if (m.role !== undefined) db.role = m.role;
   
+  if (m.role !== undefined) db.role = m.role;
   if (m.status !== undefined) {
     db.status = m.status === MemberStatus.ACTIVE ? 'ACTIVE' : 
                 m.status === MemberStatus.PENDING ? 'PENDING' :
@@ -88,7 +88,8 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   
   if (m.avatarUrl !== undefined) {
     db.avatar_url = sanitize(m.avatarUrl);
-    db.avatar = db.avatar_url; // Duplicar para compatibilidade
+    db.avatar = db.avatar_url; // Sincronizar legacy
+    db.photo_url = db.avatar_url; // Sincronizar legacy
   }
 
   if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
@@ -127,6 +128,7 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
 
   delete db.id;
   
+  // Limpar undefined do payload final para evitar sobrescrever com lixo
   Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
   
   return db;
@@ -138,6 +140,21 @@ const mapToDb = memberToDb;
 const ESSENTIAL_COLUMNS = 'id, full_name, name, email, phone, role, status, stage, cell_id, avatar_url, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children, gender, sex';
 
 export const memberService = {
+	async getById(id: string) {
+		const { data, error } = await supabase
+			.from('members')
+			.select('*')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (error) {
+			console.error('Erro ao buscar membro por ID:', error);
+			throw error;
+		}
+
+		return data ? dbToMember(data) : null;
+	},
+
 	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
 		console.log('[DEBUG RBAC] memberService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
 		
@@ -253,17 +270,6 @@ export const memberService = {
 
 		if (error) throw error;
 		return (data || []).map(mapToFrontend);
-	},
-
-	async getById(id: string) {
-		const { data, error } = await supabase
-			.from('members')
-			.select('*')
-			.eq('id', id)
-			.single();
-
-		if (error) throw error;
-		return mapToFrontend(data);
 	},
 
 	async create(member: Omit<Member, 'id'> & { church_id?: string }) {

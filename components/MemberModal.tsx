@@ -86,13 +86,18 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	// Função de mapeamento para unificar camelCase (Frontend) e snake_case (Backend/Supabase)
 	const normalizeMemberData = (m: any): Partial<Member> => {
 		if (!m) return {};
-		const member = dbToMember(m);
+		
+		// Se m já for um objeto Member mapeado via dbToMember, usamos direto
+		const member = (m.fullName !== undefined) ? m : dbToMember(m);
+		
 		return {
 			...member,
 			birthDate: toDateInputValue(member.birthDate),
 			joinedDate: toDateInputValue(member.joinedDate),
-			cpf: maskCPF(member.cpf || ''),
-			phone: maskPhone(member.phone || '')
+			conversionDate: toDateInputValue(member.conversionDate),
+			cpf: member.cpf ? maskCPF(member.cpf) : '',
+			phone: member.phone ? maskPhone(member.phone) : '',
+			gender: member.gender || 'MASCULINO'
 		};
 	};
 
@@ -101,15 +106,86 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 			try {
 				setLoadingData(true);
 				const churchId = user?.churchId || user?.church_id;
-				const [cellsData, membersData, activitiesData] = await Promise.all([
+				
+				const fetchTasks: any[] = [
 					cellService.getAll(churchId, user),
 					memberService.getAll(churchId, undefined, user),
 					m12Service.getActivities(churchId)
-				]);
+				];
+
+				if (member?.id) {
+					fetchTasks.push(memberService.getById(member.id));
+					fetchTasks.push(cellService.getCellsByLeader(member.id));
+				}
+
+				const results = await Promise.all(fetchTasks);
+				const cellsData = results[0];
+				const membersData = results[1];
+				const activitiesData = results[2];
+				const fullMember = results[3];
+				const ledCells = results[4] || [];
+
 				setCells(cellsData);
 				setAllMembers(membersData || []);
 				setAllActivities(activitiesData || []);
 				setGainActivities((activitiesData || []).filter(c => c.stage === LadderStage.WIN));
+
+				if (fullMember) {
+					console.log('MEMBRO_COMPLETO_BANCO', fullMember);
+					console.log('CELULAS_LIDERADAS_PELO_MEMBRO', ledCells);
+					
+					const normalized = normalizeMemberData(fullMember);
+					// Sincronizar células lideradas se houver divergência
+					if (ledCells.length > 0) {
+						normalized.leadingCellIds = ledCells.map((c: any) => c.id);
+					}
+					
+					setFormData(normalized);
+					setOriginalPassword(normalized.password || '');
+					setConfirmPassword(normalized.password || '');
+				} else if (member) {
+					const normalized = normalizeMemberData(member);
+					setFormData(normalized);
+					setOriginalPassword(normalized.password || '');
+					setConfirmPassword(normalized.password || '');
+				} else {
+					setFormData({
+						fullName: '',
+						email: '',
+						phone: '',
+						role: UserRole.MEMBER_VISITOR,
+						stage: LadderStage.WIN,
+						cellId: '',
+						disciplerId: '',
+						avatarUrl: '',
+						origin: '',
+						cpf: '',
+						cep: '',
+						state: '',
+						city: '',
+						neighborhood: '',
+						street: '',
+						number: '',
+						complement: '',
+						maritalStatus: 'Solteiro(a)',
+						spouseId: '',
+						pastorId: '',
+						login: '',
+						password: '',
+						status: MemberStatus.ACTIVE,
+						gender: 'MASCULINO',
+						hasChildren: false,
+						children: [],
+						leadingCellIds: [],
+						birthDate: ''
+					});
+					setOriginalPassword('');
+					setConfirmPassword('');
+				}
+				
+				setPhotoPreview('');
+				setSelectedFile(null);
+
 			} catch (error) {
 				console.error('Erro ao carregar dados:', error);
 			} finally {
@@ -120,53 +196,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		if (isOpen) {
 			loadData();
 		}
-	}, [isOpen, user?.churchId, user?.church_id]);
-
-	useEffect(() => {
-		if (member) {
-			const normalized = normalizeMemberData(member);
-			setFormData(normalized);
-			setOriginalPassword(normalized.password || '');
-			setConfirmPassword(normalized.password || '');
-			setPhotoPreview('');
-			setSelectedFile(null);
-		} else {
-			setFormData({
-				fullName: '',
-				email: '',
-				phone: '',
-				role: UserRole.MEMBER_VISITOR,
-				stage: LadderStage.WIN,
-				cellId: '',
-				disciplerId: '',
-				avatarUrl: '',
-				origin: '',
-				cpf: '',
-				cep: '',
-				state: '',
-				city: '',
-				neighborhood: '',
-				street: '',
-				number: '',
-				complement: '',
-				maritalStatus: 'Solteiro(a)',
-				spouseId: '',
-				pastorId: '',
-				login: '',
-				password: '',
-				status: MemberStatus.ACTIVE,
-				gender: 'MASCULINO',
-				hasChildren: false,
-				children: [],
-				leadingCellIds: [],
-				birthDate: ''
-			});
-			setOriginalPassword('');
-			setConfirmPassword('');
-			setPhotoPreview('');
-			setSelectedFile(null);
-		}
-	}, [member, isOpen]);
+	}, [isOpen, member?.id, user?.churchId, user?.church_id]);
 
 	const getDeduplicatedMembersOptions = (list: Member[]) => {
 		const processed = new Set<string>();
@@ -175,21 +205,13 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		for (const m of list) {
 			if (processed.has(m.id)) continue;
 			processed.add(m.id);
-
-			const spouseId = m.spouseId || (m as any).spouse_id;
-			if (spouseId) {
-				const spouse = list.find(x => x.id === spouseId);
-				if (spouse) {
-					options.push({ id: m.id, label: `${m.fullName} e ${spouse.fullName}` });
-					processed.add(spouseId); // Evita gerar opção dupla se ambos estiverem na lista
-					continue;
-				}
-			}
-			
-			options.push({ id: m.id, label: m.fullName });
+			options.push({ 
+				id: m.id, 
+				label: `${m.fullName} (${getRoleLabel(m)})` 
+			});
 		}
 
-		return options;
+		return options.sort((a, b) => a.label.localeCompare(b.label));
 	};
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,10 +432,10 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										onClick={() => setIsPhotoMenuOpen(!isPhotoMenuOpen)}
 										className="relative w-32 h-32 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-all overflow-hidden group bg-zinc-900"
 									>
-										{photoPreview || formData.avatar ? (
+										{photoPreview || formData.avatarUrl ? (
 											<>
 												<img
-												src={getAvatarUrl(formData.fullName, formData.avatarUrl)}
+													src={photoPreview || getAvatarUrl(formData.fullName, formData.avatarUrl)}
 													onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(formData.fullName, null); }}
 													className="w-full h-full object-cover"
 													alt="Avatar"
@@ -692,11 +714,12 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												<option value="" className="bg-zinc-950">Sem Discipulador</option>
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
-														if (m.id === member?.id) return false;
+														if (m.id === (member?.id || formData.id)) return false;
 														const norm = normalizeRole(m.role);
+														const myNorm = normalizeRole(formData.role);
 														
-														if (normalizeRole(formData.role) === 'PASTOR') return norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
-														return norm === 'CELL_LEADER_DISCIPLE' || norm === 'PASTOR' || norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
+														if (myNorm === UserRole.PASTOR) return norm === UserRole.CHURCH_ADMIN || norm === UserRole.MASTER_ADMIN;
+														return norm === UserRole.CELL_LEADER_DISCIPLE || norm === UserRole.PASTOR || norm === UserRole.CHURCH_ADMIN || norm === UserRole.MASTER_ADMIN;
 													})
 												).map(opt => (
 													<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>
@@ -717,9 +740,9 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												<option value="" className="bg-zinc-950">Selecione os Pastores</option>
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
-														if (m.id === member?.id) return false;
+														if (m.id === (member?.id || formData.id)) return false;
 														const norm = normalizeRole(m.role);
-														return norm === 'PASTOR' || norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
+														return norm === UserRole.PASTOR || norm === UserRole.CHURCH_ADMIN || norm === UserRole.MASTER_ADMIN;
 													})
 												).map(opt => (
 													<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>
