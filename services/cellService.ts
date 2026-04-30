@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Cell } from '../types';
+import { memberService } from './memberService';
 
 const mapToFrontend = (c: any): Cell => ({
 	id: c.id,
@@ -74,37 +75,23 @@ export const cellService = {
 			.eq('church_id', churchId);
 
 		if (currentUser && !isAdmin) {
-			// 1. Buscar IDs de discípulos diretos para expandir a rede (Pastor/Discipulador)
-			const { data: disciples } = await supabase
-				.from('members')
-				.select('id, cell_id')
-				.or(`pastor_id.eq.${myId},discipler_id.eq.${myId}`);
-
-			const discipleIds = (disciples || []).map(d => d.id);
-			const discipleCellIds = (disciples || []).map(d => d.cell_id).filter(Boolean);
-
-			// 2. Construir filtro OR exaustivo
+			// 1. Obter Ecossistema Recursivo via RPC
+			const ecosystemIds = await memberService.getEcosystemIds(myId);
+			
+			// 2. Construir filtro OR exaustivo baseado no ecossistema
 			let conditions = [
-				`pastor_id.eq.${myId}`,
-				`supervisor_id.eq.${myId}`,
-				`leader_id.eq.${myId}`,
-				`leader_ids.cs.{${myId}}`
+				`pastor_id.in.(${ecosystemIds.join(',')})`,
+				`supervisor_id.in.(${ecosystemIds.join(',')})`,
+				`leader_id.in.(${ecosystemIds.join(',')})`
 			];
 
-			if (discipleIds.length > 0) {
-				conditions.push(`leader_id.in.(${discipleIds.join(',')})`);
-			}
-
-			if (discipleCellIds.length > 0) {
-				conditions.push(`id.in.(${discipleCellIds.join(',')})`);
-			}
-
+			// 3. Adicionar ID da própria célula se necessário
 			if (myCellId) {
 				conditions.push(`id.eq.${myCellId}`);
 			}
 
 			const filterStr = conditions.join(',');
-			console.log('[DEBUG RBAC] Aplicando filtro OR:', filterStr);
+			console.log('[DEBUG RBAC] Aplicando filtro de ecossistema:', filterStr);
 			query = query.or(filterStr);
 		}
 

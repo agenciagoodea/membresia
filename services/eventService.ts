@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { ChurchEvent } from '../types';
+import { memberService } from './memberService';
 
 export const eventService = {
   async getAll(churchId: string, currentUser?: any): Promise<ChurchEvent[]> {
@@ -17,9 +18,11 @@ export const eventService = {
       const myId = currentUser.id;
 
       if (!isAdmin) {
-        // Pastor e Líder veem eventos públicos OU onde são responsáveis
-        // Nota: assistant_ids é um array no Postgres, usamos .cs (contains)
-        query = query.or(`created_by.eq.${myId},responsible_pastor_id.eq.${myId},coordinator_id.eq.${myId},assistant_ids.cs.{${myId}}`);
+        // 1. Obter Ecossistema Recursivo
+        const ecosystemIds = await memberService.getEcosystemIds(myId);
+        
+        // 2. Pastor e Líder veem eventos públicos OU onde qualquer membro do ecossistema é responsável
+        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),responsible_pastor_id.in.(${ecosystemIds.join(',')}),coordinator_id.in.(${ecosystemIds.join(',')}),assistant_ids.cs.{${myId}}`);
       }
     }
 
@@ -56,7 +59,8 @@ export const eventService = {
       const myId = currentUser.id;
 
       if (!isAdmin) {
-        query = query.or(`created_by.eq.${myId},responsible_pastor_id.eq.${myId},coordinator_id.eq.${myId},assistant_ids.cs.{${myId}}`);
+        const ecosystemIds = await memberService.getEcosystemIds(myId);
+        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),responsible_pastor_id.in.(${ecosystemIds.join(',')}),coordinator_id.in.(${ecosystemIds.join(',')}),assistant_ids.cs.{${myId}}`);
       }
     }
 

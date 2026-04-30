@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { PaidEvent, PaidEventStatus } from '../types';
+import { memberService } from './memberService';
 
 /**
  * Gera slug URL-friendly a partir do título.
@@ -35,8 +36,11 @@ export const paidEventService = {
       const myId = currentUser.id;
 
       if (!isAdmin) {
-        // Pastor e Líder veem o que criaram OU o que está publicado
-        query = query.or(`created_by.eq.${myId},status.eq.published`);
+        // 1. Obter Ecossistema Recursivo
+        const ecosystemIds = await memberService.getEcosystemIds(myId);
+        
+        // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou OU o que está publicado
+        query = query.or(`created_by.in.(${ecosystemIds.join(',')}),status.eq.published`);
       }
     }
 
