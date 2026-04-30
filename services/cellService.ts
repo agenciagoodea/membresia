@@ -150,5 +150,9 @@ export const cellService = {
 
 		if (error) throw error;
 		return data || [];
+	},
+
+	async getAvailableCellsForFilter(churchId: string, currentUser: any) {
+		return this.getAll(churchId, currentUser);
 	}
 };

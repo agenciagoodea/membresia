@@ -27,10 +27,10 @@ import { useChurch } from '../contexts/ChurchContext';
 const Members: React.FC<{ user: any }> = ({ user }) => {
   const { members, cells, loading, refreshData } = useChurch();
   const location = useLocation();
-  const [filter, setFilter] = useState<string>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [selectedPastorId, setSelectedPastorId] = useState<string>('ALL');
+  const [selectedCellId, setSelectedCellId] = useState<string>('ALL');
+  const [selectedStage, setSelectedStage] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   const planLimit = PLAN_CONFIGS[user.church_plan || 'PRO'].maxMembers;
@@ -63,23 +63,76 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     // 1. Lógica de Visibilidade: Membros Pendentes são exclusivos
     if (m.status === MemberStatus.PENDING) {
       const isSupervisor = user.id === m.pastorId || user.id === m.disciplerId;
-      const isAdmin = user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.MASTER_ADMIN;
+      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, UserRole.ADMINISTRADOR_IGREJA, 'ADMIN'].includes(user.role);
       if (!isSupervisor && !isAdmin) return false;
     }
 
-    // 2. Filtro por Estágio/Status
-    const matchesFilter = filter === 'ALL' ? true : 
-                         filter === 'PENDING' ? m.status === MemberStatus.PENDING :
-                         m.stage === filter;
+    // 2. Filtro de Status (Pendentes)
+    if (statusFilter === 'PENDING' && m.status !== MemberStatus.PENDING) return false;
 
+    // 3. Filtro por Pastor
+    if (selectedPastorId !== 'ALL' && m.pastorId !== selectedPastorId) return false;
+
+    // 4. Filtro por Célula
+    if (selectedCellId !== 'ALL' && m.cellId !== selectedCellId) return false;
+
+    // 5. Filtro por Nível/Estágio
+    if (selectedStage !== 'ALL' && m.stage !== selectedStage) return false;
+
+    // 6. Busca Textual
     const cellName = cells.find(c => c.id === m.cellId)?.name || 'Sem Célula';
+    const pastorName = members.find(p => p.id === m.pastorId)?.name || 'Sem Pastor';
 
-    const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = !searchTerm || 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (m.email && m.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      cellName.toLowerCase().includes(searchTerm.toLowerCase());
+      cellName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pastorName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesSearch;
   });
+
+  const availablePastors = members.filter(m => 
+    m.role === UserRole.PASTOR || 
+    m.role === 'PASTOR' || 
+    m.role === 'ADMINISTRADOR_IGREJA'
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedPastorId('ALL');
+    setSelectedCellId('ALL');
+    setSelectedStage('ALL');
+    setStatusFilter('ALL');
+  };
+
+  const handleExport = () => {
+    const headers = ['Nome', 'Email', 'Telefone', 'Perfil', 'Nível', 'Célula', 'Status'];
+    const rows = filteredMembers.map(m => [
+      m.name,
+      m.email || '',
+      m.phone || '',
+      m.role,
+      m.stage,
+      cells.find(c => c.id === m.cellId)?.name || 'Sem Célula',
+      m.status
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `membros_ecclesia_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleAddMember = () => {
     if (isLimitReached) {
@@ -194,7 +247,10 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
         subtitle={`Monitorando ${currentTotal} de ${planLimit} vagas.`}
         actions={
           <>
-            <button className="flex items-center gap-2 px-4 md:px-6 py-3 md:py-3.5 bg-zinc-900 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-all w-full md:w-auto justify-center">
+            <button 
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 md:px-6 py-3 md:py-3.5 bg-zinc-900 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-all w-full md:w-auto justify-center"
+            >
               <Download size={16} /> Exportar
             </button>
             <button
@@ -212,31 +268,95 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
       />
 
       <div className="bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden relative">
-        <div className="p-8 border-b border-white/5 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-4 bg-zinc-950 px-6 py-3.5 rounded-2xl border border-white/5 flex-1 max-w-md focus-within:ring-2 focus-within:ring-blue-600 transition-all group">
-            <Search size={18} className="text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
-            <input
-              type="text"
-              placeholder="Busca por nome, e-mail ou célula..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm w-full font-medium text-zinc-200"
-            />
+        <div className="p-6 md:p-8 border-b border-white/5 flex flex-col gap-6">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
+            <div className="flex items-center gap-4 bg-zinc-950 px-6 py-3.5 rounded-2xl border border-white/5 flex-1 max-w-xl focus-within:ring-2 focus-within:ring-blue-600 transition-all group">
+              <Search size={18} className="text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Busca por nome, e-mail, pastor ou célula..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm w-full font-medium text-zinc-200"
+              />
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3">
+               <button 
+                onClick={handleClearFilters}
+                className="flex items-center gap-2 px-4 py-3 bg-zinc-950 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-rose-400 hover:border-rose-500/30 transition-all"
+               >
+                <Filter size={14} /> Limpar
+               </button>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 bg-zinc-950 px-5 py-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Estágio:</span>
-              <select
-                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-zinc-300 focus:text-blue-400 cursor-pointer"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option className="bg-zinc-900" value="ALL">Todos</option>
-                <option className="bg-zinc-900" value="PENDING">Aguardando (Pendentes)</option>
-                {Object.values(LadderStage).map(stage => (
-                  <option className="bg-zinc-900" key={stage} value={stage}>{stage}</option>
-                ))}
-              </select>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Filtro Pastor */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Pastor</label>
+              <div className="bg-zinc-950 px-4 py-2.5 rounded-xl border border-white/5">
+                <select
+                  className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-zinc-300 focus:text-blue-400 cursor-pointer"
+                  value={selectedPastorId}
+                  onChange={(e) => setSelectedPastorId(e.target.value)}
+                >
+                  <option className="bg-zinc-900" value="ALL">Todos os Pastores</option>
+                  {availablePastors.map(p => (
+                    <option className="bg-zinc-900" key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Filtro Célula */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Célula</label>
+              <div className="bg-zinc-950 px-4 py-2.5 rounded-xl border border-white/5">
+                <select
+                  className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-zinc-300 focus:text-blue-400 cursor-pointer"
+                  value={selectedCellId}
+                  onChange={(e) => setSelectedCellId(e.target.value)}
+                >
+                  <option className="bg-zinc-900" value="ALL">Todas as Células</option>
+                  {cells.sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                    <option className="bg-zinc-900" key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Filtro Nível */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Nível / Escada</label>
+              <div className="bg-zinc-950 px-4 py-2.5 rounded-xl border border-white/5">
+                <select
+                  className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-zinc-300 focus:text-blue-400 cursor-pointer"
+                  value={selectedStage}
+                  onChange={(e) => setSelectedStage(e.target.value)}
+                >
+                  <option className="bg-zinc-900" value="ALL">Todos os Níveis</option>
+                  <option className="bg-zinc-900" value={LadderStage.WIN}>Ganhar</option>
+                  <option className="bg-zinc-900" value={LadderStage.CONSOLIDATE}>Consolidar</option>
+                  <option className="bg-zinc-900" value={LadderStage.DISCIPLE}>Discipular</option>
+                  <option className="bg-zinc-900" value={LadderStage.SEND}>Enviar</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Filtro Status */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Status</label>
+              <div className="bg-zinc-950 px-4 py-2.5 rounded-xl border border-white/5">
+                <select
+                  className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-zinc-300 focus:text-blue-400 cursor-pointer"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option className="bg-zinc-900" value="ALL">Ativos & Pendentes</option>
+                  <option className="bg-zinc-900" value="PENDING">Apenas Pendentes</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

@@ -398,6 +398,15 @@ export const memberService = {
 		}
 	},
 
+	async getAvailablePastorsForFilter(churchId: string, currentUser: any) {
+		const members = await this.getAll(churchId, undefined, currentUser);
+		return members.filter(m => 
+			m.role === 'PASTOR' || 
+			m.role === 'CHURCH_ADMIN' || 
+			m.role === 'ADMINISTRADOR_IGREJA'
+		).sort((a, b) => a.name.localeCompare(b.name));
+	},
+
 	async getByEmail(email: string) {
 		const { data, error } = await supabase
 			.from('members')
