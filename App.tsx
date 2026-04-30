@@ -56,6 +56,7 @@ const PrayerModeration = lazy(() => import('./components/Prayer/PrayerModeration
 const LandingPage = lazy(() => import('./components/Marketing/LandingPage'));
 const PublicRegistration = lazy(() => import('./components/Marketing/PublicRegistration'));
 const Settings = lazy(() => import('./components/Settings'));
+const SaaSSettings = lazy(() => import('./components/MasterAdmin/SaaSSettings'));
 const AdminsManager = lazy(() => import('./components/MasterAdmin/AdminsManager'));
 const Events = lazy(() => import('./components/Events/Events'));
 const PaidEventsManager = lazy(() => import('./components/PaidEvents/PaidEventsManager'));
@@ -534,7 +535,11 @@ const App: React.FC = () => {
                           </>
                         )}
 
-                      <Route path="/settings" element={<Settings user={currentUser} />} />
+                      <Route path="/settings" element={
+                        currentUser?.role === 'MASTER ADMIN'
+                          ? <SaaSSettings user={currentUser} />
+                          : <Settings user={currentUser} />
+                      } />
                       <Route path="/events" element={<Events user={currentUser} />} />
                       {/* Rota de Eventos Pagos (Pastor/Admin) */}
                       {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (

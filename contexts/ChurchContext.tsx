@@ -5,6 +5,7 @@ import { cellService } from '../services/cellService';
 import { prayerService } from '../services/prayerService';
 import { eventService } from '../services/eventService';
 import { cellMeetingService } from '../services/cellMeetingService';
+import { churchService } from '../services/churchService';
 
 interface ChurchContextType {
   members: Member[];
