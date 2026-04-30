@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Mail, CreditCard, Palette } from 'lucide-react';
 import PageHeader from '../Shared/PageHeader';
 import SaaSProfileTab from './SaaSProfileTab';
-import SMTPSettings from '../SMTPSettings';
+import SaaSEmailTab from './SaaSEmailTab';
 import SaaSPaymentTab from './SaaSPaymentTab';
 import SaaSThemeTab from './SaaSThemeTab';
 
@@ -34,7 +34,7 @@ const SaaSSettings: React.FC<{ user: any }> = ({ user }) => {
 
         <div className="flex-1 bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
           {activeTab === 'profile' && <SaaSProfileTab user={user} />}
-          {activeTab === 'email' && <SMTPSettings />}
+          {activeTab === 'email' && <SaaSEmailTab />}
           {activeTab === 'payments' && <SaaSPaymentTab />}
           {activeTab === 'theme' && <SaaSThemeTab />}
         </div>
