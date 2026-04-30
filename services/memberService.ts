@@ -52,7 +52,10 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.churchId) db.church_id = m.churchId;
 	if (m.church_id) db.church_id = m.church_id;
 	
+	// Mapeamento explícito para as colunas reais do banco (name e sex)
 	if (m.name !== undefined) db.name = m.name;
+	if (m.sex !== undefined) db.sex = m.sex;
+	
 	if (m.email !== undefined) db.email = m.email;
 	if (m.phone !== undefined) db.phone = m.phone;
 	if (m.role !== undefined) db.role = m.role;
@@ -73,8 +76,11 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.completedMilestones !== undefined) db.completed_milestones = m.completedMilestones;
 	if (m.origin !== undefined) db.origin = sanitize(m.origin);
 	
-	// CPF sem máscara
-	if (m.cpf !== undefined) db.cpf = m.cpf ? m.cpf.replace(/\D/g, '') : null;
+	// CPF sem máscara (apenas números)
+	if (m.cpf !== undefined) {
+		const cleanCpf = m.cpf ? String(m.cpf).replace(/\D/g, '') : null;
+		db.cpf = cleanCpf;
+	}
 	
 	if (m.cep !== undefined) db.cep = sanitize(m.cep);
 	if (m.state !== undefined) db.state = sanitize(m.state);
@@ -86,13 +92,16 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.maritalStatus !== undefined) db.marital_status = sanitize(m.maritalStatus);
 	if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
 	if (m.login !== undefined) db.login = sanitize(m.login);
-	if (m.password !== undefined) db.password = sanitize(m.password);
 	
-	// Datas no formato YYYY-MM-DD (já deve vir assim do frontend ou ser formatado aqui)
+	// IMPORTANTE: Só envia password se tiver valor (para evitar sobrescrever com null/vazio)
+	if (m.password && m.password.trim().length > 0) {
+		db.password = m.password;
+	}
+	
+	// Datas no formato YYYY-MM-DD
 	if (m.birthDate !== undefined) db.birth_date = sanitize(m.birthDate);
 	if (m.conversionDate !== undefined) db.conversion_date = sanitize(m.conversionDate);
 	
-	if (m.sex !== undefined) db.sex = sanitize(m.sex);
 	if (m.hasChildren !== undefined) db.has_children = m.hasChildren;
 	if (m.children !== undefined) db.children = m.children;
 	if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
@@ -101,10 +110,16 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if ((m as any).userId !== undefined) db.user_id = (m as any).userId;
 	if ((m as any).user_id !== undefined) db.user_id = (m as any).user_id;
 	
-	// Remover campos undefined finais (segurança extra)
+	// Segurança: Remover campos que definitivamente não pertencem à tabela
+	delete db.confirmPassword;
+	delete db.confirm_password;
+	
+	// Remover campos undefined finais
 	Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
 	
 	return db;
+};
+
 };
 
 // Colunas essenciais para listagem e dashboard (evita payloads pesados mas mantém progresso M12 e hierarquia)
@@ -328,44 +343,64 @@ export const memberService = {
 
 	async update(id: string, updates: Partial<Member>) {
 		const dbData = mapToDb(updates);
+		const churchId = updates.churchId || (updates as any).church_id;
 
-		// 1. Verificar se houve mudança de senha ou email (e se não são vazios)
-		if ((updates.password && updates.password.length > 0) || (updates.email && updates.email.length > 0)) {
-			const { data: { user: currentUser } } = await supabase.auth.getUser();
-			const targetMember = await this.getById(id);
-			
-			// Se for a própria senha, usa o método padrão
-			if (currentUser?.email === targetMember.email) {
-				const authUpdates: any = {};
-				if (updates.password) authUpdates.password = updates.password;
-				if (updates.email) authUpdates.email = updates.email;
-				await supabase.auth.updateUser(authUpdates);
-			} else if (updates.password) {
-				// Se for senha de terceiro (Master Admin alterando), usa a RPC segura
-				const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
-					user_email: targetMember.email,
-					new_password: updates.password
-				});
+		// 1. Log do Payload (apenas em desenvolvimento)
+		if (process.env.NODE_ENV !== 'production') {
+			console.log(`[DEBUG memberService.update] ID: ${id} | Payload:`, dbData);
+		}
+
+		// 2. Verificar se houve mudança de senha ou email (e se não são vazios)
+		if ((updates.password && updates.password.trim().length > 0) || (updates.email && updates.email.trim().length > 0)) {
+			try {
+				const { data: { user: currentUser } } = await supabase.auth.getUser();
+				const targetMember = await this.getById(id);
 				
-				if (rpcError) {
-					console.error('Erro ao trocar senha via RPC:', rpcError.message);
-					throw new Error('Falha ao atualizar senha: a função SQL pode não estar configurada.');
+				// Se for a própria senha, usa o método padrão
+				if (currentUser?.email === targetMember.email) {
+					const authUpdates: any = {};
+					if (updates.password) authUpdates.password = updates.password;
+					if (updates.email) authUpdates.email = updates.email;
+					await supabase.auth.updateUser(authUpdates);
+				} else if (updates.password) {
+					// Se for senha de terceiro (Master Admin/Church Admin alterando), usa a RPC segura
+					const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
+						user_email: targetMember.email,
+						new_password: updates.password
+					});
+					
+					if (rpcError) {
+						console.error('Erro ao trocar senha via RPC:', rpcError.message);
+						// Não travamos o update do membro se a RPC falhar, mas avisamos no console
+					}
 				}
+			} catch (authErr) {
+				console.error('Erro ao processar atualizações de Auth:', authErr);
 			}
 		}
 
-		// 2. Atualizar no banco de dados
-		const { data, error } = await supabase
+		// 3. Atualizar no banco de dados (members)
+		let query = supabase
 			.from('members')
 			.update(dbData)
-			.eq('id', id)
-			.select()
-			.maybeSingle();
+			.eq('id', id);
+		
+		// Se tivermos o church_id, adicionamos para reforçar o filtro da RLS
+		if (churchId) {
+			query = query.eq('church_id', churchId);
+		}
+
+		const { data, error } = await query.select().maybeSingle();
 
 		if (error) {
 			console.error('Erro ao atualizar membro:', error);
 			throw error;
 		}
+
+		if (!data) {
+			console.warn(`memberService.update: Nenhum registro atualizado para o ID ${id}. Verifique as permissões (RLS).`);
+		}
+
 		return data ? mapToFrontend(data) : null;
 	},
 

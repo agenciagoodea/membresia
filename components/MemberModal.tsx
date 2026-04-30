@@ -7,6 +7,8 @@ import { cellService } from '../services/cellService';
 import { memberService } from '../services/memberService';
 import { m12Service } from '../services/m12Service';
 import DynamicForm from './Shared/DynamicForm';
+import { maskCPF, maskPhone } from '../utils/masks';
+import { toDateInputValue } from '../utils/dateUtils';
 
 interface MemberModalProps {
 	isOpen: boolean;
@@ -59,6 +61,9 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	const [isCropping, setIsCropping] = useState(false);
 	const [isProcessingCrop, setIsProcessingCrop] = useState(false);
 
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
 
 	const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
@@ -85,12 +90,14 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 			spouseId: m.spouseId || m.spouse_id || '',
 			pastorId: m.pastorId || m.pastor_id || '',
 			disciplerId: m.disciplerId || m.discipler_id || '',
-			birthDate: m.birthDate || m.birth_date || '',
-			joinedDate: m.joinedDate || m.joined_date || '',
+			birthDate: toDateInputValue(m.birthDate || m.birth_date),
+			joinedDate: toDateInputValue(m.joinedDate || m.joined_date),
 			leadingCellIds: m.leadingCellIds || m.leading_cell_ids || [],
 			cellId: m.cellId || m.cell_id || '',
 			firstAccessCompleted: m.firstAccessCompleted ?? m.first_access_completed ?? false,
-			milestoneValues: m.milestoneValues || m.milestone_values || {}
+			milestoneValues: m.milestoneValues || m.milestone_values || {},
+			cpf: maskCPF(m.cpf || ''),
+			phone: maskPhone(m.phone || '')
 		};
 	};
 
@@ -519,7 +526,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												required
 												type="text"
 												value={formData.phone}
-												onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+												onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="(00) 00000-0000"
 											/>
@@ -541,17 +548,24 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									</div>
 
 									<div className="space-y-2">
-										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Senha</label>
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Senha {member && '(Opcional na edição)'}</label>
 										<div className="relative">
 											<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<input
-												type="password"
+												type={showPassword ? "text" : "password"}
 												value={formData.password || ''}
 												onChange={(e) => setFormData({ ...formData, password: e.target.value })}
 												autoComplete="new-password"
-												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="••••••••"
 											/>
+											<button
+												type="button"
+												onClick={() => setShowPassword(!showPassword)}
+												className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+											>
+												{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+											</button>
 										</div>
 									</div>
 
@@ -560,12 +574,19 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										<div className="relative">
 											<Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<input
-												type="password"
+												type={showConfirmPassword ? "text" : "password"}
 												value={confirmPassword}
 												onChange={(e) => setConfirmPassword(e.target.value)}
-												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
+												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="••••••••"
 											/>
+											<button
+												type="button"
+												onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+												className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+											>
+												{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+											</button>
 										</div>
 									</div>
 								</div>
@@ -713,7 +734,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 											<Target className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
 											<input
 												value={formData.cpf || ''}
-												onChange={e => setFormData({ ...formData, cpf: e.target.value })}
+												onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })}
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="000.000.000-00"
 											/>
@@ -861,7 +882,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 																	value={child.cpf || ''}
 																	onChange={(e) => {
 																		const newChildren = [...(formData.children || [])];
-																		newChildren[index].cpf = e.target.value;
+																		newChildren[index].cpf = maskCPF(e.target.value);
 																		setFormData({ ...formData, children: newChildren });
 																	}}
 																	className="w-full bg-zinc-950 border border-white/5 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
