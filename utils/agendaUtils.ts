@@ -108,6 +108,7 @@ export const generateCellOccurrences = (
  */
 export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_event' | 'paid_event' | 'birthday'): any => {
   if (type === 'paid_event') {
+    const isPublished = item.status === 'published';
     return {
       id: `paid-${item.id}`,
       title: item.title,
@@ -119,6 +120,7 @@ export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_
       image_url: item.banner_url,
       type: 'paid_event',
       isSpecial: item.is_featured || false,
+      isPublished: isPublished,
       publicLink: item.public_link,
       raw: item
     };
@@ -128,13 +130,13 @@ export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_
     return {
       ...item,
       type: 'church_event',
-      isSpecial: item.is_special || false,
-      isPublished: item.is_published !== false,
+      isSpecial: item.isSpecial || item.is_special || false,
+      isPublished: item.isPublished ?? (item.is_published !== false),
       raw: item
     };
   }
 
-  return { ...item, type, raw: item };
+  return { ...item, type, isPublished: true, raw: item };
 };
 
 /**

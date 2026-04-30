@@ -3,6 +3,24 @@ import { ChurchEvent, UserRole } from '../types';
 import { memberService } from './memberService';
 import { isUUID } from '../utils/validationUtils';
 
+const mapToFrontend = (row: any): ChurchEvent => {
+  if (!row) return null as any;
+  return {
+    ...row,
+    isPublished: row.is_published,
+    isSpecial: row.is_special,
+    imageUrl: row.image_url,
+    cellIds: row.cell_ids || [],
+    assistantIds: row.assistant_ids || [],
+    responsiblePastorId: row.responsible_pastor_id,
+    coordinatorId: row.coordinator_id,
+    churchId: row.church_id,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    endDate: row.end_date
+  };
+};
+
 export const eventService = {
   async getAll(churchId: string, currentUser?: any): Promise<ChurchEvent[]> {
     if (!isUUID(churchId)) {
@@ -10,48 +28,54 @@ export const eventService = {
       return [];
     }
 
-    console.log('EVENT_SERVICE_FILTERS', { churchId, userId: currentUser?.id });
+    const myId = currentUser?.id;
+    const normalizedRole = (currentUser?.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+    
+    console.log('EVENT_SERVICE_AUDIT_START', { 
+      churchId, 
+      userId: myId, 
+      role: normalizedRole 
+    });
     
     let query = supabase
       .from('events')
       .select('*')
       .eq('church_id', churchId);
 
-    // Aplicar Filtros de Hierarquia Pastoral (RBAC)
-    if (currentUser) {
-      const normalizedRole = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN', 'PASTOR'].includes(normalizedRole);
-      const myId = currentUser.id;
+    // ── REGRAS DE VISIBILIDADE (RBAC) ─────────────────────────────────────────
+    const isMaster = ['MASTER ADMIN', 'MASTER_ADMIN'].includes(normalizedRole);
+    const isChurchAdmin = ['ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(normalizedRole);
+    const isPastor = normalizedRole === 'PASTOR';
+    const isAdmin = isMaster || isChurchAdmin || isPastor;
 
-      if (!isAdmin && isUUID(myId)) {
-        // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
-        const ecosystemIds = await memberService.getEcosystemIds(myId);
-        
-        // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou/responsável OU auxilia OU é para sua célula
-        const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
-        if (validEcosystemIds.length > 0) {
-          const ecosystemFilter = validEcosystemIds.join(',');
-          const myCellId = currentUser.cellId || currentUser.cell_id;
-          
-          let orConditions = [
-            `is_published.eq.true`,
-            `created_by.in.(${ecosystemFilter})`,
-            `responsible_pastor_id.in.(${ecosystemFilter})`,
-            `coordinator_id.in.(${ecosystemFilter})`,
-            `assistant_ids.cs.{${myId}}`
-          ];
-
-          if (isUUID(myCellId)) {
-            orConditions.push(`cell_ids.cs.{${myCellId}}`);
-          }
-
-          query = query.or(orConditions.join(','));
-        } else {
-          // Se não houver ecossistema, ver apenas publicados
-          query = query.eq('is_published', true);
-        }
+    if (!isAdmin && isUUID(myId)) {
+      // 1. Obter Ecossistema Ministerial
+      const ecosystemIds = await memberService.getEcosystemIds(myId);
+      const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
+      const myCellId = currentUser.cellId || currentUser.cell_id;
+      
+      // 2. Construir condições OR (Seguindo regra: Público OR Ecossistema OR Minha Célula)
+      let orConditions = [`is_published.eq.true`];
+      
+      if (validEcosystemIds.length > 0) {
+        const ecosystemFilter = validEcosystemIds.join(',');
+        orConditions.push(`created_by.in.(${ecosystemFilter})`);
+        orConditions.push(`responsible_pastor_id.in.(${ecosystemFilter})`);
+        orConditions.push(`coordinator_id.in.(${ecosystemFilter})`);
       }
+
+      if (isUUID(myCellId)) {
+        orConditions.push(`cell_ids.cs.{${myCellId}}`);
+      }
+      
+      orConditions.push(`assistant_ids.cs.{${myId}}`);
+
+      query = query.or(orConditions.join(','));
+    } else if (!isAdmin) {
+      // Se for um usuário sem ID (ex: visitante ou erro de sessão), vê apenas o que é público
+      query = query.eq('is_published', true);
     }
+    // Admin vê tudo da igreja (já filtrado por church_id acima)
 
     query = query.order('date', { ascending: true })
       .order('time', { ascending: true });
@@ -63,8 +87,13 @@ export const eventService = {
       return [];
     }
 
-    console.log('EVENT_SERVICE_RESULT', data?.length || 0);
-    return data || [];
+    const mappedData = (data || []).map(mapToFrontend);
+    console.log('EVENT_SERVICE_AUDIT_END', {
+      dbCount: data?.length || 0,
+      mappedCount: mappedData.length
+    });
+
+    return mappedData;
   },
 
   async getUpcoming(churchId: string, limit: number = 5, currentUser?: any): Promise<ChurchEvent[]> {
@@ -103,8 +132,9 @@ export const eventService = {
       throw error;
     }
 
-    console.log('[DEBUG RBAC] eventService.getUpcoming - Registros retornados:', data?.length || 0);
-    return data || [];
+    const mappedData = (data || []).map(mapToFrontend);
+    console.log('[DEBUG RBAC] eventService.getUpcoming - Registros retornados:', mappedData.length);
+    return mappedData;
   },
 
   async uploadPhoto(file: File, churchId: string): Promise<string> {

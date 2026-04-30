@@ -145,9 +145,18 @@ const Events = ({ user }: { user: any }) => {
   // Separa eventos futuros (ou hoje) dos passados
   const todayStr = new Date().toISOString().split('T')[0];
   const visibleEvents = events.filter(e => {
-    if (e.isPublished) return true;
-    return canManageEvent(e);
+    const isPub = e.isPublished;
+    const canManage = canManageEvent(e);
+    return isPub || canManage;
   });
+
+  console.log('AGENDA_VISIBILITY_AUDIT', {
+    totalEvents: events.length,
+    visibleEvents: visibleEvents.length,
+    userRole: user.role,
+    userId: user.id
+  });
+
   const upcomingEvents = visibleEvents.filter(e => e.date >= todayStr);
   const pastEvents = visibleEvents.filter(e => e.date < todayStr).reverse(); // Mais recentes primeiro
 
