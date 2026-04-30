@@ -10,7 +10,8 @@ import DynamicForm from './Shared/DynamicForm';
 import { maskCPF, maskPhone } from '../utils/masks';
 import { toDateInputValue } from '../utils/dateUtils';
 import { getAvatarUrl } from '../utils/avatarUtils';
-import { formatRoleLabel } from '../utils/formatUtils';
+import { getRoleLabel, normalizeRole } from '../utils/roleUtils';
+import { dbToMember } from '../services/memberService';
 
 interface MemberModalProps {
 	isOpen: boolean;
@@ -85,21 +86,13 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 	// Função de mapeamento para unificar camelCase (Frontend) e snake_case (Backend/Supabase)
 	const normalizeMemberData = (m: any): Partial<Member> => {
 		if (!m) return {};
+		const member = dbToMember(m);
 		return {
-			...m,
-			churchId: m.churchId || m.church_id || '',
-			maritalStatus: m.maritalStatus || m.marital_status || 'Solteiro(a)',
-			spouseId: m.spouseId || m.spouse_id || '',
-			pastorId: m.pastorId || m.pastor_id || '',
-			disciplerId: m.disciplerId || m.discipler_id || '',
-			birthDate: toDateInputValue(m.birthDate || m.birth_date),
-			joinedDate: toDateInputValue(m.joinedDate || m.joined_date),
-			leadingCellIds: m.leadingCellIds || m.leading_cell_ids || [],
-			cellId: m.cellId || m.cell_id || '',
-			firstAccessCompleted: m.firstAccessCompleted ?? m.first_access_completed ?? false,
-			milestoneValues: m.milestoneValues || m.milestone_values || {},
-			cpf: maskCPF(m.cpf || ''),
-			phone: maskPhone(m.phone || '')
+			...member,
+			birthDate: toDateInputValue(member.birthDate),
+			joinedDate: toDateInputValue(member.joinedDate),
+			cpf: maskCPF(member.cpf || ''),
+			phone: maskPhone(member.phone || '')
 		};
 	};
 
@@ -139,7 +132,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 			setSelectedFile(null);
 		} else {
 			setFormData({
-				name: '',
+				fullName: '',
 				email: '',
 				phone: '',
 				role: UserRole.MEMBER_VISITOR,
@@ -289,37 +282,21 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 		try {
 			setSaving(true);
 			
-			// Preparar dados para o banco, garantindo campos de vínculo
-			const payload: any = {
+			// Preparar payload mantendo estrutura camelCase
+			const payload: Partial<Member> = {
 				...formData,
-				cell_id: formData.cellId === '' ? null : formData.cellId,
-				pastor_id: formData.pastorId === '' ? null : formData.pastorId,
-				discipler_id: formData.disciplerId === '' ? null : formData.disciplerId,
-				spouse_id: formData.spouseId === '' ? null : formData.spouseId,
-				church_id: formData.churchId || user?.churchId || user?.church_id
+				churchId: formData.churchId || user?.churchId || user?.church_id
 			};
 
-			// Se a senha não mudou, remover do payload
+			// Remover password se não alterado
 			if (payload.password === originalPassword) {
 				delete payload.password;
 			}
 
-			// Se for novo membro, definir o church_id se faltar
-			if (!member && !payload.church_id) {
-				payload.church_id = user?.churchId || user?.church_id;
-			}
-
 			if (selectedFile) {
 				const photoUrl = await memberService.uploadAvatar(selectedFile);
-				payload.avatar = photoUrl;
+				payload.avatarUrl = photoUrl;
 			}
-
-			// Remover duplicatas de campos (camelCase vs snake_case) antes de enviar
-			delete payload.cellId;
-			delete payload.pastorId;
-			delete payload.disciplerId;
-			delete payload.spouseId;
-			delete payload.churchId;
 
 			await onSave(payload);
 			onClose();
@@ -436,8 +413,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										{photoPreview || formData.avatar ? (
 											<>
 												<img
-													src={getAvatarUrl(formData.fullName || formData.name, formData.avatarUrl || formData.avatar)}
-													onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(formData.fullName || formData.name, null); }}
+												src={getAvatarUrl(formData.fullName, formData.avatarUrl)}
+													onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(formData.fullName, null); }}
 													className="w-full h-full object-cover"
 													alt="Avatar"
 												/>
@@ -486,8 +463,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 											<input
 												required
 												type="text"
-												value={formData.name}
-												onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+												value={formData.fullName}
+												onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-medium"
 												placeholder="Ex: Adriano Amorim"
 											/>
@@ -517,8 +494,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 										<div className="relative">
 											<Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<select
-												value={formData.sex}
-												onChange={(e) => setFormData({ ...formData, sex: e.target.value as any })}
+												value={formData.gender}
+												onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="MASCULINO" className="bg-zinc-950">Masculino</option>
@@ -629,7 +606,10 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
-												{Object.values(UserRole).filter(r => r !== 'MASTER ADMIN' && r !== 'ADMINISTRADOR DA IGREJA').map(role => (
+												{Object.values(UserRole).filter(r => {
+													const norm = normalizeRole(r);
+													return norm !== 'MASTER_ADMIN' && norm !== 'CHURCH_ADMIN';
+												}).map(role => (
 													<option key={role} value={role} className="bg-zinc-950">{role}</option>
 												))}
 											</select>
@@ -713,12 +693,10 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
 														if (m.id === member?.id) return false;
-														const isLeader = m.role === UserRole.CELL_LEADER_DISCIPLE;
-														const isPastor = m.role === UserRole.PASTOR;
-														const isAdmin = m.role === UserRole.CHURCH_ADMIN;
+														const norm = normalizeRole(m.role);
 														
-														if (formData.role === UserRole.PASTOR) return isAdmin;
-														return isLeader || isPastor || isAdmin;
+														if (normalizeRole(formData.role) === 'PASTOR') return norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
+														return norm === 'CELL_LEADER_DISCIPLE' || norm === 'PASTOR' || norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
 													})
 												).map(opt => (
 													<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>
@@ -740,9 +718,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
 														if (m.id === member?.id) return false;
-														const isPastor = m.role === UserRole.PASTOR;
-														const isAdmin = m.role === UserRole.CHURCH_ADMIN;
-														return isPastor || isAdmin;
+														const norm = normalizeRole(m.role);
+														return norm === 'PASTOR' || norm === 'CHURCH_ADMIN' || norm === 'MASTER_ADMIN';
 													})
 												).map(opt => (
 													<option key={opt.id} value={opt.id} className="bg-zinc-950">{opt.label}</option>

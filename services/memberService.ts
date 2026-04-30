@@ -1,139 +1,138 @@
 import { supabase } from './supabaseClient';
 import { Member, MemberStatus, UserRole } from '../types';
 
-const mapToFrontend = (m: any): Member => ({
-	id: m.id,
-	fullName: m.full_name || m.name,
-	email: m.email,
-	phone: m.phone,
-	churchId: m.church_id,
-	role: m.role,
-	status: (m.status === 'PENDING' || m.status === 'PENDENTE' || !m.status) ? MemberStatus.PENDING : 
-	        (m.status === 'ACTIVE' || m.status === 'ATIVO') ? MemberStatus.ACTIVE :
-	        (m.status === 'REJECTED' || m.status === 'REJEITADO') ? MemberStatus.REJECTED : m.status,
-	stage: m.stage,
-	cellId: m.cell_id,
-	disciplerId: m.discipler_id,
-	pastorId: m.pastor_id,
-	conversionDate: m.conversion_date,
-	joinedDate: m.joined_date,
-	avatarUrl: m.avatar_url || m.avatar,
-	stageHistory: m.stage_history || [],
-	completedMilestones: m.completed_milestones || [],
-	origin: m.origin,
-	cpf: m.cpf,
-	cep: m.cep,
-	state: m.state,
-	city: m.city,
-	neighborhood: m.neighborhood,
-	street: m.street,
-	number: m.number,
-	complement: m.complement,
-	maritalStatus: m.marital_status,
-	spouseId: m.spouse_id,
-	login: m.login,
-	password: m.password,
-	birthDate: m.birth_date,
-	gender: m.gender || m.sex,
-	hasChildren: m.has_children,
-	children: m.children || [],
-	leadingCellIds: m.leading_cell_ids || [],
-	firstAccessCompleted: m.first_access_completed || false,
-	milestoneValues: m.milestone_values || {},
-	userId: m.user_id,
-});
-
-const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
-	const db: any = {};
-	
-	// Função auxiliar para higienizar valores de insert/update
-	// undefined significa 'ignorar' (não atualiza o campo)
-	// '' (string vazia) ou null significa 'limpar campo no banco' (salvar como null)
-	const sanitize = (val: any) => (val === undefined) ? undefined : (val === '' ? null : val);
-
-	if (m.churchId !== undefined) db.church_id = sanitize(m.churchId);
-	if (m.church_id !== undefined) db.church_id = sanitize(m.church_id);
-	
-	// Mapeamento explícito para as colunas reais e novas
-	if (m.fullName !== undefined) db.full_name = sanitize(m.fullName);
-	// Legacy fallback: se enviarem 'name', salvar em full_name também
-	if ((m as any).name !== undefined && m.fullName === undefined) db.full_name = sanitize((m as any).name);
-
-	if (m.gender !== undefined) db.gender = sanitize(m.gender);
-	// Legacy fallback
-	if ((m as any).sex !== undefined && m.gender === undefined) db.gender = sanitize((m as any).sex);
-	
-	if (m.email !== undefined) db.email = sanitize(m.email);
-	if (m.phone !== undefined) {
-		db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
-	}
-	if (m.role !== undefined) db.role = m.role;
-	
-	if (m.status !== undefined) {
-		db.status = m.status === MemberStatus.ACTIVE ? 'ACTIVE' : 
-		            m.status === MemberStatus.PENDING ? 'PENDING' :
-		            m.status === MemberStatus.REJECTED ? 'REJECTED' : m.status;
-	}
-	
-	if (m.stage !== undefined) db.stage = m.stage;
-	if (m.cellId !== undefined) db.cell_id = sanitize(m.cellId);
-	if (m.disciplerId !== undefined) db.discipler_id = sanitize(m.disciplerId);
-	if (m.pastorId !== undefined) db.pastor_id = sanitize(m.pastorId);
-	if (m.joinedDate !== undefined) db.joined_date = sanitize(m.joinedDate);
-	
-	if (m.avatarUrl !== undefined) db.avatar_url = sanitize(m.avatarUrl);
-	// Legacy fallback
-	if ((m as any).avatar !== undefined && m.avatarUrl === undefined) db.avatar_url = sanitize((m as any).avatar);
-
-	if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
-	if (m.completedMilestones !== undefined) db.completed_milestones = m.completedMilestones;
-	if (m.origin !== undefined) db.origin = sanitize(m.origin);
-	
-	// CPF sem máscara (apenas números)
-	if (m.cpf !== undefined) {
-		const cleanCpf = m.cpf ? String(m.cpf).replace(/\D/g, '') : null;
-		db.cpf = cleanCpf;
-	}
-	
-	if (m.cep !== undefined) db.cep = sanitize(m.cep);
-	if (m.state !== undefined) db.state = sanitize(m.state);
-	if (m.city !== undefined) db.city = sanitize(m.city);
-	if (m.neighborhood !== undefined) db.neighborhood = sanitize(m.neighborhood);
-	if (m.street !== undefined) db.street = sanitize(m.street);
-	if (m.number !== undefined) db.number = sanitize(m.number);
-	if (m.complement !== undefined) db.complement = sanitize(m.complement);
-	if (m.maritalStatus !== undefined) db.marital_status = sanitize(m.maritalStatus);
-	if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
-	if (m.login !== undefined) db.login = sanitize(m.login);
-	
-	// IMPORTANTE: Só envia password se tiver valor (nunca envia null/empty string)
-	if (m.password && m.password.trim().length > 0) {
-		db.password = m.password;
-	}
-	
-	// Datas no formato YYYY-MM-DD
-	if (m.birthDate !== undefined) db.birth_date = sanitize(m.birthDate);
-	if (m.conversionDate !== undefined) db.conversion_date = sanitize(m.conversionDate);
-	
-	if (m.hasChildren !== undefined) db.has_children = m.hasChildren;
-	if (m.children !== undefined) db.children = m.children;
-	if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
-	if (m.firstAccessCompleted !== undefined) db.first_access_completed = m.firstAccessCompleted;
-	if (m.milestoneValues !== undefined) db.milestone_values = m.milestoneValues;
-	
-	if (m.userId !== undefined) db.user_id = sanitize(m.userId);
-	if ((m as any).user_id !== undefined && db.user_id === undefined) db.user_id = sanitize((m as any).user_id);
-	
-	// Segurança: Remover campos que definitivamente não pertencem à tabela members
-	delete db.confirmPassword;
-	delete db.confirm_password;
-	delete db.id; // Nunca atualizar o ID
-	
-	// Remover todos os campos cujo valor resultou em 'undefined' (para não quebrar a query do Supabase)
-	Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
-	
-	return db;
+export const dbToMember = (row: any): Member => {
+  if (!row) return null as any;
+  
+  return {
+    id: row.id,
+    userId: row.user_id,
+    churchId: row.church_id,
+    fullName: row.full_name || row.nome || row.name || '',
+    email: row.email || '',
+    phone: row.phone || row.telefone || '',
+    cpf: row.cpf || '',
+    birthDate: row.birth_date || row.nascimento_data || row.data_nascimento || '',
+    conversionDate: row.conversion_date || row.conversao_data || row.data_conversao || '',
+    joinedDate: row.joined_date || '',
+    gender: row.gender || row.genero || row.sex || null,
+    maritalStatus: row.marital_status || row.estado_civil || 'Solteiro(a)',
+    role: row.role || 'MEMBER',
+    status: (row.status === 'PENDING' || row.status === 'PENDENTE' || !row.status) ? MemberStatus.PENDING : 
+            (row.status === 'ACTIVE' || row.status === 'ATIVO') ? MemberStatus.ACTIVE :
+            (row.status === 'REJECTED' || row.status === 'REJEITADO') ? MemberStatus.REJECTED : row.status,
+    stage: row.stage || row.escada || LadderStage.WIN,
+    cellId: row.cell_id || row.celula_id || '',
+    pastorId: row.pastor_id || null,
+    disciplerId: row.discipler_id || row.discipulador_id || null,
+    spouseId: row.spouse_id || null,
+    avatarUrl: row.avatar_url || row.photo_url || row.foto || row.avatar || null,
+    stageHistory: row.stage_history || [],
+    completedMilestones: row.completed_milestones || [],
+    origin: row.origin || '',
+    cep: row.cep || '',
+    state: row.state || row.uf || '',
+    city: row.city || row.cidade || '',
+    neighborhood: row.neighborhood || row.bairro || '',
+    street: row.street || row.rua || '',
+    number: row.number || row.numero || '',
+    complement: row.complement || row.complemento || '',
+    login: row.login || '',
+    password: row.password || '',
+    hasChildren: row.has_children || false,
+    children: row.children || [],
+    leadingCellIds: row.leading_cell_ids || [],
+    firstAccessCompleted: row.first_access_completed || false,
+    milestoneValues: row.milestone_values || {},
+  };
 };
+
+const mapToFrontend = dbToMember;
+
+export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
+  const db: any = {};
+  
+  const sanitize = (val: any) => (val === undefined) ? undefined : (val === '' ? null : val);
+
+  if (m.churchId !== undefined) db.church_id = sanitize(m.churchId);
+  if (m.church_id !== undefined) db.church_id = sanitize(m.church_id);
+  
+  if (m.fullName !== undefined) db.full_name = sanitize(m.fullName);
+  // Se fullName vier vazio mas tivermos name na interface legacy
+  if ((m as any).name !== undefined && (m.fullName === undefined || m.fullName === '')) db.full_name = sanitize((m as any).name);
+  // Manter campo name preenchido para queries legacy que usam .eq('name', ...)
+  if (db.full_name !== undefined) db.name = db.full_name;
+
+  if (m.gender !== undefined) {
+    db.gender = sanitize(m.gender);
+    db.sex = db.gender; // Duplicar para compatibilidade
+  }
+  
+  if (m.email !== undefined) db.email = sanitize(m.email);
+  if (m.phone !== undefined) {
+    db.phone = m.phone ? String(m.phone).replace(/\D/g, '') : null;
+  }
+  if (m.role !== undefined) db.role = m.role;
+  
+  if (m.status !== undefined) {
+    db.status = m.status === MemberStatus.ACTIVE ? 'ACTIVE' : 
+                m.status === MemberStatus.PENDING ? 'PENDING' :
+                m.status === MemberStatus.REJECTED ? 'REJECTED' : m.status;
+  }
+  
+  if (m.stage !== undefined) db.stage = m.stage;
+  if (m.cellId !== undefined) db.cell_id = sanitize(m.cellId);
+  if (m.disciplerId !== undefined) db.discipler_id = sanitize(m.disciplerId);
+  if (m.pastorId !== undefined) db.pastor_id = sanitize(m.pastorId);
+  if (m.joinedDate !== undefined) db.joined_date = sanitize(m.joinedDate);
+  
+  if (m.avatarUrl !== undefined) {
+    db.avatar_url = sanitize(m.avatarUrl);
+    db.avatar = db.avatar_url; // Duplicar para compatibilidade
+  }
+
+  if (m.stageHistory !== undefined) db.stage_history = m.stageHistory;
+  if (m.completedMilestones !== undefined) db.completed_milestones = m.completedMilestones;
+  if (m.origin !== undefined) db.origin = sanitize(m.origin);
+  
+  if (m.cpf !== undefined) {
+    db.cpf = m.cpf ? String(m.cpf).replace(/\D/g, '') : null;
+  }
+  
+  if (m.cep !== undefined) db.cep = sanitize(m.cep);
+  if (m.state !== undefined) db.state = sanitize(m.state);
+  if (m.city !== undefined) db.city = sanitize(m.city);
+  if (m.neighborhood !== undefined) db.neighborhood = sanitize(m.neighborhood);
+  if (m.street !== undefined) db.street = sanitize(m.street);
+  if (m.number !== undefined) db.number = sanitize(m.number);
+  if (m.complement !== undefined) db.complement = sanitize(m.complement);
+  if (m.maritalStatus !== undefined) db.marital_status = sanitize(m.maritalStatus);
+  if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
+  if (m.login !== undefined) db.login = sanitize(m.login);
+  
+  if (m.password && m.password.trim().length > 0) {
+    db.password = m.password;
+  }
+  
+  if (m.birthDate !== undefined) db.birth_date = sanitize(m.birthDate);
+  if (m.conversionDate !== undefined) db.conversion_date = sanitize(m.conversionDate);
+  
+  if (m.hasChildren !== undefined) db.has_children = m.hasChildren;
+  if (m.children !== undefined) db.children = m.children;
+  if (m.leadingCellIds !== undefined) db.leading_cell_ids = m.leadingCellIds;
+  if (m.firstAccessCompleted !== undefined) db.first_access_completed = m.firstAccessCompleted;
+  if (m.milestoneValues !== undefined) db.milestone_values = m.milestoneValues;
+  
+  if (m.userId !== undefined) db.user_id = sanitize(m.userId);
+
+  delete db.id;
+  
+  Object.keys(db).forEach(key => db[key] === undefined && delete db[key]);
+  
+  return db;
+};
+
+const mapToDb = memberToDb;
 
 // Colunas essenciais para listagem e dashboard
 const ESSENTIAL_COLUMNS = 'id, full_name, name, email, phone, role, status, stage, cell_id, avatar_url, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children, gender, sex';
@@ -471,5 +470,26 @@ export const memberService = {
 			.getPublicUrl(filePath);
 
 		return data.publicUrl;
+	},
+
+	async getCurrentMember() {
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return null;
+
+		const { data, error } = await supabase
+			.from('members')
+			.select('*')
+			.eq('user_id', user.id)
+			.maybeSingle();
+
+		if (error) {
+			// Tentar por e-mail como fallback
+			if (user.email) {
+				return this.getByEmail(user.email);
+			}
+			return null;
+		}
+
+		return data ? dbToMember(data) : (user.email ? this.getByEmail(user.email) : null);
 	}
 };

@@ -42,7 +42,7 @@ import { mergeAgendaItems } from '../utils/agendaUtils';
 import MemberProfileModal from './MemberProfileModal';
 import { supabase } from '../services/supabaseClient';
 import { getAvatarUrl } from '../utils/avatarUtils';
-import { formatRoleLabel } from '../utils/formatUtils';
+import { getRoleLabel } from '../utils/roleUtils';
 
 // Componentes Auxiliares
 const PageHeader = React.memo(({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -608,10 +608,10 @@ Esperamos por você! Vai ser um tempo precioso! \uD83D\uDD25`;
             ) : cellMembers.map(m => (
               <div key={m.id} className="flex items-center justify-between p-5 bg-white/5 rounded-[1.5rem] transition-all border border-white/5 hover:border-white/10 group">
                 <div className="flex items-center gap-4">
-                  <img src={getAvatarUrl(m.fullName || m.name, m.avatarUrl || m.avatar)} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
+                  <img src={getAvatarUrl(m.fullName, m.avatarUrl)} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
                   <div>
-                    <p className="text-sm font-black text-white uppercase">{m.fullName || m.name}</p>
-                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage} • {formatRoleLabel(m.role, m.gender)}</p>
+                    <p className="text-sm font-black text-white uppercase">{m.fullName}</p>
+                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage} • {getRoleLabel(m)}</p>
                   </div>
                 </div>
                 <button
@@ -707,9 +707,11 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
             if (!primaryMentor) return undefined;
 
             // Se o gênero do mentor for diferente do usuário e ele tiver um cônjuge, tenta buscar o cônjuge
-            if (user.sex && primaryMentor.sex && user.sex !== primaryMentor.sex && primaryMentor.spouseId) {
+            const userGender = user.gender || (user as any).sex;
+            const primaryGender = primaryMentor.gender || (primaryMentor as any).sex;
+            if (userGender && primaryGender && userGender !== primaryGender && primaryMentor.spouseId) {
               const spouseMentor = await memberService.getById(primaryMentor.spouseId);
-              if (spouseMentor && spouseMentor.sex === user.sex) {
+              if (spouseMentor && (spouseMentor.gender || (spouseMentor as any).sex) === userGender) {
                 return spouseMentor;
               }
             }
@@ -747,7 +749,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
           <div className="space-y-10">
             <div className="bg-zinc-100 p-12 md:p-16 rounded-[3.5rem] text-zinc-950 shadow-2xl relative overflow-hidden">
               <div className="absolute -top-10 -right-10 opacity-5"><Zap size={300} /></div>
-              <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Shalom <br />Graça e Paz, <br />{user.name.split(' ')[0]}!</h2>
+              <h2 className="text-5xl font-black mb-4 tracking-tighter uppercase leading-[0.9]">Shalom <br />Graça e Paz, <br />{(user.fullName || user.name || 'Usuário').split(' ')[0]}!</h2>
               <p className="text-zinc-600 max-w-lg mb-12 font-bold text-lg leading-relaxed italic">Sua caminhada é preciosa para nós. <br />Veja sua evolução espiritual em Minhas Atividades M12.</p>
 
               <div className="flex items-center gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide">
@@ -786,7 +788,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                 <img src={mentors.pastor?.avatar || 'https://i.pravatar.cc/150?u=pastor'} className="w-10 h-10 rounded-full ring-2 ring-zinc-100" />
                 <div>
                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Meu Pastor</p>
-                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.pastor?.name || 'Carregando...'}</p>
+                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.pastor?.fullName || mentors.pastor?.name || 'Carregando...'}</p>
                 </div>
               </div>
 
@@ -796,7 +798,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                 <img src={mentors.leader?.avatar || 'https://i.pravatar.cc/150?u=leader'} className="w-10 h-10 rounded-full ring-2 ring-zinc-100" />
                 <div>
                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Meu Discipulador</p>
-                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.leader?.name || 'Aguardando Direcionamento'}</p>
+                  <p className="text-xs font-bold text-zinc-950 uppercase">{mentors.leader?.fullName || mentors.leader?.name || 'Aguardando Direcionamento'}</p>
                 </div>
               </div>
 
@@ -843,7 +845,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xl font-black uppercase tracking-tight leading-none truncate">{myCell?.name || 'Vínculo Pendente'}</p>
-                    <p className="text-[10px] text-blue-100 font-black uppercase tracking-[0.1em] mt-1 truncate">Líder: {mentors.leader?.name || 'Aguardando'}</p>
+                    <p className="text-[10px] text-blue-100 font-black uppercase tracking-[0.1em] mt-1 truncate">Líder: {mentors.leader?.fullName || mentors.leader?.name || 'Aguardando'}</p>
                   </div>
                 </div>
                 <div className="space-y-5 px-4 mb-10 flex-1">

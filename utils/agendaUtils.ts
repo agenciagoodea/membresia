@@ -16,6 +16,7 @@ const DAYS_MAP: Record<string, number> = {
  */
 export const getNextOccurrence = (dayName: string, time: string = '00:00'): Date => {
   const now = new Date();
+  if (!dayName) return now;
   const targetDay = DAYS_MAP[dayName.toLowerCase().trim()] || 0;
   const currentDay = now.getDay();
   

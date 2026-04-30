@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Save, Users, MapPin, Calendar, Clock, User, Heart, Camera, Check, Map, Home, Building, Upload } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
-import { Cell, Member } from '../types';
+import { Cell, Member, UserRole } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { normalizeRole } from '../utils/roleUtils';
 
 interface CellModalProps {
 	isOpen: boolean;
@@ -349,7 +350,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 													}}
 													className="w-4 h-4 rounded border-white/10 bg-zinc-950 text-blue-600 focus:ring-blue-500 transition-all"
 												/>
-												<span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{leader.name}</span>
+												<span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{leader.fullName || leader.name}</span>
 											</label>
 										))}
 									</div>
@@ -376,7 +377,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 									>
 										<option value="" className="bg-zinc-950">Selecionar Anfitrião</option>
 										{allMembers.map(m => (
-											<option key={m.id} value={m.id} className="bg-zinc-950">{m.name}</option>
+											<option key={m.id} value={m.id} className="bg-zinc-950">{m.fullName || m.name}</option>
 										))}
 									</select>
 								</div>
@@ -403,8 +404,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="">Selecione o Pastor</option>
-												{allMembers.filter(m => m.role === 'PASTOR' || m.role === 'PASTOR').map(m => (
-													<option key={m.id} value={m.id}>{m.name}</option>
+												{allMembers.filter(m => {
+													const r = normalizeRole(m.role);
+													return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'MASTER_ADMIN';
+												}).map(m => (
+													<option key={m.id} value={m.id}>{m.fullName || m.name}</option>
 												))}
 											</select>
 										</div>
@@ -422,8 +426,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, onSave, cell, av
 												className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
 											>
 												<option value="">Selecione o Supervisor</option>
-												{allMembers.filter(m => m.role === 'SUPERVISOR' || m.role === 'PASTOR' || m.role === 'PASTOR').map(m => (
-													<option key={m.id} value={m.id}>{m.name}</option>
+												{allMembers.filter(m => {
+													const r = normalizeRole(m.role);
+													return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'CELL_LEADER_DISCIPLE' || r === 'SUPERVISOR';
+												}).map(m => (
+													<option key={m.id} value={m.id}>{m.fullName || m.name}</option>
 												))}
 											</select>
 										</div>

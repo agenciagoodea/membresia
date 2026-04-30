@@ -82,7 +82,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
   const handleCreateReport = () => {
     console.log('--- RELATÓRIO: Início da Detecção (v6) ---');
     const myId = String(currentUser.id || currentUser.profile?.id || '').toLowerCase();
-    const myName = String(currentUser.name || currentUser.profile?.name || '').trim().toLowerCase();
+    const myName = String(currentUser.fullName || currentUser.name || currentUser.profile?.fullName || currentUser.profile?.name || '').trim().toLowerCase();
     
     // 1. Identificar IDs de líderes
     const rawLeaderIds = [
@@ -250,7 +250,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
           presentMemberIds: Array.from(presentMemberIds),
           children: reportChildren,
           visitors: reportVisitors,
-          recordedBy: currentUser.name
+          recordedBy: currentUser.fullName || currentUser.name
         });
         setReports([newReport, ...reports]);
         setShowReportForm(false);
@@ -438,7 +438,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
             {
               stage: member.stage,
               date: new Date().toISOString(),
-              recordedBy: currentUser.name,
+              recordedBy: currentUser.fullName || currentUser.name,
               notes: `Concluiu a etapa de ${member.stage.toLowerCase()} e avançou via Gestão de Células.`,
               milestones: member.completedMilestones || []
             }
@@ -466,7 +466,7 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
             {
               stage: prevStage,
               date: new Date().toISOString(),
-              recordedBy: currentUser.name,
+              recordedBy: currentUser.fullName || currentUser.name,
               notes: `Retornou da etapa de ${member.stage.toLowerCase()} para ${prevStage.toLowerCase()} via Gestão de Células.`,
               milestones: []
             }
@@ -790,13 +790,13 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
                       >
                         <div className="flex items-center gap-4">
                           <img 
-                            src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
-                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                            src={getAvatarUrl(member.fullName || member.name, member.avatarUrl || (member as any).avatar)} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
                             className="w-12 h-12 rounded-full ring-2 ring-rose-500/30 group-hover:ring-rose-500 transition-all object-cover aspect-square" 
                             alt="" 
                           />
                           <div>
-                            <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.name}</p>
+                            <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.fullName || member.name}</p>
                             <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest">Líder de Célula</p>
                           </div>
                         </div>
@@ -1430,7 +1430,7 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
                 <tbody className="divide-y divide-white/5">
                   {visibleCells.map((cell) => {
                     const leadersList = members.filter(m => (cell.leaderIds || []).includes(m.id) || m.id === cell.leaderId);
-                    const leaderNames = leadersList.length > 0 ? leadersList.map(l => l.name).join(' & ') : 'Sem Líder';
+                    const leaderNames = leadersList.length > 0 ? leadersList.map(l => l.fullName || l.name).join(' & ') : 'Sem Líder';
                     const isLeader = canEditCell(cell);
 
                     return (
@@ -1528,10 +1528,8 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
         onSave={handleSaveCell}
         cell={editingCell}
         availableLeaders={members.filter(m => {
-          const isLeaderRole = m.role === UserRole.CELL_LEADER_DISCIPLE;
-          const isPastorRole = m.role === UserRole.PASTOR;
-          const isAdminRole = m.role === UserRole.CHURCH_ADMIN;
-          return isLeaderRole || isPastorRole || isAdminRole;
+          const r = normalizeRole(m.role);
+          return r === 'CELL_LEADER_DISCIPLE' || r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'MASTER_ADMIN' || r === 'SUPERVISOR';
         })}
         allMembers={members}
       />

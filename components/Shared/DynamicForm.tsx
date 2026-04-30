@@ -16,6 +16,8 @@ import {
   Check
 } from 'lucide-react';
 import { M12Activity, FormLogicType, Member, UserRole } from '../../types';
+import { getAvatarUrl } from '../../utils/avatarUtils';
+import { getRoleLabel } from '../../utils/roleUtils';
 
 interface DynamicFormProps {
   fields: M12Activity[];
@@ -218,13 +220,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         const currentSearch = searchTerm[field.id] || '';
         const filteredMembers = members.filter(m => {
           // Filtro de Busca
-          const matchesSearch = m.name.toLowerCase().includes(currentSearch.toLowerCase());
+          // Filtro de Busca
+          const matchesSearch = (m.fullName || m.name || '').toLowerCase().includes(currentSearch.toLowerCase());
           if (!matchesSearch) return false;
 
           // Filtro por Sexo (Cônjuge)
           if (field.label.toLowerCase().includes('cônjuge') || field.label.toLowerCase().includes('parceiro')) {
-            if (currentUser?.sex === 'MASCULINO') return m.sex === 'FEMININO';
-            if (currentUser?.sex === 'FEMININO') return m.sex === 'MASCULINO';
+            const userGender = currentUser?.gender || (currentUser as any)?.sex;
+            const memberGender = m.gender || (m as any)?.sex;
+            if (userGender === 'MASCULINO') return memberGender === 'FEMININO';
+            if (userGender === 'FEMININO') return memberGender === 'MASCULINO';
           }
 
           // Filtro por Role (Líder)
@@ -262,10 +267,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                     value === m.id ? 'bg-blue-600/10' : ''
                   }`}
                 >
-                  <img src={m.avatar} className="w-8 h-8 rounded-full border border-white/10" alt="" />
+                  <img src={getAvatarUrl(m.fullName || m.name, m.avatarUrl || (m as any).avatar)} className="w-8 h-8 rounded-full border border-white/10 object-cover" alt="" />
                   <div>
-                    <p className="text-xs font-bold text-white leading-none">{m.name}</p>
-                    <p className="text-[10px] text-zinc-500 font-medium mt-1">{m.role}</p>
+                    <p className="text-xs font-bold text-white leading-none">{m.fullName || m.name}</p>
+                    <p className="text-[10px] text-zinc-500 font-medium mt-1">{getRoleLabel(m)}</p>
                   </div>
                   {value === m.id && <Check size={14} className="text-blue-500 ml-auto" />}
                 </button>

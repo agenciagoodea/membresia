@@ -155,7 +155,7 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
                 </div>
                 <div className="flex items-center gap-4 text-zinc-400">
                   <User size={18} className="text-zinc-600" />
-                  <span className="text-sm font-medium uppercase">{member.sex || 'Gênero não informado'}</span>
+                  <span className="text-sm font-medium uppercase">{member.gender || (member as any).sex || 'Gênero não informado'}</span>
                 </div>
                 <div className="flex items-center gap-4 text-zinc-400">
                   <Calendar size={18} className="text-zinc-600" />
@@ -164,7 +164,7 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
                 <div className="flex items-center gap-4 text-zinc-400">
                   <Heart size={18} className="text-zinc-600" />
                   <span className="text-sm font-medium">
-                    {member.maritalStatus} {spouse ? `(${spouse.name})` : ''}
+                    {member.maritalStatus} {spouse ? `(${spouse.fullName || spouse.name})` : ''}
                   </span>
                 </div>
               </div>

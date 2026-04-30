@@ -37,8 +37,9 @@ import {
   EyeOff,
   Ticket
 } from 'lucide-react';
-import { getAvatarUrl } from '../utils/avatarUtils';
-import { formatRoleLabel } from '../utils/formatUtils';
+import { getAvatarUrl, resolveFileUrl } from '../utils/avatarUtils';
+import { getRoleLabel } from '../utils/roleUtils';
+import { toDateInputValue, formatDateBR, formatDateToDb } from '../utils/dateUtils';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { memberService } from '../services/memberService';
@@ -194,27 +195,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
       try {
         setLoading(true);
         
-        // 1. Buscar Perfil via user_id (Nova abordagem segura)
-        if (user?.id) {
-          const { data: profileByUid, error: profileError } = await supabase
-            .from('members')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          if (profileError) console.error('Erro ao buscar perfil por UID:', profileError);
-          if (profileByUid) {
-            myProfile = await memberService.getById(profileByUid.id); // Usar getById para garantir mapeamento correto
-          }
-        }
-
-        // Fallback por e-mail se não encontrar por UID
-        if (!myProfile) {
-          const userEmail = (user.email || user.user_metadata?.email || '').toLowerCase().trim();
-          if (userEmail) {
-            myProfile = await memberService.getByEmail(userEmail).catch(() => null);
-          }
-        }
+        // 1. Buscar Perfil via getCurrentMember (Centralizado e Seguro)
+        myProfile = await memberService.getCurrentMember();
 
         if (myProfile) {
           effectiveChurchId = myProfile.churchId;
@@ -253,15 +235,15 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
             const originAct = winActs.find(a => a.label.toLowerCase().includes('origem') || a.label.toLowerCase().includes('conheceu') || a.label.toLowerCase().includes('aceitou'));
             const originResponse = originAct ? responses.find(r => r.activity_id === originAct.id)?.value : null;
 
-            const normalizedGender = (myProfile.gender === 'M' ? 'MASCULINO' : (myProfile.gender === 'F' ? 'FEMININO' : myProfile.gender)) || 'MASCULINO';
-
             setProfileData(prev => ({
               ...prev,
               ...myProfile,
               fullName: myProfile.fullName || prev.fullName,
               email: myProfile.email || prev.email,
               phone: myProfile.phone || prev.phone,
-              gender: normalizedGender as any,
+              birthDate: toDateInputValue(myProfile.birthDate || prev.birthDate),
+              conversionDate: toDateInputValue(myProfile.conversionDate || prev.conversionDate),
+              gender: (myProfile.gender || prev.gender) as any,
               origin: originResponse || myProfile.origin || prev.origin
             }));
           }
@@ -510,7 +492,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-white uppercase">{profileData.fullName || activeUser.fullName || profileData.name || activeUser.name}</h3>
-                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{formatRoleLabel(member?.role || activeUser.role, profileData.gender || member?.gender || activeUser.gender)}</p>
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{getRoleLabel(member || activeUser)}</p>
                 </div>
               </div>
 
