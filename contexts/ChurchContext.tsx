@@ -12,6 +12,7 @@ interface ChurchContextType {
   prayers: PrayerRequest[];
   events: any[];
   meetingExceptions: CellMeetingException[];
+  church: any | null;
   loading: boolean;
   refreshData: () => Promise<void>;
 }
@@ -24,6 +25,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [meetingExceptions, setMeetingExceptions] = useState<CellMeetingException[]>([]);
+  const [church, setChurch] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshData = useCallback(async (options?: { force?: boolean; partial?: 'members' | 'cells' | 'prayers' | 'events' | 'exceptions' }) => {
@@ -47,6 +49,11 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
 
     try {
       if (!options?.partial) setLoading(true);
+      
+      // Carregar dados da Igreja se ainda não temos ou se for refresh total
+      if (!church || !options?.partial) {
+        churchService.getById(churchId).then(setChurch).catch(err => console.error('Erro ao carregar igreja:', err));
+      }
       
       const promises: Promise<any>[] = [];
       const keys: string[] = [];
@@ -96,7 +103,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   }, [refreshData]);
 
   return (
-    <ChurchContext.Provider value={{ members, cells, prayers, events, meetingExceptions, loading, refreshData }}>
+    <ChurchContext.Provider value={{ church, members, cells, prayers, events, meetingExceptions, loading, refreshData }}>
       {children}
     </ChurchContext.Provider>
   );

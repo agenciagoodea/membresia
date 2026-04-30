@@ -153,8 +153,13 @@ export const memberService = {
 					allowedCellIds.push(myCellId);
 				}
 
-				// 3. Filtro Unificado: Todo o Ecossistema + Células Ligadas
-				let filterStr = `id.in.(${ecosystemIds.join(',')}),spouse_id.eq.${myId}`;
+				// Incluir Pastor e Discipulador do próprio usuário para que apareçam nos selects de perfil
+				const leaderIds = [];
+				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
+				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
+
+				// 3. Filtro Unificado: Todo o Ecossistema + Células Ligadas + Meus Líderes
+				let filterStr = `id.in.(${[...ecosystemIds, ...leaderIds].join(',')}),spouse_id.eq.${myId}`;
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
 				}
@@ -216,8 +221,13 @@ export const memberService = {
 					allowedCellIds.push(myCellId);
 				}
 
-				// 3. Filtro Unificado Recursivo
-				let filterStr = `id.in.(${ecosystemIds.join(',')}),spouse_id.eq.${myId}`;
+				// Incluir líderes do usuário na busca
+				const leaderIds = [];
+				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
+				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
+
+				// 3. Filtro Unificado Recursivo + Líderes
+				let filterStr = `id.in.(${[...ecosystemIds, ...leaderIds].join(',')}),spouse_id.eq.${myId}`;
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
 				}

@@ -88,14 +88,24 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
 
   const sanitizePayload = (data: any) => {
-    return Object.fromEntries(
-      Object.entries(data).filter(([key, value]) => {
-        // Remover campos de controle de UI ou senhas que não vão para o banco
-        if (['newPassword', 'confirmPassword', 'fetchingCep', 'isCropping', 'loading', 'saving'].includes(key)) return false;
-        // Remover undefined e null (deixar o mapToDb lidar com nulos se necessário, ou enviar explicitamente)
-        return value !== undefined;
-      }).map(([key, value]) => [key, value === '' ? null : value])
-    );
+    const payload: any = {};
+    Object.entries(data).forEach(([key, value]) => {
+      // Ignorar campos de controle de UI
+      if (['newPassword', 'confirmPassword', 'fetchingCep', 'isCropping', 'loading', 'saving'].includes(key)) return;
+      
+      // Diferenciar undefined de null/vazio
+      if (value === undefined) return;
+      
+      // Mapear campos de vínculo para snake_case e garantir que '' vire null
+      if (key === 'cellId') payload.cell_id = (value === '' || value === null) ? null : value;
+      else if (key === 'pastorId') payload.pastor_id = (value === '' || value === null) ? null : value;
+      else if (key === 'disciplerId') payload.discipler_id = (value === '' || value === null) ? null : value;
+      else if (key === 'spouseId') payload.spouse_id = (value === '' || value === null) ? null : value;
+      else if (key === 'churchId') payload.church_id = value;
+      else if (key === 'userId') payload.user_id = value;
+      else payload[key] = (value === '' ? null : value);
+    });
+    return payload;
   };
 
   const formatDateToIso = (dateStr: string) => {
@@ -305,10 +315,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
         const wasProfileIncomplete = member.firstAccessCompleted === false;
         const updateData: any = { 
           ...sanitizedData, 
-          firstAccessCompleted: true,
-          holySpiritBaptism: null,
-          waterBaptismDate: null,
-          waterBaptismPlace: null
+          firstAccessCompleted: true
         };
 
         // Persistência Tripla para Sincronização M12

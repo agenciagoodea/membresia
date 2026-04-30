@@ -273,7 +273,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-
+		
 		if (formData.password !== confirmPassword) {
 			alert('As senhas digitadas não conferem.');
 			return;
@@ -286,19 +286,40 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 
 		try {
 			setSaving(true);
-			let finalFormData = { ...formData };
+			
+			// Preparar dados para o banco, garantindo campos de vínculo
+			const payload: any = {
+				...formData,
+				cell_id: formData.cellId === '' ? null : formData.cellId,
+				pastor_id: formData.pastorId === '' ? null : formData.pastorId,
+				discipler_id: formData.disciplerId === '' ? null : formData.disciplerId,
+				spouse_id: formData.spouseId === '' ? null : formData.spouseId,
+				church_id: formData.churchId || user?.churchId || user?.church_id
+			};
 
-			// Se a senha não mudou, remover do payload para evitar erros de RPC no Supabase
-			if (finalFormData.password === originalPassword) {
-				delete finalFormData.password;
+			// Se a senha não mudou, remover do payload
+			if (payload.password === originalPassword) {
+				delete payload.password;
+			}
+
+			// Se for novo membro, definir o church_id se faltar
+			if (!member && !payload.church_id) {
+				payload.church_id = user?.churchId || user?.church_id;
 			}
 
 			if (selectedFile) {
 				const photoUrl = await memberService.uploadAvatar(selectedFile);
-				finalFormData.avatar = photoUrl;
+				payload.avatar = photoUrl;
 			}
 
-			await onSave(finalFormData);
+			// Remover duplicatas de campos (camelCase vs snake_case) antes de enviar
+			delete payload.cellId;
+			delete payload.pastorId;
+			delete payload.disciplerId;
+			delete payload.spouseId;
+			delete payload.churchId;
+
+			await onSave(payload);
 			onClose();
 		} catch (error: any) {
 			console.error('Erro ao salvar membro:', error);
