@@ -144,6 +144,7 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* CALENDÁRIO */}
+        {viewMode === 'MONTH' && (
         <div className="lg:col-span-7">
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-lg font-black text-white uppercase tracking-tight">
