@@ -93,7 +93,7 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
 	if (m.login !== undefined) db.login = sanitize(m.login);
 	
-	// IMPORTANTE: Só envia password se tiver valor (para evitar sobrescrever com null/vazio)
+	// IMPORTANTE: Só envia password se tiver valor
 	if (m.password && m.password.trim().length > 0) {
 		db.password = m.password;
 	}
@@ -120,9 +120,7 @@ const mapToDb = (m: Partial<Member> & { church_id?: string }) => {
 	return db;
 };
 
-};
-
-// Colunas essenciais para listagem e dashboard (evita payloads pesados mas mantém progresso M12 e hierarquia)
+// Colunas essenciais para listagem e dashboard
 const ESSENTIAL_COLUMNS = 'id, name, email, phone, role, status, stage, cell_id, avatar, church_id, completed_milestones, milestone_values, stage_history, discipler_id, pastor_id, spouse_id, cpf, origin, marital_status, cep, street, number, complement, neighborhood, city, state, login, conversion_date, first_access_completed, children';
 
 export const memberService = {
@@ -248,16 +246,10 @@ export const memberService = {
 		const existingMember = await this.getByEmail(emailNormalized);
 
 		if (existingMember) {
-			// Cadastro completo real → bloquear com mensagem clara
 			if (existingMember.firstAccessCompleted === true) {
 				throw new Error('Este e-mail já está cadastrado. Acesse o sistema com seu login e senha.');
 			}
-
-			// Cadastro incompleto (firstAccessCompleted = false ou null) →
-			// Pode ser uma retentativa após falha. Tentar atualizar o registro existente.
 			console.warn('memberService.create: membro com cadastro incompleto encontrado. Retentando...');
-
-			// Tentar autenticar/recriar o Auth user (pode já existir)
 			if (member.email && member.password) {
 				await supabase.auth.signUp({
 					email: emailNormalized,
@@ -270,10 +262,8 @@ export const memberService = {
 						} 
 					}
 				});
-				// Ignoramos o erro do Auth — pode já existir (ghost user)
 			}
 
-			// Atualizar o registro incompleto com os novos dados enviados
 			const { data: updatedData, error: updateError } = await supabase
 				.from('members')
 				.update({
@@ -292,7 +282,6 @@ export const memberService = {
 			return mapToFrontend(updatedData);
 		}
 
-		// ── PASSO 1: Novo usuário — criar no Supabase Auth ────────────────────
 		if (member.email && member.password) {
 			const { error: authError } = await supabase.auth.signUp({
 				email: emailNormalized,
@@ -314,15 +303,12 @@ export const memberService = {
 					authError.status === 422;
 
 				if (!isAlreadyRegistered) {
-					// Erro real de autenticação (senha fraca, email inválido, etc.)
 					throw new Error(`Falha no cadastro: ${authError.message}`);
 				}
-				// Ghost user: Auth existe mas members não tinha registro → continuar
 				console.warn('Auth: ghost user detectado. Criando apenas o registro members...');
 			}
 		}
 
-		// ── PASSO 2: Inserir na tabela members ────────────────────────────────
 		const { data, error } = await supabase
 			.from('members')
 			.insert([{
@@ -340,30 +326,25 @@ export const memberService = {
 		return mapToFrontend(data);
 	},
 
-
 	async update(id: string, updates: Partial<Member>) {
 		const dbData = mapToDb(updates);
 		const churchId = updates.churchId || (updates as any).church_id;
 
-		// 1. Log do Payload (apenas em desenvolvimento)
 		if (process.env.NODE_ENV !== 'production') {
 			console.log(`[DEBUG memberService.update] ID: ${id} | Payload:`, dbData);
 		}
 
-		// 2. Verificar se houve mudança de senha ou email (e se não são vazios)
 		if ((updates.password && updates.password.trim().length > 0) || (updates.email && updates.email.trim().length > 0)) {
 			try {
 				const { data: { user: currentUser } } = await supabase.auth.getUser();
 				const targetMember = await this.getById(id);
 				
-				// Se for a própria senha, usa o método padrão
 				if (currentUser?.email === targetMember.email) {
 					const authUpdates: any = {};
 					if (updates.password) authUpdates.password = updates.password;
 					if (updates.email) authUpdates.email = updates.email;
 					await supabase.auth.updateUser(authUpdates);
 				} else if (updates.password) {
-					// Se for senha de terceiro (Master Admin/Church Admin alterando), usa a RPC segura
 					const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
 						user_email: targetMember.email,
 						new_password: updates.password
@@ -371,7 +352,6 @@ export const memberService = {
 					
 					if (rpcError) {
 						console.error('Erro ao trocar senha via RPC:', rpcError.message);
-						// Não travamos o update do membro se a RPC falhar, mas avisamos no console
 					}
 				}
 			} catch (authErr) {
@@ -379,13 +359,11 @@ export const memberService = {
 			}
 		}
 
-		// 3. Atualizar no banco de dados (members)
 		let query = supabase
 			.from('members')
 			.update(dbData)
 			.eq('id', id);
 		
-		// Se tivermos o church_id, adicionamos para reforçar o filtro da RLS
 		if (churchId) {
 			query = query.eq('church_id', churchId);
 		}
@@ -406,21 +384,13 @@ export const memberService = {
 
 	async delete(id: string) {
 		try {
-			// 1. Desvincular de cônjuges e ajustar estado civil deles
 			await supabase.from('members').update({ spouse_id: null, marital_status: 'Solteiro(a)' }).eq('spouse_id', id);
-
-			// 2. Desvincular liderados (onde este membro era pastor ou discipulador)
 			await supabase.from('members').update({ pastor_id: null }).eq('pastor_id', id);
 			await supabase.from('members').update({ discipler_id: null }).eq('discipler_id', id);
-
-			// 3. Desvincular de células (onde este membro era líder)
 			await supabase.from('cells').update({ leader_id: null }).eq('leader_id', id);
-
-			// 4. Limpar histórico do membro na M12
 			await supabase.from('m12_members_activities').delete().eq('member_id', id);
 			await supabase.from('m12_performances').delete().eq('member_id', id);
 
-			// 5. Excluir o registro principal de membro
 			const { error } = await supabase
 				.from('members')
 				.delete()
