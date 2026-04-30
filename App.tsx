@@ -38,6 +38,7 @@ import { prayerService } from './services/prayerService';
 import { memberService } from './services/memberService';
 import { UserRole, PrayerStatus } from './types';
 import { supabase } from './services/supabaseClient';
+import { normalizeRole } from './utils/roleUtils';
 import { getAvatarUrl } from './utils/avatarUtils';
 import { getRoleLabel } from './utils/roleUtils';
 const Login = lazy(() => import('./components/Auth/Login'));
@@ -193,7 +194,14 @@ const Sidebar = ({ isOpen, toggle, user }: { isOpen: boolean, toggle: () => void
         </div>
 
         <nav className="flex-1 px-4 space-y-1.5 mt-4 overflow-y-auto scrollbar-hide">
-          {navItems.map((item) => {
+          {navItems.filter(item => {
+            // Regra: Configurar M12 somente para Admin e Master
+            if (item.id === 'm12-config') {
+              const r = normalizeRole(user.role);
+              return r === UserRole.CHURCH_ADMIN || r === UserRole.MASTER_ADMIN;
+            }
+            return true;
+          }).map((item) => {
             let path = '/app';
             if (item.id === 'prayer-screen-demo' || item.id === 'prayer-screen-link') path = '/prayer-screen';
             else if (item.id === 'settings' || item.id === 'profile' || item.id === 'master-settings') path = '/app/settings';

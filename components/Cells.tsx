@@ -49,6 +49,7 @@ import { generateCellOccurrences } from '../utils/agendaUtils';
 import { cellMeetingService } from '../services/cellMeetingService';
 import MemberProfileModal from './MemberProfileModal';
 import { normalizeRole } from '../utils/roleUtils';
+import { getAvatarUrl } from '../utils/avatarUtils';
 import { getCoupleDisplayName } from '../utils/memberDisplayUtils';
 const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, onInvite }: { cell: Cell, onBack: () => void, members: Member[], user: any, onInvite: (cell: Cell, date?: string) => void }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);

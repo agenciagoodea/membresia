@@ -69,6 +69,7 @@ export const PASTOR_NAV_ITEMS = [
   { id: 'cells', label: 'Gestão de Células', icon: <Layers size={20} /> },
   { id: 'ladder', label: 'Visão Celular M12', icon: <TrendingUp size={20} /> },
   { id: 'm12-config', label: 'Configurar M12', icon: <Settings size={20} /> },
+  { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'events', label: 'Agenda & Eventos', icon: <Calendar size={20} /> },
   { id: 'paid-events', label: 'Eventos Pagos', icon: <Ticket size={20} /> },
   { id: 'prayer-moderation', label: 'Moderação de Orações', icon: <HeartHandshake size={20} /> },

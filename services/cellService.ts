@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { Cell, UserRole } from '../types';
 import { memberService } from './memberService';
+import { isUUID } from '../utils/validationUtils';
 
 const mapToFrontend = (c: any): Cell => ({
 	id: c.id,
@@ -83,7 +84,7 @@ export const cellService = {
 					`supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`,
 					`leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`
 				];
-				if (myCellId && myCellId.length > 10) conditions.push(`id.eq.${myCellId}`);
+				if (isUUID(myCellId)) conditions.push(`id.eq.${myCellId}`);
 				query = query.or(conditions.join(','));
 			} else {
 				return (data || []).map(mapToFrontend).sort((a: any, b: any) => a.name.localeCompare(b.name));
@@ -152,6 +153,11 @@ export const cellService = {
 	},
 
 	async getCellsByLeader(leaderId: string) {
+		if (!isUUID(leaderId)) {
+			console.warn('cellService.getCellsByLeader: ID do líder inválido:', leaderId);
+			return [];
+		}
+
 		const { data, error } = await supabase
 			.from('cells')
 			.select(CELL_LIST_COLUMNS)

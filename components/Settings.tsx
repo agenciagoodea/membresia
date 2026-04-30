@@ -738,7 +738,18 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                       .filter(m => m.id !== member?.id)
                       .filter(m => {
                         if (!profileData.gender) return true;
-                        return m.gender === profileData.gender;
+                        if (m.gender !== profileData.gender) return false;
+                        
+                        // Discipulador: Líder, Pastor, Admin ou Master
+                        const r = m.role as any;
+                        return r === UserRole.CELL_LEADER_DISCIPLE || 
+                               r === UserRole.PASTOR || 
+                               r === UserRole.CHURCH_ADMIN || 
+                               r === UserRole.MASTER_ADMIN ||
+                               r === 'LÍDER DE CÉLULA / DISCIPULADOR' ||
+                               r === 'PASTOR' ||
+                               r === 'ADMINISTRADOR DA IGREJA' ||
+                               r === 'MASTER ADMIN';
                       })
                       .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.fullName}</option>)
                     }
@@ -750,10 +761,18 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                   <select value={profileData.pastorId || ''} onChange={e => setProfileData({ ...profileData, pastorId: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer">
                     <option value="" className="bg-zinc-900">Selecionar Pastor</option>
                     {allMembers
-                      .filter(m => (m.role === UserRole.PASTOR || m.role === UserRole.CHURCH_ADMIN))
                       .filter(m => {
                         if (!profileData.gender) return true;
-                        return m.gender === profileData.gender;
+                        if (m.gender !== profileData.gender) return false;
+
+                        // Pastor: Pastor, Admin ou Master
+                        const r = m.role as any;
+                        return r === UserRole.PASTOR || 
+                               r === UserRole.CHURCH_ADMIN || 
+                               r === UserRole.MASTER_ADMIN ||
+                               r === 'PASTOR' ||
+                               r === 'ADMINISTRADOR DA IGREJA' ||
+                               r === 'MASTER ADMIN';
                       })
                       .map(m => <option key={m.id} value={m.id} className="bg-zinc-900">{m.fullName}</option>)
                     }

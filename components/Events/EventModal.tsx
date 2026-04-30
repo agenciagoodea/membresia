@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, AlignLeft, Save, Camera, Upload, Shield, User } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, AlignLeft, Save, Camera, Upload } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../Shared/cropImage';
 import { eventService } from '../../services/eventService';
 import { ChurchEvent, Member, Cell, UserRole } from '../../types';
+import MemberAutocomplete from '../Shared/MemberAutocomplete';
+import CellAutocomplete from '../Shared/CellAutocomplete';
+import { sanitizeUUID } from '../../utils/validationUtils';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -107,10 +110,16 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
         finalImageUrl = await eventService.uploadPhoto(selectedFile, churchId);
       }
 
-      await onSave({
+      const sanitizedData = {
         ...formData,
-        image_url: finalImageUrl
-      });
+        image_url: finalImageUrl,
+        responsible_pastor_id: sanitizeUUID(formData.responsible_pastor_id),
+        coordinator_id: sanitizeUUID(formData.coordinator_id),
+        assistant_ids: (formData.assistant_ids || []).filter(id => id && id.length > 0),
+        cell_ids: (formData.cell_ids || []).filter(id => id && id.length > 0)
+      };
+
+      await onSave(sanitizedData);
       onClose();
     } catch (error: any) {
       console.error('Erro ao salvar evento:', error);
@@ -253,87 +262,63 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
               </div>
             </div>
 
-            {/* Responsabilidades e Local */}
             <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Pastor Responsável</label>
-                <div className="relative">
-                  <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                  <select
-                    value={formData.responsible_pastor_id || ''}
-                    onChange={e => setFormData({ ...formData, responsible_pastor_id: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
-                  >
-                    <option value="">Nenhum</option>
-                    {pastors.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <MemberAutocomplete
+                label="Pastor Responsável"
+                allMembers={allMembers}
+                selectedIds={formData.responsible_pastor_id ? [formData.responsible_pastor_id] : []}
+                onSelect={(m) => setFormData({ ...formData, responsible_pastor_id: m.id })}
+                onRemove={() => setFormData({ ...formData, responsible_pastor_id: '' })}
+                placeholder="Buscar pastor..."
+                roleFilter={[UserRole.PASTOR, UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN]}
+              />
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Coordenador do Evento</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                  <select
-                    value={formData.coordinator_id || ''}
-                    onChange={e => setFormData({ ...formData, coordinator_id: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-black uppercase appearance-none cursor-pointer"
-                  >
-                    <option value="">Nenhum</option>
-                    {allMembers.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <MemberAutocomplete
+                label="Coordenador do Evento"
+                allMembers={allMembers}
+                selectedIds={formData.coordinator_id ? [formData.coordinator_id] : []}
+                onSelect={(m) => setFormData({ ...formData, coordinator_id: m.id })}
+                onRemove={() => setFormData({ ...formData, coordinator_id: '' })}
+                placeholder="Buscar coordenador..."
+              />
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Auxiliares (Equipe)</label>
-                <div className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 max-h-[120px] overflow-y-auto custom-scrollbar space-y-2">
-                  {allMembers.map(m => (
-                    <label key={m.id} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={(formData.assistant_ids || []).includes(m.id)}
-                        onChange={e => {
-                          const current = formData.assistant_ids || [];
-                          const next = e.target.checked 
-                            ? [...current, m.id]
-                            : current.filter(id => id !== m.id);
-                          setFormData({ ...formData, assistant_ids: next });
-                        }}
-                        className="w-4 h-4 rounded border-white/10 bg-zinc-950 text-blue-600 focus:ring-blue-500 transition-all"
-                      />
-                      <span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{m.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <MemberAutocomplete
+                label="Auxiliares (Equipe)"
+                multiple
+                allMembers={allMembers}
+                selectedIds={formData.assistant_ids || []}
+                onSelect={(m) => {
+                  const current = formData.assistant_ids || [];
+                  if (!current.includes(m.id)) {
+                    setFormData({ ...formData, assistant_ids: [...current, m.id] });
+                  }
+                }}
+                onRemove={(id) => {
+                  const next = (formData.assistant_ids || []).filter(aid => aid !== id);
+                  setFormData({ ...formData, assistant_ids: next });
+                }}
+                placeholder="Adicionar auxiliar..."
+              />
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Células Envolvidas</label>
-                <div className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 max-h-[120px] overflow-y-auto custom-scrollbar space-y-2">
-                  {cells.map(c => (
-                    <label key={c.id} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={(formData.cell_ids || []).includes(c.id)}
-                        onChange={e => {
-                          const current = formData.cell_ids || [];
-                          const next = e.target.checked 
-                            ? [...current, c.id]
-                            : current.filter(id => id !== c.id);
-                          setFormData({ ...formData, cell_ids: next });
-                        }}
-                        className="w-4 h-4 rounded border-white/10 bg-zinc-950 text-blue-600 focus:ring-blue-500 transition-all"
-                      />
-                      <span className="text-[10px] font-black text-zinc-400 group-hover:text-white uppercase tracking-widest transition-colors">{c.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CellAutocomplete
+                label="Células Envolvidas"
+                cells={cells}
+                selectedIds={formData.cell_ids || []}
+                onSelect={(c) => {
+                  const current = formData.cell_ids || [];
+                  if (!current.includes(c.id)) {
+                    setFormData({ ...formData, cell_ids: [...current, c.id] });
+                  }
+                }}
+                onRemove={(id) => {
+                  const next = (formData.cell_ids || []).filter(cid => cid !== id);
+                  setFormData({ ...formData, cell_ids: next });
+                }}
+                onSelectAll={() => {
+                  setFormData({ ...formData, cell_ids: cells.map(c => c.id) });
+                }}
+                placeholder="Adicionar célula..."
+              />
             </div>
           </div>
 

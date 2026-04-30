@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { PaidEvent, PaidEventStatus, UserRole } from '../types';
 import { memberService } from './memberService';
+import { isUUID } from '../utils/validationUtils';
 
 /**
  * Gera slug URL-friendly a partir do título.
@@ -36,13 +37,18 @@ export const paidEventService = {
       const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN'].includes(normalizedRole);
       const myId = currentUser.id;
 
-      if (!isAdmin) {
+      if (!isAdmin && isUUID(myId)) {
         // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         
         // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou OU o que está publicado
-        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
-        query = query.or(`created_by.in.(${ecosystemFilter}),status.eq.published`);
+        const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
+        if (validEcosystemIds.length > 0) {
+          const ecosystemFilter = validEcosystemIds.map(id => `'${id}'`).join(',');
+          query = query.or(`created_by.in.(${ecosystemFilter}),status.eq.published`);
+        } else {
+          query = query.eq('status', 'published');
+        }
       }
     }
 

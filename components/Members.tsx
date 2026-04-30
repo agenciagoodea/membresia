@@ -88,10 +88,10 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     // 6. Busca Textual
     const cellName = cells.find(c => c.id === m.cellId)?.name || 'Sem Célula';
     const pastorName = members.find(p => p.id === m.pastorId)?.fullName || 'Sem Pastor';
-    const displayName = getCoupleDisplayName(m, members);
+    const individualName = m.fullName || (m as any).name || 'Membro';
 
     const matchesSearch = !searchTerm || 
-      displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      individualName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (m.email && m.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       cellName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pastorName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -101,7 +101,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
 
   const availablePastorOptions = getGroupedMemberOptions(members.filter(m => {
     const r = normalizeRole(m.role);
-    return r === 'PASTOR' || r === 'CHURCH_ADMIN' || r === 'MASTER_ADMIN';
+    return r === UserRole.PASTOR || r === UserRole.CHURCH_ADMIN || r === UserRole.MASTER_ADMIN;
   }));
 
   const handleClearFilters = () => {
@@ -399,7 +399,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                       </div>
                       <div>
                         <p className="text-base font-black text-white tracking-tight uppercase leading-none mb-1">
-                          {getCoupleDisplayName(member, members)}
+                          {member.fullName || (member as any).name || 'Membro'}
                         </p>
                         <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase">{member.email || 'Sem e-mail'}</p>
                       </div>
@@ -433,18 +433,30 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                   </td>
                   <td className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity">
-                      {member.email && (
-                        <a href={`mailto:${member.email}`} className="group/btn relative p-3 text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
-                          <Mail size={16} />
-                          <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">E-mail</span>
-                        </a>
-                      )}
-                      {member.phone && (
-                        <a href={`https://wa.me/55${member.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="group/btn relative p-3 text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
-                          <Phone size={16} />
-                          <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-emerald-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">WhatsApp</span>
-                        </a>
-                      )}
+                      <a 
+                        href={member.email ? `mailto:${member.email}` : '#'} 
+                        onClick={(e) => !member.email && e.preventDefault()}
+                        className={`group/btn relative p-3 rounded-xl transition-all border border-transparent hover:border-white/5 ${member.email ? 'text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10' : 'text-zinc-700 cursor-not-allowed'}`}
+                      >
+                        <Mail size={16} />
+                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
+                          {member.email ? 'E-mail' : 'Sem E-mail'}
+                        </span>
+                      </a>
+
+                      <a 
+                        href={member.phone ? `https://wa.me/55${member.phone.replace(/\D/g, '')}` : '#'} 
+                        target={member.phone ? "_blank" : undefined}
+                        rel="noreferrer"
+                        onClick={(e) => !member.phone && e.preventDefault()}
+                        className={`group/btn relative p-3 rounded-xl transition-all border border-transparent hover:border-white/5 ${member.phone ? 'text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10' : 'text-zinc-700 cursor-not-allowed'}`}
+                      >
+                        <Phone size={16} />
+                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/5 text-emerald-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
+                          {member.phone ? 'WhatsApp' : 'Sem Telefone'}
+                        </span>
+                      </a>
+
                       {canManageMember(member) && (
                         <>
                           <button onClick={() => handleEditMember(member)} className="group/btn relative p-3 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all border border-transparent hover:border-white/5">
@@ -503,23 +515,34 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <a href={`mailto:${member.email}`} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all text-[#10px]">
-                    <Mail size={14} />
+                  <a 
+                    href={member.email ? `mailto:${member.email}` : '#'} 
+                    onClick={(e) => !member.email && e.preventDefault()}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 ${member.email ? 'bg-blue-600/10 text-blue-500' : 'bg-zinc-900 text-zinc-700 cursor-not-allowed'}`}
+                  >
+                    <Mail size={14} /> E-mail
                   </a>
-                  {member.phone && (
-                    <a href={`https://wa.me/55${member.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all text-[#10px]">
-                      <Phone size={14} />
-                    </a>
+                  <a 
+                    href={member.phone ? `https://wa.me/55${member.phone.replace(/\D/g, '')}` : '#'} 
+                    target={member.phone ? "_blank" : undefined}
+                    rel="noreferrer"
+                    onClick={(e) => !member.phone && e.preventDefault()}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 ${member.phone ? 'bg-emerald-600/10 text-emerald-500' : 'bg-zinc-900 text-zinc-700 cursor-not-allowed'}`}
+                  >
+                    <Phone size={14} /> Whats
+                  </a>
+                  {canManageMember(member) && (
+                    <button 
+                      onClick={() => handleEditMember(member)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-600/10 text-amber-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
+                    >
+                      <Edit2 size={14} /> Editar
+                    </button>
                   )}
                   {canManageMember(member) && (
-                    <>
-                      <button onClick={() => handleEditMember(member)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all text-[#10px]">
-                        <Edit2 size={14} />
-                      </button>
-                      <button onClick={() => handleDeleteMember(member.id)} className="flex-1 flex items-center justify-center py-2 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all text-[#10px]">
-                        <Trash2 size={14} />
-                      </button>
-                    </>
+                    <button onClick={() => handleDeleteMember(member.id)} className="flex items-center justify-center p-3 bg-zinc-900 border border-white/5 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all">
+                      <Trash2 size={14} />
+                    </button>
                   )}
                 </div>
               </div>

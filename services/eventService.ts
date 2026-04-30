@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { ChurchEvent, UserRole } from '../types';
 import { memberService } from './memberService';
+import { isUUID } from '../utils/validationUtils';
 
 export const eventService = {
   async getAll(churchId: string, currentUser?: any): Promise<ChurchEvent[]> {
@@ -14,16 +15,36 @@ export const eventService = {
 
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
-      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
+      const normalizedRole = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN'].includes(normalizedRole);
       const myId = currentUser.id;
 
-      if (!isAdmin) {
-        // 1. Obter Ecossistema Ministerial Recursivo + Conjugal
+      if (!isAdmin && isUUID(myId)) {
+        // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         
-        // 2. Pastor e Líder veem eventos públicos OU onde qualquer membro do ecossistema é responsável
-        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
-        query = query.or(`created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
+        // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou/responsável OU auxilia OU é para sua célula
+        const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
+        if (validEcosystemIds.length > 0) {
+          const ecosystemFilter = validEcosystemIds.map(id => `'${id}'`).join(',');
+          const myCellId = currentUser.cellId || currentUser.cell_id;
+          
+          let orConditions = [
+            `created_by.in.(${ecosystemFilter})`,
+            `responsible_pastor_id.in.(${ecosystemFilter})`,
+            `coordinator_id.in.(${ecosystemFilter})`,
+            `assistant_ids.cs.{${myId}}`
+          ];
+
+          if (isUUID(myCellId)) {
+            orConditions.push(`cell_ids.cs.{${myCellId}}`);
+          }
+
+          query = query.or(orConditions.join(','));
+        } else {
+          // Se não houver ecossistema, ver apenas publicados
+          query = query.eq('is_published', true);
+        }
       }
     }
 
