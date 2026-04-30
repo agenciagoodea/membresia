@@ -37,13 +37,24 @@ const Events = ({ user }: { user: any }) => {
       setLoading(true);
       const churchId = user.churchId || user.church_id;
       
-      const [eventsData, cellsData, exceptionsData, membersData, paidEventsData] = await Promise.all([
+      const results = await Promise.allSettled([
         eventService.getAll(churchId, user),
         cellService.getAll(churchId, user),
         cellMeetingService.getExceptions(churchId),
         memberService.getAll(churchId, undefined, user),
         paidEventService.getAll(churchId, user)
       ]);
+
+      const [eventsRes, cellsRes, exceptionsRes, membersRes, paidEventsRes] = results;
+
+      const eventsData = eventsRes.status === 'fulfilled' ? eventsRes.value : [];
+      const cellsData = cellsRes.status === 'fulfilled' ? cellsRes.value : [];
+      const exceptionsData = exceptionsRes.status === 'fulfilled' ? exceptionsRes.value : [];
+      const membersData = membersRes.status === 'fulfilled' ? membersRes.value : [];
+      const paidEventsData = paidEventsRes.status === 'fulfilled' ? paidEventsRes.value : [];
+
+      if (eventsRes.status === 'rejected') console.error('Erro eventos:', eventsRes.reason);
+      if (paidEventsRes.status === 'rejected') console.error('Erro eventos pagos:', paidEventsRes.reason);
 
       setAllMembers(membersData || []);
       setCells(cellsData || []);
@@ -54,45 +65,23 @@ const Events = ({ user }: { user: any }) => {
       const cellBdays: any[] = [];
 
       if (myCellId) {
-        const cellMembers = membersData.filter(m => m.cellId === myCellId);
-        cellMembers.forEach(m => {
-          // Membro
+        const cellMembers = membersData.filter((m: any) => m.cellId === myCellId);
+        cellMembers.forEach((m: any) => {
           if (m.birthDate && typeof m.birthDate === 'string' && m.birthDate.includes('-')) {
             const parts = m.birthDate.split('-');
             if (parts.length === 3) {
-              const [bYear, bMonth, bDay] = parts;
+              const [, bMonth, bDay] = parts;
               cellBdays.push({
                 id: `bday-${m.id}`,
                 title: `Aniversário: ${m.fullName ? m.fullName.split(' ')[0] : m.name?.split(' ')[0] || 'Membro'}`,
                 date: `${currentYear}-${bMonth}-${bDay}`,
-              time: '00:00',
-              location: 'Célula',
-              description: `Aniversário de ${m.name}.`,
-              type: 'BIRTHDAY',
-              isBirthday: true
+                time: '00:00',
+                location: 'Célula',
+                description: `Aniversário de ${m.fullName || m.name}.`,
+                type: 'BIRTHDAY',
+                isBirthday: true
               });
             }
-          }
-          // Filhos do Membro
-          if (m.children && Array.isArray(m.children)) {
-            m.children.forEach((c: any) => {
-              if (c.birthDate && typeof c.birthDate === 'string' && c.birthDate.includes('-')) {
-                const parts = c.birthDate.split('-');
-                if (parts.length === 3) {
-                  const [cbYear, cbMonth, cbDay] = parts;
-                  cellBdays.push({
-                    id: `child-bday-${c.id}`,
-                    title: `Aniversário: ${c.name?.split(' ')[0] || 'Filho'} (Filho(a) de ${m.fullName ? m.fullName.split(' ')[0] : m.name?.split(' ')[0] || 'Membro'})`,
-                    date: `${currentYear}-${cbMonth}-${cbDay}`,
-                  time: '00:00',
-                  location: 'Célula',
-                  description: `Aniversário de ${c.name}, dependente de ${m.name}.`,
-                  type: 'BIRTHDAY',
-                  isBirthday: true
-                  });
-                }
-              }
-            });
           }
         });
       }
@@ -101,7 +90,7 @@ const Events = ({ user }: { user: any }) => {
       const merged = mergeAgendaItems(eventsData, cellsData, exceptionsData, paidEventsData, user);
       setEvents([...merged, ...cellBdays]);
     } catch (error) {
-      console.error('Erro ao carregar eventos:', error);
+      console.error('Erro crítico no carregamento da agenda:', error);
     } finally {
       setLoading(false);
     }

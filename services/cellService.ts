@@ -62,9 +62,16 @@ const CELL_LIST_COLUMNS = 'id, name, leader_id, leader_ids, host_id, host_name, 
 
 export const cellService = {
 	async getAll(churchId: string, currentUser?: any) {
+		if (!isUUID(churchId)) {
+			console.warn('[DEBUG RBAC] cellService.getAll - churchId inválido:', churchId);
+			return [];
+		}
+
 		const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser?.role);
 		const myId = currentUser?.id;
 		const myCellId = currentUser?.cellId || currentUser?.cell_id;
+
+		console.log('CELL_SERVICE_FILTERS', { churchId, userId: myId, isAdmin });
 
 		let query = supabase
 			.from('cells')
@@ -96,10 +103,10 @@ export const cellService = {
 
 		if (error) {
 			console.error('[DEBUG RBAC] cellService.getAll - Erro:', error);
-			throw error;
+			return [];
 		}
 
-		console.log('[DEBUG RBAC] cellService.getAll - Células retornadas:', data?.length || 0);
+		console.log('CELL_SERVICE_RESULT', data?.length || 0);
 		return (data || []).map(mapToFrontend);
 	},
 

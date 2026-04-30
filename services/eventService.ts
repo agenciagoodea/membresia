@@ -5,8 +5,12 @@ import { isUUID } from '../utils/validationUtils';
 
 export const eventService = {
   async getAll(churchId: string, currentUser?: any): Promise<ChurchEvent[]> {
-    if (!churchId) return [];
-    console.log('[DEBUG RBAC] eventService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema');
+    if (!isUUID(churchId)) {
+      console.warn('[DEBUG RBAC] eventService.getAll - churchId inválido:', churchId);
+      return [];
+    }
+
+    console.log('EVENT_SERVICE_FILTERS', { churchId, userId: currentUser?.id });
     
     let query = supabase
       .from('events')
@@ -55,10 +59,10 @@ export const eventService = {
 
     if (error) {
       console.error('[DEBUG RBAC] eventService.getAll - Erro:', error);
-      throw error;
+      return [];
     }
 
-    console.log('[DEBUG RBAC] eventService.getAll - Registros retornados:', data?.length || 0);
+    console.log('EVENT_SERVICE_RESULT', data?.length || 0);
     return data || [];
   },
 

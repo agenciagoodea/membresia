@@ -4,11 +4,14 @@ import { Member, MemberStatus, UserRole } from '../types';
 export const dbToMember = (row: any): Member => {
   if (!row) return null as any;
   
+  const fullName = row.full_name || row.nome || row.name || '';
+  const avatarUrl = row.avatar_url || row.photo_url || row.foto || row.avatar || null;
+  
   return {
     id: row.id,
     userId: row.user_id,
     churchId: row.church_id,
-    fullName: row.full_name || row.nome || row.name || '',
+    fullName: fullName,
     email: row.email || '',
     phone: row.phone || row.telefone || '',
     cpf: row.cpf || '',
@@ -137,6 +140,8 @@ const ESSENTIAL_COLUMNS = 'id, full_name, name, email, phone, role, status, stag
 
 export const memberService = {
 	async getById(id: string) {
+		if (!id || typeof id !== 'string' || id.length < 30) return null;
+		
 		const { data, error } = await supabase
 			.from('members')
 			.select('*')
@@ -152,7 +157,17 @@ export const memberService = {
 	},
 
 	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
-		console.log('[DEBUG RBAC] memberService.getAll - Iniciando busca para:', currentUser?.fullName || currentUser?.name || 'Sistema', 'ID:', currentUser?.id);
+		if (!churchId || churchId.length < 30) {
+			console.warn('[DEBUG RBAC] memberService.getAll - churchId inválido:', churchId);
+			return [];
+		}
+
+		console.log('CURRENT_MEMBER_CONTEXT', { 
+			id: currentUser?.id, 
+			churchId: currentUser?.churchId || currentUser?.church_id, 
+			role: currentUser?.role,
+			fullName: currentUser?.fullName || currentUser?.name
+		});
 		
 		let query = supabase
 			.from('members')
@@ -209,10 +224,29 @@ export const memberService = {
 
 		if (error) {
 			console.error('[DEBUG RBAC] memberService.getAll - Erro:', error);
-			throw error;
+			// Não jogar erro para não quebrar a UI, mas logar
+			return [];
 		}
 
 		return (data || []).map(mapToFrontend);
+	},
+
+	async getByIds(ids: string[]): Promise<Member[]> {
+		const validIds = (ids || []).filter(id => id && typeof id === 'string' && id.length > 30);
+		if (validIds.length === 0) return [];
+
+		console.log('MEMBER_SERVICE_GET_BY_IDS', validIds);
+		const { data, error } = await supabase
+			.from('members')
+			.select('*')
+			.in('id', validIds);
+
+		if (error) {
+			console.error('Erro ao buscar membros por IDs:', error);
+			return [];
+		}
+
+		return (data || []).map(dbToMember);
 	},
 
 	async getEcosystemIds(rootMemberId: string): Promise<string[]> {

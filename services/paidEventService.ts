@@ -23,8 +23,12 @@ function generateSlug(title: string): string {
 
 export const paidEventService = {
   async getAll(churchId: string, currentUser?: any): Promise<PaidEvent[]> {
-    if (!churchId) return [];
-    console.log('[DEBUG RBAC] paidEventService.getAll - Iniciando busca para:', currentUser?.name || 'Sistema');
+    if (!isUUID(churchId)) {
+      console.warn('[DEBUG RBAC] paidEventService.getAll - churchId inválido:', churchId);
+      return [];
+    }
+
+    console.log('PAID_EVENT_SERVICE_FILTERS', { churchId, userId: currentUser?.id });
 
     let query = supabase
       .from('paid_events')
@@ -60,10 +64,10 @@ export const paidEventService = {
 
     if (error) {
       console.error('[DEBUG RBAC] paidEventService.getAll - Erro:', error);
-      throw error;
+      return [];
     }
 
-    console.log('[DEBUG RBAC] paidEventService.getAll - Registros retornados:', data?.length || 0);
+    console.log('PAID_EVENT_SERVICE_RESULT', data?.length || 0);
     return data || [];
   },
 

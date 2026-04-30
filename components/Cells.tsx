@@ -48,8 +48,8 @@ import { STAGE_ACTIVITIES, isStageComplete, getMissingMilestones } from '../util
 import { generateCellOccurrences } from '../utils/agendaUtils';
 import { cellMeetingService } from '../services/cellMeetingService';
 import MemberProfileModal from './MemberProfileModal';
-import { normalizeRole } from '../utils/roleUtils';
 import { getAvatarUrl } from '../utils/avatarUtils';
+import { normalizeRole } from '../utils/roleUtils';
 import { getCoupleDisplayName } from '../utils/memberDisplayUtils';
 const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, onInvite }: { cell: Cell, onBack: () => void, members: Member[], user: any, onInvite: (cell: Cell, date?: string) => void }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -824,13 +824,13 @@ const CellDetailView = ({ cell, onBack, members: allMembers, user: currentUser, 
                       >
                         <div className="flex items-center gap-4">
                           <img 
-                            src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
-                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                            src={getAvatarUrl(member.fullName, member.avatarUrl)} 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName, null); }}
                             className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" 
                             alt="" 
                           />
                           <div>
-                            <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.name}</p>
+                            <p className="text-sm font-black text-white uppercase tracking-tight leading-none mb-1.5">{member.fullName}</p>
                             <div className="flex flex-wrap gap-1">
                               {Object.values(LadderStage).map((s) => {
                                 const stages = [LadderStage.WIN, LadderStage.CONSOLIDATE, LadderStage.DISCIPLE, LadderStage.SEND];
