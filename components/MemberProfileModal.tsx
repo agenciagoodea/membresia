@@ -86,12 +86,18 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
           
           <div className="absolute -bottom-16 left-10 flex items-end gap-6">
             <div className="relative">
-              <img 
-                src={getAvatarUrl(member.fullName || member.name, member.avatarUrl || member.avatar)}
-                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
-                className="w-32 h-32 rounded-[2.5rem] object-cover ring-8 ring-zinc-950 shadow-2xl"
-                alt={member.fullName || member.name}
-              />
+              {(() => {
+                console.log('M12_MEMBER_FULL', member);
+                console.log('M12_AVATAR_URL', getAvatarUrl(member));
+                return (
+                  <img 
+                    src={getAvatarUrl(member)}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
+                    className="w-32 h-32 rounded-[2.5rem] object-cover ring-8 ring-zinc-950 shadow-2xl"
+                    alt={member.fullName || member.name}
+                  />
+                );
+              })()}
               <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center border-4 border-zinc-950 text-white shadow-lg">
                 <CheckCircle2 size={18} />
               </div>

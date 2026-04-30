@@ -187,20 +187,37 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                   </div>
 
                     <div className="flex gap-4">
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                        <p className="text-lg font-black text-white">{evt.stats?.total || 0}</p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
-                      </div>
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                        <p className="text-lg font-black text-emerald-400">{evt.stats?.confirmed || 0}</p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
-                      </div>
-                      <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                        <p className={`text-lg font-black ${evt.max_participants && (evt.max_participants - (evt.stats?.total || 0)) <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>
-                          {evt.max_participants ? Math.max(0, evt.max_participants - (evt.stats?.total || 0)) : '∞'}
-                        </p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
-                      </div>
+                      {(() => {
+                        const totalInscritos = evt.stats?.total || 0;
+                        const confirmados = evt.stats?.confirmed || 0;
+                        const vagasLivres = evt.max_participants ? Math.max(0, evt.max_participants - confirmados) : Infinity;
+                        
+                        console.log('PAID_EVENT_CARD_STATS', { 
+                          event: evt.title, 
+                          totalInscritos, 
+                          confirmados, 
+                          vagasLivres: vagasLivres === Infinity ? '∞' : vagasLivres 
+                        });
+
+                        return (
+                          <>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
+                              <p className="text-lg font-black text-white">{totalInscritos}</p>
+                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
+                            </div>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
+                              <p className="text-lg font-black text-emerald-400">{confirmados}</p>
+                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
+                            </div>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
+                              <p className={`text-lg font-black ${vagasLivres <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>
+                                {vagasLivres === Infinity ? '∞' : vagasLivres}
+                              </p>
+                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
 
                   {/* Ações */}

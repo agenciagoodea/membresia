@@ -911,7 +911,7 @@ const MemberDashboard = ({ user, prayers, events, cells, activeTab = 'JOURNEY' }
 };
 
 const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTab }) => {
-  const { members, cells, prayers, events, meetingExceptions, loading, refreshData } = useChurch();
+  const { members, cells, prayers, events, paidEvents, meetingExceptions, loading, refreshData } = useChurch();
 
   if (loading && user.role !== UserRole.MASTER_ADMIN) {
     return (
@@ -922,7 +922,7 @@ const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTa
   }
 
   const role = user.role;
-  const mergedEvents = mergeAgendaItems(events, cells, meetingExceptions, [], user);
+  const mergedEvents = mergeAgendaItems(events, cells, meetingExceptions, paidEvents, user);
 
   switch (role) {
     case UserRole.MASTER_ADMIN:

@@ -5,7 +5,10 @@ export const dbToMember = (row: any): Member => {
   if (!row) return null as any;
   
   const fullName = row.full_name || row.nome || row.name || '';
-  const avatarUrl = row.avatar_url || row.photo_url || row.foto || row.avatar || null;
+  
+  // Mapear variações de URL de foto/avatar
+  // Prioridade: avatar_url -> avatar -> photo_url -> photo -> foto_url -> foto -> image_url -> image
+  const avatarUrl = row.avatar_url || row.avatar || row.photo_url || row.photo || row.foto_url || row.foto || row.image_url || row.image || null;
   
   return {
     id: row.id,
@@ -29,7 +32,7 @@ export const dbToMember = (row: any): Member => {
     pastorId: row.pastor_id || null,
     disciplerId: row.discipler_id || row.discipulador_id || null,
     spouseId: row.spouse_id || null,
-    avatarUrl: row.avatar_url || row.photo_url || row.foto || row.avatar || null,
+    avatarUrl: avatarUrl,
     stageHistory: row.stage_history || [],
     completedMilestones: row.completed_milestones || [],
     origin: row.origin || '',

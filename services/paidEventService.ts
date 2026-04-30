@@ -171,10 +171,27 @@ export const paidEventService = {
     if (error) throw error;
 
     const rows = data || [];
-    return {
+    console.log('PAID_EVENT_REGISTRATIONS', rows);
+
+    // Status considerados como confirmados/pagos
+    const confirmedStatuses = ['PAGO', 'PAID', 'CONFIRMADO', 'CONFIRMED', 'APROVADO', 'APPROVED', 'pago_confirmado'];
+    // Status considerados como cancelados/rejeitados (não contam como pendentes)
+    const invalidStatuses = ['CANCELADO', 'CANCELLED', 'RECUSADO', 'REJECTED', 'recusado', 'cancelado'];
+
+    const confirmed = rows.filter(r => confirmedStatuses.includes((r.payment_status || '').toUpperCase()) || r.payment_status === 'pago_confirmado').length;
+    const pending = rows.filter(r => 
+      !confirmedStatuses.includes((r.payment_status || '').toUpperCase()) && 
+      !invalidStatuses.includes((r.payment_status || '').toUpperCase()) &&
+      r.payment_status !== 'pago_confirmado'
+    ).length;
+
+    const stats = {
       total: rows.length,
-      confirmed: rows.filter(r => r.payment_status === 'pago_confirmado').length,
-      pending: rows.filter(r => !['pago_confirmado', 'cancelado', 'recusado'].includes(r.payment_status)).length
+      confirmed,
+      pending
     };
+
+    console.log('PAID_EVENT_CARD_STATS', stats);
+    return stats;
   }
 };

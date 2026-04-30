@@ -14,11 +14,28 @@ export const resolveFileUrl = (pathOrUrl: string | null | undefined, bucket: str
 
 /**
  * Retorna a URL do avatar ou um fallback profissional baseado em iniciais.
+ * Suporta objeto member completo ou parâmetros individuais.
  */
-export const getAvatarUrl = (fullName: string | null | undefined, avatarUrl: string | null | undefined): string => {
-  const resolved = resolveFileUrl(avatarUrl, 'avatars');
+export const getAvatarUrl = (
+  fullNameOrMember: string | any | null | undefined, 
+  avatarUrl?: string | null | undefined
+): string => {
+  let name = '';
+  let url = '';
+
+  if (fullNameOrMember && typeof fullNameOrMember === 'object') {
+    const m = fullNameOrMember;
+    name = m.fullName || m.name || 'User';
+    // Ordem de prioridade: avatarUrl -> fotoUrl -> photoUrl -> imageUrl
+    url = m.avatarUrl || m.avatar || m.fotoUrl || m.foto || m.photoUrl || m.photo || m.imageUrl || m.image;
+  } else {
+    name = (fullNameOrMember as string) || 'User';
+    url = avatarUrl || '';
+  }
+
+  const resolved = resolveFileUrl(url, 'avatars');
   if (resolved) return resolved;
   
-  const name = encodeURIComponent(fullName || 'User');
-  return `https://ui-avatars.com/api/?name=${name}&background=2563eb&color=fff&size=200`;
+  const encodedName = encodeURIComponent(name);
+  return `https://ui-avatars.com/api/?name=${encodedName}&background=2563eb&color=fff&size=200`;
 };

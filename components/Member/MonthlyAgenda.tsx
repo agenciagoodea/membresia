@@ -12,6 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { ChurchEvent } from '../../types';
+import EventDetailsModal from '../Events/EventDetailsModal';
 
 interface MonthlyAgendaProps {
   events: (ChurchEvent | any)[];
@@ -26,6 +27,8 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
   const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'MONTH' | 'LIST'>('MONTH');
   const [isDayPopupOpen, setIsDayPopupOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedEventDetails, setSelectedEventDetails] = useState<any>(null);
 
   const monthNames = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -288,7 +291,15 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] max-w-[200px]">Nenhum evento para esta data</p>
               </div>
             ) : selectedDayEvents.map(evt => (
-              <div key={evt.id} className="p-6 bg-zinc-950 rounded-[2rem] border border-white/5 hover:border-white/10 transition-all group shadow-xl">
+              <div 
+                key={evt.id} 
+                onClick={() => {
+                  setSelectedEventDetails(evt);
+                  setIsDetailsModalOpen(true);
+                  console.log('EVENT_CLICKED_DETAILS', evt);
+                }}
+                className="p-6 bg-zinc-950 rounded-[2rem] border border-white/5 hover:border-blue-500/30 transition-all group shadow-xl cursor-pointer"
+              >
                 <div className="flex gap-4">
                   <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 shrink-0 border border-blue-500/20">
                     <Clock size={24} />
@@ -374,6 +385,11 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
           </div>
         </div>
       )}
+      <EventDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        event={selectedEventDetails}
+      />
     </div>
   );
 };

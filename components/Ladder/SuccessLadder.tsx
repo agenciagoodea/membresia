@@ -114,7 +114,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                 <div className="flex items-center gap-2">
                   <div className="relative">
                     <img 
-                      src={getAvatarUrl(member.fullName || member.name, member.avatarUrl || member.avatar)} 
+                      src={getAvatarUrl(member)} 
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
                       className="w-8 h-8 rounded-full border border-white/10 object-cover aspect-square" 
                       alt="" 
