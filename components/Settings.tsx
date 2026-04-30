@@ -37,6 +37,8 @@ import {
   EyeOff,
   Ticket
 } from 'lucide-react';
+import { getAvatarUrl } from '../utils/avatarUtils';
+import { formatRoleLabel } from '../utils/formatUtils';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from './Shared/cropImage';
 import { memberService } from '../services/memberService';
@@ -55,6 +57,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [member, setMember] = useState<Member | null>(null);
   const [church, setChurch] = useState<ChurchTenant | null>(null);
   const [showM12Modal, setShowM12Modal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'paid-events'>('profile');
 
   // Estados dos formulários controlados
   const [profileData, setProfileData] = useState<Partial<Member>>({});
@@ -222,7 +225,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
             setMember(myProfile);
             setProfileData(prev => ({ ...prev, ...myProfile }));
           }
-          setLoading(false);
+          if (!cancelled) setLoading(false);
           return;
         }
 
@@ -460,24 +463,41 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Meu Perfil</h2>
-            <p className="text-zinc-500 font-medium text-lg italic">Mantenha seus dados atualizados.</p>
+            <h2 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">Configurações</h2>
+            <p className="text-zinc-500 font-medium text-lg italic">Gerencie seu perfil e suas inscrições.</p>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-4 border-b border-white/5 pb-4">
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`px-6 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all ${activeTab === 'profile' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+          >
+            Meu Perfil
+          </button>
+          <button 
+            onClick={() => setActiveTab('paid-events')}
+            className={`px-6 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all ${activeTab === 'paid-events' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+          >
+            Eventos Pagos
+          </button>
         </div>
 
         <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
           {loading && (
             <div className="py-20 flex flex-col items-center justify-center text-zinc-500 font-black tracking-[0.5em] animate-pulse">
-              Sincronizando...
+              Carregando...
             </div>
           )}
 
-          {!loading && (
+          {!loading && activeTab === 'profile' && (
             <div className="space-y-10 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row md:items-center gap-8">
                 <div className="relative group">
                   <img 
-                    src={profileData.avatarUrl || activeUser.avatarUrl || `https://ui-avatars.com/api/?name=User&background=2563eb&color=fff&size=200`} 
+                    src={getAvatarUrl(profileData.fullName || activeUser.fullName || profileData.name || activeUser.name, profileData.avatarUrl || activeUser.avatarUrl || profileData.avatar || activeUser.avatar)} 
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(profileData.fullName || activeUser.fullName || profileData.name || activeUser.name, null); }}
                     className="w-32 h-32 rounded-[2.5rem] ring-4 ring-zinc-950 shadow-2xl object-cover" 
                     alt="Avatar" 
                   />
@@ -489,8 +509,8 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                   <input id="avatar-upload-camera" type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoSelect} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-white uppercase">{profileData.name || activeUser.name}</h3>
-                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{member?.role || activeUser.role}</p>
+                  <h3 className="text-2xl font-black text-white uppercase">{profileData.fullName || activeUser.fullName || profileData.name || activeUser.name}</h3>
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{formatRoleLabel(member?.role || activeUser.role, profileData.gender || member?.gender || activeUser.gender)}</p>
                 </div>
               </div>
 
@@ -504,7 +524,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User size={16} className="text-zinc-600" /></div>
-                    <input value={profileData.name || ''} onChange={e => setProfileData({ ...profileData, name: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
+                    <input value={profileData.fullName || profileData.name || ''} onChange={e => setProfileData({ ...profileData, fullName: e.target.value })} className="w-full bg-zinc-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 transition-all" />
                   </div>
                 </div>
 
@@ -805,17 +825,7 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
                   </div>
                 </div>
 
-                {/* Meus Eventos Pagos */}
-                <div className="space-y-4 md:col-span-2 pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-violet-600 rounded-full" />
-                    <h4 className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Meus Eventos Pagos</h4>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <MemberPaidEvents user={user} />
-                </div>
+                {/* Removido Meus Eventos Pagos daqui */}
 
                 {/* Segurança */}
                 <div className="space-y-4 md:col-span-2 pt-6">
@@ -875,11 +885,16 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               </div>
             </div>
           )}
+          {!loading && activeTab === 'paid-events' && (
+            <div className="animate-in fade-in duration-300">
+              <MemberPaidEvents user={user} />
+            </div>
+          )}
         </div>
 
-        {/* Configurações Avançadas (Apenas Admins e Pastores) */}
-        {(user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.PASTOR) && (
-          <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
+        {/* Configurações Avançadas (Apenas Admins - removido Pastor) */}
+        {(user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN) && (
+          <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl mt-10">
              <SMTPSettings />
           </div>
         )}

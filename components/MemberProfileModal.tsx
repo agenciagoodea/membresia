@@ -3,6 +3,8 @@ import React from 'react';
 import { X, User, Mail, Phone, MapPin, Target, Calendar, CheckCircle2, TrendingUp, Award, Briefcase, Heart, Users, Zap } from 'lucide-react';
 import { Member, MeetingReport, LadderStage, UserRole, M12Activity } from '../types';
 import { m12Service } from '../services/m12Service';
+import { getAvatarUrl } from '../utils/avatarUtils';
+import { formatRoleLabel } from '../utils/formatUtils';
 
 interface MemberProfileModalProps {
   isOpen: boolean;
@@ -85,22 +87,23 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
           <div className="absolute -bottom-16 left-10 flex items-end gap-6">
             <div className="relative">
               <img 
-                src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`}
+                src={getAvatarUrl(member.fullName || member.name, member.avatarUrl || member.avatar)}
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
                 className="w-32 h-32 rounded-[2.5rem] object-cover ring-8 ring-zinc-950 shadow-2xl"
-                alt={member.name}
+                alt={member.fullName || member.name}
               />
               <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center border-4 border-zinc-950 text-white shadow-lg">
                 <CheckCircle2 size={18} />
               </div>
             </div>
             <div className="mb-4">
-              <h3 className="text-3xl font-black text-white tracking-tighter uppercase leading-none mb-2">{member.name}</h3>
+              <h3 className="text-3xl font-black text-white tracking-tighter uppercase leading-none mb-2">{member.fullName || member.name}</h3>
               <div className="flex gap-2">
                 <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStageColor(member.stage)}`}>
                   {member.stage}
                 </span>
                 <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-zinc-400 border border-white/5">
-                  {member.role === UserRole.MEMBER_VISITOR ? 'Membro' : member.role}
+                  {formatRoleLabel(member.role, member.gender)}
                 </span>
               </div>
             </div>

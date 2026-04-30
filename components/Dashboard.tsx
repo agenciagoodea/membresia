@@ -41,6 +41,8 @@ import ActivityManager from './Ladder/ActivityManager';
 import { mergeAgendaItems } from '../utils/agendaUtils';
 import MemberProfileModal from './MemberProfileModal';
 import { supabase } from '../services/supabaseClient';
+import { getAvatarUrl } from '../utils/avatarUtils';
+import { formatRoleLabel } from '../utils/formatUtils';
 
 // Componentes Auxiliares
 const PageHeader = React.memo(({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -340,8 +342,8 @@ const ChurchAdminDashboard = ({ user, members, cells, prayers, events, activeTab
               <div key={m.id || i} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0">
                 <div className="flex items-center gap-4">
                   <img
-                    src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=fff&size=80`}
-                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=2563eb&color=fff&size=80`; }}
+                    src={getAvatarUrl(m.fullName || m.name, m.avatarUrl || m.avatar)}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(m.fullName || m.name, null); }}
                     className="w-12 h-12 rounded-full border border-white/10"
                     alt=""
                   />
@@ -606,10 +608,10 @@ Esperamos por você! Vai ser um tempo precioso! \uD83D\uDD25`;
             ) : cellMembers.map(m => (
               <div key={m.id} className="flex items-center justify-between p-5 bg-white/5 rounded-[1.5rem] transition-all border border-white/5 hover:border-white/10 group">
                 <div className="flex items-center gap-4">
-                  <img src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=fff`} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
+                  <img src={getAvatarUrl(m.fullName || m.name, m.avatarUrl || m.avatar)} className="w-12 h-12 rounded-full ring-2 ring-white/10 group-hover:ring-blue-500 transition-all object-cover aspect-square" alt="" />
                   <div>
-                    <p className="text-sm font-black text-white uppercase">{m.name}</p>
-                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage}</p>
+                    <p className="text-sm font-black text-white uppercase">{m.fullName || m.name}</p>
+                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{m.stage} • {formatRoleLabel(m.role, m.gender)}</p>
                   </div>
                 </div>
                 <button

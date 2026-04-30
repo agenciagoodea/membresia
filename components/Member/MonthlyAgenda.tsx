@@ -16,9 +16,12 @@ import { ChurchEvent } from '../../types';
 interface MonthlyAgendaProps {
   events: (ChurchEvent | any)[];
   user: any;
+  canEdit?: boolean;
+  onEdit?: (event: any) => void;
+  canManageEvent?: (event: any) => boolean;
 }
 
-const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user }) => {
+const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, onEdit, canManageEvent }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'MONTH' | 'LIST'>('MONTH');
@@ -60,6 +63,36 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user }) => {
     return events.filter(e => e.date === selectedDate);
   }, [selectedDate, events]);
 
+  // WEEK VIEW LOGIC
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day;
+    return new Date(today.getFullYear(), today.getMonth(), diff);
+  });
+
+  const weekDays = useMemo(() => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(currentWeekStart);
+      d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }, [currentWeekStart]);
+
+  const handlePrevWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() - 7);
+    setCurrentWeekStart(d);
+  };
+
+  const handleNextWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + 7);
+    setCurrentWeekStart(d);
+  };
+
   const handlePrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
   };
@@ -95,12 +128,14 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user }) => {
            <button 
              onClick={() => setViewMode('MONTH')}
              className={`p-2.5 rounded-xl transition-all ${viewMode === 'MONTH' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-500 hover:text-white'}`}
+             title="Visão Mensal"
            >
              <LayoutGrid size={18} />
            </button>
            <button 
              onClick={() => setViewMode('LIST')}
              className={`p-2.5 rounded-xl transition-all ${viewMode === 'LIST' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-500 hover:text-white'}`}
+             title="Visão Semanal"
            >
              <List size={18} />
            </button>
@@ -165,6 +200,73 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user }) => {
             })}
           </div>
         </div>
+        )}
+
+        {/* CALENDÁRIO SEMANAL */}
+        {viewMode === 'LIST' && (
+        <div className="lg:col-span-7">
+          <div className="flex items-center justify-between mb-8">
+            <h4 className="text-lg font-black text-white uppercase tracking-tight">
+              {monthNames[currentWeekStart.getMonth()]} <span className="text-blue-500">{currentWeekStart.getFullYear()}</span>
+            </h4>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handlePrevWeek}
+                className="p-2 hover:bg-white/5 rounded-xl text-zinc-400 hover:text-white transition-all border border-white/5"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={handleNextWeek}
+                className="p-2 hover:bg-white/5 rounded-xl text-zinc-400 hover:text-white transition-all border border-white/5"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {daysOfWeek.map(day => (
+              <div key={day} className="text-center py-2 text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">
+                {day}
+              </div>
+            ))}
+            {weekDays.map((d, idx) => {
+              const dYear = d.getFullYear();
+              const dMonth = d.getMonth() + 1;
+              const dDay = d.getDate();
+              const dateStr = `${dYear}-${String(dMonth).padStart(2, '0')}-${String(dDay).padStart(2, '0')}`;
+              const dayEvents = events.filter(e => e.date === dateStr);
+              const hasEvents = dayEvents.length > 0;
+              const isTodayDate = new Date().toISOString().split('T')[0] === dateStr;
+              const isSel = selectedDate === dateStr;
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`
+                    relative aspect-[3/4] rounded-2xl flex flex-col items-center justify-start py-4 transition-all border group cursor-pointer
+                    ${isSel ? 'bg-blue-600 border-blue-500 shadow-xl shadow-blue-500/20 text-white' : 'bg-zinc-950 border-white/5 text-zinc-400 hover:border-blue-500/50'}
+                    ${isTodayDate && !isSel ? 'ring-2 ring-blue-500/30' : ''}
+                  `}
+                >
+                  <span className={`text-sm font-black mb-2 ${isSel ? 'text-white' : 'group-hover:text-white'}`}>{dDay}</span>
+                  {hasEvents && (
+                    <div className="flex flex-col gap-1 w-full px-2 overflow-hidden items-center">
+                      <div className={`w-2 h-2 rounded-full ${isSel ? 'bg-white' : 'bg-blue-500 animate-pulse'} mb-1`} />
+                      {dayEvents.slice(0, 2).map((e, i) => (
+                        <div key={i} className={`w-full h-1 rounded-full ${isSel ? 'bg-white/50' : 'bg-blue-500/30'}`} />
+                      ))}
+                      {dayEvents.length > 2 && <span className={`text-[8px] font-black mt-1 ${isSel ? 'text-blue-100' : 'text-zinc-500'}`}>+{dayEvents.length - 2}</span>}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        )}
 
         {/* EVENTOS DO DIA */}
         <div className="lg:col-span-5 border-l border-white/5 pl-0 lg:pl-10">
@@ -193,6 +295,14 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user }) => {
                       <MapPin size={12} className="shrink-0" /> {evt.location || 'Local a definir'}
                     </div>
                   </div>
+                  {canEdit && canManageEvent && canManageEvent(evt) && onEdit && !evt.id.toString().startsWith('bday-') && !evt.id.toString().startsWith('child-bday-') && !evt.id.toString().startsWith('cell-') && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onEdit(evt); }}
+                      className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5 shrink-0 opacity-0 group-hover:opacity-100"
+                    >
+                      Editar
+                    </button>
+                  )}
                 </div>
                 {evt.description && (
                    <div className="mt-4 pt-4 border-t border-white/5">

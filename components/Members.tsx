@@ -24,6 +24,8 @@ import { cellService } from '../services/cellService';
 import MemberModal from './MemberModal';
 import PageHeader from './Shared/PageHeader';
 import { useChurch } from '../contexts/ChurchContext';
+import { getAvatarUrl } from '../utils/avatarUtils';
+import { formatRoleLabel } from '../utils/formatUtils';
 const Members: React.FC<{ user: any }> = ({ user }) => {
   const { members, cells, loading, refreshData } = useChurch();
   const location = useLocation();
@@ -382,8 +384,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                     <div className="flex items-center gap-5">
                       <div className="relative">
                         <img 
-                          src={member.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`} 
-                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`; }}
+                          src={getAvatarUrl(member.fullName, member.avatarUrl)} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName, null); }}
                           alt="" 
                           className="w-14 h-14 rounded-full ring-2 ring-white/10 group-hover:ring-blue-600 transition-all shadow-xl object-cover aspect-square" 
                         />
@@ -402,7 +404,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                   <td className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                        {member.role}
+                        {formatRoleLabel(member.role, member.gender)}
                       </span>
                     </div>
                   </td>
@@ -465,8 +467,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative shrink-0">
                     <img 
-                      src={member.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`} 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=random`; }}
+                      src={getAvatarUrl(member.fullName, member.avatarUrl)} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName, null); }}
                       alt="" 
                       className="w-12 h-12 rounded-full ring-2 ring-white/10 shadow-xl object-cover aspect-square" 
                     />
@@ -484,8 +486,8 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
                 </div>
 
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-full border border-white/5">
-                    {member.role}
+                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                    {formatRoleLabel(member.role, member.gender)}
                   </span>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border ${member.stage === LadderStage.SEND ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
                     member.stage === LadderStage.DISCIPLE ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :

@@ -28,6 +28,8 @@ import { cellService } from '../../services/cellService';
 import { m12Service } from '../../services/m12Service';
 import MemberModal from '../MemberModal';
 import UpgradeModal from '../Shared/UpgradeModal';
+import { getAvatarUrl } from '../../utils/avatarUtils';
+import { formatRoleLabel } from '../../utils/formatUtils';
 
 const DEFAULT_STAGE_ACTIVITIES: Record<LadderStage, string[]> = {
   [LadderStage.WIN]: ['Sistema de Oração', 'Consolidação Inicial', 'Visita à Célula', 'Pré-Encontro'],
@@ -112,8 +114,8 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                 <div className="flex items-center gap-2">
                   <div className="relative">
                     <img 
-                      src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`; }}
+                      src={getAvatarUrl(member.fullName || member.name, member.avatarUrl || member.avatar)} 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(member.fullName || member.name, null); }}
                       className="w-8 h-8 rounded-full border border-white/10 object-cover aspect-square" 
                       alt="" 
                     />
@@ -122,7 +124,7 @@ const LadderColumn: React.FC<LadderColumnProps> = ({
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{member.name}</p>
+                    <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{member.fullName || member.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Clock size={10} className="text-zinc-500" />
                       <p className="text-[10px] text-zinc-500 font-medium">Há {Math.floor(Math.random() * 30)} dias nesta etapa</p>
@@ -277,7 +279,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
     
     return members.filter(m => {
       // 1. Search Filter
-      const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (m.fullName || m.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchesSearch) return false;
 
       // 2. Visibility Bypass for Admins
@@ -419,7 +421,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
               stage: member.stage,
               date: new Date().toISOString(),
               recordedBy: user.name,
-              notes: `Concluiu a etapa de ${member.stage.toLowerCase()} e avançou via Escada do Sucesso.`,
+              notes: `Concluiu a etapa de ${(member.stage || '').toLowerCase()} e avançou via Escada do Sucesso.`,
               milestones: member.completedMilestones || []
             }
           ]
@@ -448,7 +450,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
               stage: prevStage,
               date: new Date().toISOString(),
               recordedBy: user.name,
-              notes: `Retornou da etapa de ${member.stage.toLowerCase()} para ${prevStage.toLowerCase()}.`,
+              notes: `Retornou da etapa de ${(member.stage || '').toLowerCase()} para ${(prevStage || '').toLowerCase()}.`,
               milestones: []
             }
           ]
@@ -644,8 +646,8 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                       <div className="relative shrink-0">
                         <img 
-                          src={selectedMember.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name)}&background=random`} 
-                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || 'User')}&background=random`; }}
+                          src={getAvatarUrl(selectedMember.fullName || selectedMember.name, selectedMember.avatarUrl || selectedMember.avatar)} 
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(selectedMember.fullName || selectedMember.name, null); }}
                           className="w-32 h-32 rounded-full border-4 border-white/5 shadow-2xl object-cover" 
                           alt="" 
                         />
@@ -654,7 +656,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
                         </div>
                       </div>
                       <div className="flex-1 text-center md:text-left pt-2">
-                        <h4 className="text-4xl font-black text-white tracking-tighter uppercase mb-4 leading-none">{selectedMember.name}</h4>
+                        <h4 className="text-4xl font-black text-white tracking-tighter uppercase mb-4 leading-none">{selectedMember.fullName || selectedMember.name}</h4>
                         <div className="flex flex-wrap justify-center md:justify-start items-center gap-3">
                           <span className="px-4 py-1.5 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
                             Fase: {selectedMember.stage}
@@ -733,12 +735,13 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
                             return (
                               <>
                                 <img 
-                                  src={discipler?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(discipler?.name || 'D')}&background=random`}
+                                  src={getAvatarUrl(discipler?.fullName || discipler?.name || 'D', discipler?.avatarUrl || discipler?.avatar)}
+                                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(discipler?.fullName || discipler?.name || 'D', null); }}
                                   className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
                                   alt=""
                                 />
                                 <span className="text-sm font-black text-white uppercase truncate">
-                                  {discipler?.name || 'Não atribuído'}
+                                  {discipler?.fullName || discipler?.name || 'Não atribuído'}
                                 </span>
                               </>
                             );
@@ -755,12 +758,13 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
                             return (
                               <>
                                 <img 
-                                  src={pastor?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(pastor?.name || 'P')}&background=random`}
+                                  src={getAvatarUrl(pastor?.fullName || pastor?.name || 'P', pastor?.avatarUrl || pastor?.avatar)}
+                                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(pastor?.fullName || pastor?.name || 'P', null); }}
                                   className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform"
                                   alt=""
                                 />
                                 <span className="text-sm font-black text-white uppercase truncate">
-                                  {pastor?.name || 'Não atribuído'}
+                                  {pastor?.fullName || pastor?.name || 'Não atribuído'}
                                 </span>
                               </>
                             );

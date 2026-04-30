@@ -9,6 +9,8 @@ import { m12Service } from '../services/m12Service';
 import DynamicForm from './Shared/DynamicForm';
 import { maskCPF, maskPhone } from '../utils/masks';
 import { toDateInputValue } from '../utils/dateUtils';
+import { getAvatarUrl } from '../utils/avatarUtils';
+import { formatRoleLabel } from '../utils/formatUtils';
 
 interface MemberModalProps {
 	isOpen: boolean;
@@ -433,11 +435,11 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									>
 										{photoPreview || formData.avatar ? (
 											<>
-												<img 
-													src={photoPreview || (formData.avatar as string)} 
-													onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'User')}&background=random`; }}
-													className="w-full h-full object-cover" 
-													alt="Avatar" 
+												<img
+													src={getAvatarUrl(formData.fullName || formData.name, formData.avatarUrl || formData.avatar)}
+													onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(formData.fullName || formData.name, null); }}
+													className="w-full h-full object-cover"
+													alt="Avatar"
 												/>
 												<div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
 													<Camera className="text-white" size={24} />
@@ -830,9 +832,9 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												>
 													<option value="" className="bg-zinc-950">Selecione o Cônjuge</option>
 													{allMembers
-														.filter(m => m.id !== member?.id && (m.maritalStatus === 'Casado(a)' || m.marital_status === 'Casado(a)'))
+														.filter(m => m.id !== member?.id)
 														.map(m => (
-															<option key={m.id} value={m.id} className="bg-zinc-950">{m.fullName}</option>
+															<option key={m.id} value={m.id} className="bg-zinc-950">{m.fullName || (m as any).name}</option>
 														))}
 												</select>
 											</div>
