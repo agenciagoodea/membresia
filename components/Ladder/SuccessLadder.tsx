@@ -646,7 +646,7 @@ const SuccessLadder: React.FC<{ user: any }> = ({ user }) => {
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                       <div className="relative shrink-0">
                         <img 
-                          src={getAvatarUrl(selectedMember.fullName || selectedMember.name, selectedMember.avatarUrl || selectedMember.avatar)} 
+                          src={getAvatarUrl(selectedMember)} 
                           onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(selectedMember.fullName || selectedMember.name, null); }}
                           className="w-32 h-32 rounded-full border-4 border-white/5 shadow-2xl object-cover" 
                           alt="" 

@@ -21,6 +21,7 @@ import { LadderStage, Member, M12Activity, UserRole } from '../../types';
 import { memberService } from '../../services/memberService';
 import { m12Service } from '../../services/m12Service';
 import { cellService } from '../../services/cellService';
+import { getAvatarUrl } from '../../utils/avatarUtils';
 import DynamicForm from '../Shared/DynamicForm';
 
 const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
@@ -246,7 +247,7 @@ const MyM12Activities: React.FC<{ user: any }> = ({ user }) => {
                   
                   <div className="flex flex-col md:flex-row md:items-center gap-8 mb-12 relative z-10">
                     <div className="relative">
-                      <img src={selectedMember.avatar} className="w-28 h-28 rounded-[2.5rem] ring-4 ring-white/5 shadow-2xl object-cover" alt="" />
+                      <img src={getAvatarUrl(selectedMember)} className="w-28 h-28 rounded-[2.5rem] ring-4 ring-white/5 shadow-2xl object-cover" alt="" />
                       <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white border-4 border-zinc-900 shadow-lg">
                         <Target size={18} />
                       </div>

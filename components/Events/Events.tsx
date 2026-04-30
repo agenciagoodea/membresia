@@ -144,8 +144,12 @@ const Events = ({ user }: { user: any }) => {
 
   // Separa eventos futuros (ou hoje) dos passados
   const todayStr = new Date().toISOString().split('T')[0];
-  const upcomingEvents = events.filter(e => e.date >= todayStr);
-  const pastEvents = events.filter(e => e.date < todayStr).reverse(); // Mais recentes primeiro
+  const visibleEvents = events.filter(e => {
+    if (e.isPublished) return true;
+    return canManageEvent(e);
+  });
+  const upcomingEvents = visibleEvents.filter(e => e.date >= todayStr);
+  const pastEvents = visibleEvents.filter(e => e.date < todayStr).reverse(); // Mais recentes primeiro
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
@@ -166,7 +170,7 @@ const Events = ({ user }: { user: any }) => {
       </div>
 
       {/* Destaques / Eventos Especiais */}
-      {events.filter(e => e.isSpecial).length > 0 && (
+      {visibleEvents.filter(e => e.isSpecial).length > 0 && (
         <div className="relative group mb-12">
           <div className="flex items-center gap-3 mb-6">
             <Sparkles className="text-amber-400 animate-pulse" size={24} />
@@ -174,7 +178,7 @@ const Events = ({ user }: { user: any }) => {
           </div>
           
           <div className="overflow-hidden rounded-[2.5rem] bg-zinc-950 border border-white/5 shadow-2xl">
-            {events.filter(e => e.isSpecial).reduce((acc: any[], curr) => {
+            {visibleEvents.filter(e => e.isSpecial).reduce((acc: any[], curr) => {
                if (!acc.find(a => a.id === curr.id)) acc.push(curr);
                return acc;
             }, []).map((evt, idx) => (
@@ -232,19 +236,19 @@ const Events = ({ user }: { user: any }) => {
           }, []).length > 1 && (
             <>
               <button 
-                onClick={() => setFeaturedIndex(prev => (prev === 0 ? events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 : prev - 1))}
+                onClick={() => setFeaturedIndex(prev => (prev === 0 ? visibleEvents.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 : prev - 1))}
                 className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-zinc-800"
               >
                 <ChevronLeftIcon size={20} />
               </button>
               <button 
-                onClick={() => setFeaturedIndex(prev => (prev === events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 ? 0 : prev + 1))}
+                onClick={() => setFeaturedIndex(prev => (prev === visibleEvents.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).length - 1 ? 0 : prev + 1))}
                 className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-zinc-800"
               >
                 <ChevronRightIcon size={20} />
               </button>
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                {events.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).map((_, idx) => (
+                {visibleEvents.filter(e => e.isSpecial).reduce((acc: any[], curr) => { if (!acc.find(a => a.id === curr.id)) acc.push(curr); return acc; }, []).map((_, idx) => (
                   <div 
                     key={idx}
                     className={`h-1.5 rounded-full transition-all ${idx === featuredIndex ? 'w-8 bg-amber-500 shadow-lg shadow-amber-500/50' : 'w-2 bg-zinc-800'}`}
@@ -258,7 +262,7 @@ const Events = ({ user }: { user: any }) => {
 
       <div className="mb-10">
         <MonthlyAgenda 
-          events={events} 
+          events={visibleEvents} 
           user={user} 
           canEdit={canEdit}
           onEdit={openEditEvent}

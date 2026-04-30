@@ -715,7 +715,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 									</div>
 
 									<div className="space-y-2">
-										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Pastores</label>
+										<label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-2">Meu Pastor</label>
 										<div className="relative">
 											<Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
 											<select

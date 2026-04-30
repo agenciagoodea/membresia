@@ -25,6 +25,8 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
   const frequency = relevantReports.length > 0 ? (presentCount / relevantReports.length) * 100 : 0;
 
   const spouse = member.spouseId ? allMembers.find(m => m.id === member.spouseId) : null;
+  const pastor = member.pastorId ? allMembers.find(m => m.id === member.pastorId) : null;
+  const discipler = member.disciplerId ? allMembers.find(m => m.id === member.disciplerId) : null;
 
   const [activities, setActivities] = React.useState<M12Activity[]>([]);
   
@@ -218,6 +220,39 @@ const MemberProfileModal: React.FC<MemberProfileModalProps> = ({ isOpen, onClose
                   <div>
                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Origem</p>
                     <p className="text-sm font-black text-white uppercase">{member.origin}</p>
+                  </div>
+                </div>
+
+                {/* Seção de Cobertura */}
+                <div className="pt-4 border-t border-white/5 space-y-4">
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Minha Cobertura</p>
+                  
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-2xl border border-white/5">
+                      <img 
+                        src={getAvatarUrl(pastor)} 
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(pastor?.fullName || 'P', null); }}
+                        className="w-8 h-8 rounded-full object-cover" 
+                        alt="" 
+                      />
+                      <div>
+                        <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Meu Pastor</p>
+                        <p className="text-[10px] font-black text-white uppercase">{pastor?.fullName || pastor?.name || 'Não atribuído'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-2xl border border-white/5">
+                      <img 
+                        src={getAvatarUrl(discipler)} 
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = getAvatarUrl(discipler?.fullName || 'D', null); }}
+                        className="w-8 h-8 rounded-full object-cover" 
+                        alt="" 
+                      />
+                      <div>
+                        <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Meu Discipulador/Supervisor</p>
+                        <p className="text-[10px] font-black text-white uppercase">{discipler?.fullName || discipler?.name || 'Não atribuído'}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -29,7 +29,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
     responsible_pastor_id: '',
     coordinator_id: '',
     assistant_ids: [],
-    cell_ids: []
+    cell_ids: [],
+    is_special: false,
+    is_published: true
   });
   const [saving, setSaving] = useState(false);
   
@@ -62,7 +64,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
         responsible_pastor_id: '',
         coordinator_id: '',
         assistant_ids: [],
-        cell_ids: []
+        cell_ids: [],
+        is_special: false,
+        is_published: true
       });
       setPhotoPreview('');
     }
@@ -358,6 +362,43 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event,
                 rows={4}
                 className="w-full bg-zinc-900 border border-white/5 rounded-[2rem] p-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all resize-none font-medium"
               />
+            </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6 p-6 bg-zinc-900/50 rounded-[2rem] border border-white/5">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_special || false}
+                    onChange={e => setFormData({ ...formData, is_special: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-6 bg-zinc-800 rounded-full peer peer-checked:bg-amber-500 transition-all border border-white/10" />
+                  <div className="absolute left-1 top-1 w-4 h-4 bg-zinc-400 rounded-full peer-checked:translate-x-4 peer-checked:bg-white transition-all shadow-md" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Evento Especial</span>
+                  <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Aparecer em destaque na agenda</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_published !== false}
+                    onChange={e => setFormData({ ...formData, is_published: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-6 bg-zinc-800 rounded-full peer peer-checked:bg-blue-600 transition-all border border-white/10" />
+                  <div className="absolute left-1 top-1 w-4 h-4 bg-zinc-400 rounded-full peer-checked:translate-x-4 peer-checked:bg-white transition-all shadow-md" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Publicado</span>
+                  <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Visível para os membros</span>
+                </div>
+              </label>
             </div>
           </div>
 

@@ -187,7 +187,6 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
                   disabled={day === null}
                   onClick={() => {
                     setSelectedDate(dateStr);
-                    if (hasEvents) setIsDayPopupOpen(true);
                   }}
                   className={`
                     relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all border
@@ -330,61 +329,6 @@ const MonthlyAgenda: React.FC<MonthlyAgendaProps> = ({ events, user, canEdit, on
           </div>
         </div>
       </div>
-      {/* POPUP DE EVENTOS DO DIA */}
-      {isDayPopupOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsDayPopupOpen(false)} />
-          <div className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
-              <div>
-                <h4 className="text-xl font-black text-white tracking-tight uppercase">
-                  Eventos do Dia
-                </h4>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
-                  {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
-                </p>
-              </div>
-              <button onClick={() => setIsDayPopupOpen(false)} className="p-3 text-zinc-500 hover:text-white bg-white/5 rounded-2xl transition-all">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-hide">
-              {selectedDayEvents.map(evt => (
-                <div key={evt.id} className="p-6 bg-zinc-900 rounded-[2rem] border border-white/5 hover:border-blue-500/30 transition-all group">
-                  <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 shrink-0 border border-blue-500/20">
-                      <Clock size={24} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">{evt.time || 'Horário a definir'}</p>
-                      <h5 className="text-md font-black text-white uppercase tracking-tight mb-2">{evt.title}</h5>
-                      <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                        <MapPin size={12} className="shrink-0" /> {evt.location || 'Local a definir'}
-                      </div>
-                    </div>
-                  </div>
-                  {evt.description && (
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <p className="text-[10px] text-zinc-400 leading-relaxed italic">"{evt.description}"</p>
-                    </div>
-                  )}
-                  {evt.type === 'paid_event' && evt.publicLink && (
-                    <a 
-                      href={evt.publicLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
-                    >
-                      Fazer Inscrição
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
       <EventDetailsModal 
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}

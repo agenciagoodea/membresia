@@ -67,7 +67,7 @@ export const cellService = {
 			return [];
 		}
 
-		const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser?.role);
+		const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, UserRole.PASTOR].includes(currentUser?.role);
 		const myId = currentUser?.id;
 		const myCellId = currentUser?.cellId || currentUser?.cell_id;
 

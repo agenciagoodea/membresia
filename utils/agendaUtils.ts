@@ -118,7 +118,7 @@ export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_
       location: item.location,
       image_url: item.banner_url,
       type: 'paid_event',
-      isSpecial: true,
+      isSpecial: item.is_featured || false,
       publicLink: item.public_link,
       raw: item
     };
@@ -129,6 +129,7 @@ export const normalizeEventForAgenda = (item: any, type: 'church_event' | 'cell_
       ...item,
       type: 'church_event',
       isSpecial: item.is_special || false,
+      isPublished: item.is_published !== false,
       raw: item
     };
   }
