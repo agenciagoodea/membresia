@@ -87,9 +87,9 @@ export const cellService = {
 				// Fallback robusto se a RPC falhar
 				const ecosystemIds = await memberService.getEcosystemIds(myId);
 				let conditions = [
-					`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`,
-					`supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`,
-					`leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`
+					`pastor_id.in.(${ecosystemIds.join(',')})`,
+					`supervisor_id.in.(${ecosystemIds.join(',')})`,
+					`leader_id.in.(${ecosystemIds.join(',')})`
 				];
 				if (isUUID(myCellId)) conditions.push(`id.eq.${myCellId}`);
 				query = query.or(conditions.join(','));

@@ -30,7 +30,7 @@ export const eventService = {
         // 2. Pastor e Líder veem o que qualquer membro do ecossistema criou/responsável OU auxilia OU é para sua célula
         const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
         if (validEcosystemIds.length > 0) {
-          const ecosystemFilter = validEcosystemIds.map(id => `'${id}'`).join(',');
+          const ecosystemFilter = validEcosystemIds.join(',');
           const myCellId = currentUser.cellId || currentUser.cell_id;
           
           let orConditions = [
@@ -86,7 +86,7 @@ export const eventService = {
 
       if (!isAdmin) {
         const ecosystemIds = await memberService.getEcosystemIds(myId);
-        const ecosystemFilter = ecosystemIds.map(id => `'${id}'`).join(',');
+        const ecosystemFilter = ecosystemIds.join(',');
         query = query.or(`created_by.in.(${ecosystemFilter}),responsible_pastor_id.in.(${ecosystemFilter}),coordinator_id.in.(${ecosystemFilter}),assistant_ids.cs.{${myId}}`);
       }
     }

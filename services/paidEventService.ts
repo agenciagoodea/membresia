@@ -49,7 +49,7 @@ export const paidEventService = {
         // 2. Lógica: Vê o que criou, o que é do ecossistema OU o que está publicado na igreja
         let orConditions = `status.eq.published`;
         if (validEcosystemIds.length > 0) {
-          const ecosystemFilter = validEcosystemIds.map(id => `'${id}'`).join(',');
+          const ecosystemFilter = validEcosystemIds.join(',');
           orConditions += `,created_by.in.(${ecosystemFilter}),coordenador_id.in.(${ecosystemFilter})`;
         } else {
           orConditions += `,created_by.eq.${myId}`;

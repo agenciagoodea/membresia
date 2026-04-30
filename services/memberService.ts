@@ -188,7 +188,7 @@ export const memberService = {
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
-					.or(`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`);
+					.or(`pastor_id.in.(${ecosystemIds.join(',')}),leader_id.in.(${ecosystemIds.join(',')}),supervisor_id.in.(${ecosystemIds.join(',')})`);
 				
 				const allowedCellIds = (managedCells || []).map(c => c.id);
 				const myCellId = currentUser.cellId || currentUser.cell_id;
@@ -275,7 +275,7 @@ export const memberService = {
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
-					.or(`pastor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),leader_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')}),supervisor_id.in.(${ecosystemIds.map(id => `'${id}'`).join(',')})`);
+					.or(`pastor_id.in.(${ecosystemIds.join(',')}),leader_id.in.(${ecosystemIds.join(',')}),supervisor_id.in.(${ecosystemIds.join(',')})`);
 				
 				const allowedCellIds = (managedCells || []).map(c => c.id);
 				const myCellId = currentUser.cellId || currentUser.cell_id;
