@@ -42,7 +42,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
 
   const canManageMember = (member: Member) => {
     const myId = user.id || user.profile?.id;
-    const isAdmin = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.ADMINISTRADOR_IGREJA, 'ADMIN'].includes(user.role);
+    const isAdmin = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN].includes(user.role);
     const isMyPastorate = member.pastorId === myId || member.disciplerId === myId;
     const isSelf = member.id === myId;
 
@@ -66,7 +66,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
     // 1. Lógica de Visibilidade: Membros Pendentes são exclusivos
     if (m.status === MemberStatus.PENDING) {
       const isSupervisor = user.id === m.pastorId || user.id === m.disciplerId;
-      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, UserRole.ADMINISTRADOR_IGREJA, 'ADMIN'].includes(user.role);
+      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(user.role);
       if (!isSupervisor && !isAdmin) return false;
     }
 
@@ -97,8 +97,7 @@ const Members: React.FC<{ user: any }> = ({ user }) => {
 
   const availablePastors = members.filter(m => 
     m.role === UserRole.PASTOR || 
-    m.role === 'PASTOR' || 
-    m.role === 'ADMINISTRADOR_IGREJA'
+    m.role === UserRole.CHURCH_ADMIN
   ).sort((a, b) => a.name.localeCompare(b.name));
 
   const handleClearFilters = () => {

@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { ChurchEvent } from '../types';
+import { ChurchEvent, UserRole } from '../types';
 import { memberService } from './memberService';
 
 export const eventService = {
@@ -14,7 +14,7 @@ export const eventService = {
 
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
-      const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
       const myId = currentUser.id;
 
       if (!isAdmin) {
@@ -55,7 +55,7 @@ export const eventService = {
 
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
-      const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+      const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
       const myId = currentUser.id;
 
       if (!isAdmin) {

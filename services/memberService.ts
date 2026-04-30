@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Member, MemberStatus } from '../types';
+import { Member, MemberStatus, UserRole } from '../types';
 
 const mapToFrontend = (m: any): Member => ({
 	id: m.id,
@@ -134,7 +134,7 @@ export const memberService = {
 
 		// Aplicar Filtros de Hierarquia Pastoral (RBAC)
 		if (currentUser) {
-			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+			const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
 			const myId = currentUser.id;
 
 			if (!isAdmin) {
@@ -197,15 +197,18 @@ export const memberService = {
 			.or(`name.ilike.%${queryStr}%,email.ilike.%${queryStr}%`);
 
 		if (currentUser) {
-			const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser.role);
+			const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser.role);
 			const myId = currentUser.id;
 
 			if (!isAdmin) {
-				// Obter células sob gestão
+				// 1. Obter Ecossistema Recursivo
+				const ecosystemIds = await this.getEcosystemIds(myId);
+
+				// 2. Obter células ligadas
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
-					.or(`pastor_id.eq.${myId},leader_id.eq.${myId},leader_ids.cs.{${myId}},supervisor_id.eq.${myId}`);
+					.or(`pastor_id.in.(${ecosystemIds.join(',')}),leader_id.in.(${ecosystemIds.join(',')}),supervisor_id.in.(${ecosystemIds.join(',')})`);
 				
 				const allowedCellIds = (managedCells || []).map(c => c.id);
 				const myCellId = currentUser.cellId || currentUser.cell_id;
@@ -213,7 +216,8 @@ export const memberService = {
 					allowedCellIds.push(myCellId);
 				}
 
-				let filterStr = `id.eq.${myId},spouse_id.eq.${myId},pastor_id.eq.${myId},discipler_id.eq.${myId}`;
+				// 3. Filtro Unificado Recursivo
+				let filterStr = `id.in.(${ecosystemIds.join(',')}),spouse_id.eq.${myId}`;
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
 				}

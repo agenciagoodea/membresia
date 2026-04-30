@@ -690,9 +690,9 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
 														if (m.id === member?.id) return false;
-														const isLeader = m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === 'LEADER' || m.role === 'CELL_LEADER' || m.role === 'CELL_LEADER_DISCIPLE';
-														const isPastor = m.role === UserRole.PASTOR || m.role === 'PASTOR';
-														const isAdmin = m.role === UserRole.CHURCH_ADMIN || m.role === 'ADMIN' || m.role === 'CHURCH_ADMIN';
+														const isLeader = m.role === UserRole.CELL_LEADER_DISCIPLE;
+														const isPastor = m.role === UserRole.PASTOR;
+														const isAdmin = m.role === UserRole.CHURCH_ADMIN;
 														
 														if (formData.role === UserRole.PASTOR) return isAdmin;
 														return isLeader || isPastor || isAdmin;
@@ -717,8 +717,8 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, memb
 												{getDeduplicatedMembersOptions(
 													allMembers.filter(m => {
 														if (m.id === member?.id) return false;
-														const isPastor = m.role === UserRole.PASTOR || m.role === 'PASTOR';
-														const isAdmin = m.role === UserRole.CHURCH_ADMIN || m.role === 'ADMIN' || m.role === 'CHURCH_ADMIN';
+														const isPastor = m.role === UserRole.PASTOR;
+														const isAdmin = m.role === UserRole.CHURCH_ADMIN;
 														return isPastor || isAdmin;
 													})
 												).map(opt => (

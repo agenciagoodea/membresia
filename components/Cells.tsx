@@ -1400,7 +1400,7 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
             title="Rede de Células"
             subtitle={`Monitorando ${visibleCells.length} núcleos ativos.`}
             actions={
-              (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.PASTOR || user.role === 'PASTOR') && (
+              (user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN || user.role === UserRole.PASTOR) && (
                 <button
                   onClick={handleCreateCell}
                   className={`flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all shadow-xl w-full md:w-auto justify-center ${isLimitReached
@@ -1528,9 +1528,9 @@ const Cells: React.FC<{ user: any }> = ({ user }) => {
         onSave={handleSaveCell}
         cell={editingCell}
         availableLeaders={members.filter(m => {
-          const isLeaderRole = m.role === UserRole.CELL_LEADER_DISCIPLE || m.role === 'LEADER' || m.role === 'CELL_LEADER' || m.role === 'CELL_LEADER_DISCIPLE';
-          const isPastorRole = m.role === UserRole.PASTOR || m.role === 'PASTOR';
-          const isAdminRole = m.role === UserRole.CHURCH_ADMIN || m.role === 'ADMIN' || m.role === 'CHURCH_ADMIN';
+          const isLeaderRole = m.role === UserRole.CELL_LEADER_DISCIPLE;
+          const isPastorRole = m.role === UserRole.PASTOR;
+          const isAdminRole = m.role === UserRole.CHURCH_ADMIN;
           return isLeaderRole || isPastorRole || isAdminRole;
         })}
         allMembers={members}

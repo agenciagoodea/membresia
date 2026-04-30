@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Cell } from '../types';
+import { Cell, UserRole } from '../types';
 import { memberService } from './memberService';
 
 const mapToFrontend = (c: any): Cell => ({
@@ -61,13 +61,9 @@ const CELL_LIST_COLUMNS = 'id, name, leader_id, leader_ids, host_id, host_name, 
 
 export const cellService = {
 	async getAll(churchId: string, currentUser?: any) {
-		const isAdmin = ['CHURCH_ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR_IGREJA', 'ADMIN'].includes(currentUser?.role);
+		const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN].includes(currentUser?.role);
 		const myId = currentUser?.id;
 		const myCellId = currentUser?.cellId || currentUser?.cell_id;
-
-		console.log('[DEBUG RBAC] cellService.getAll - Iniciando busca');
-		console.log('[DEBUG RBAC] Usuário:', currentUser?.name, '| Role:', currentUser?.role, '| ID:', myId);
-		console.log('[DEBUG RBAC] Church ID:', churchId);
 
 		let query = supabase
 			.from('cells')
@@ -75,24 +71,23 @@ export const cellService = {
 			.eq('church_id', churchId);
 
 		if (currentUser && !isAdmin) {
-			// 1. Obter Ecossistema Recursivo via RPC
-			const ecosystemIds = await memberService.getEcosystemIds(myId);
+			console.log('[DEBUG RBAC] cellService.getAll - Chamando RPC get_cells_by_member_ecosystem');
+			const { data, error } = await supabase.rpc('get_cells_by_member_ecosystem', { root_member_id: myId });
 			
-			// 2. Construir filtro OR exaustivo baseado no ecossistema
-			let conditions = [
-				`pastor_id.in.(${ecosystemIds.join(',')})`,
-				`supervisor_id.in.(${ecosystemIds.join(',')})`,
-				`leader_id.in.(${ecosystemIds.join(',')})`
-			];
-
-			// 3. Adicionar ID da própria célula se necessário
-			if (myCellId) {
-				conditions.push(`id.eq.${myCellId}`);
+			if (error) {
+				console.error('[DEBUG RBAC] Erro na RPC de células:', error);
+				// Fallback para comportamento anterior se falhar
+				const ecosystemIds = await memberService.getEcosystemIds(myId);
+				let conditions = [
+					`pastor_id.in.(${ecosystemIds.join(',')})`,
+					`supervisor_id.in.(${ecosystemIds.join(',')})`,
+					`leader_id.in.(${ecosystemIds.join(',')})`
+				];
+				if (myCellId) conditions.push(`id.eq.${myCellId}`);
+				query = query.or(conditions.join(','));
+			} else {
+				return (data || []).map(mapToFrontend);
 			}
-
-			const filterStr = conditions.join(',');
-			console.log('[DEBUG RBAC] Aplicando filtro de ecossistema:', filterStr);
-			query = query.or(filterStr);
 		}
 
 		query = query.order('name');
