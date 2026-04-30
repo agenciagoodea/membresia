@@ -922,7 +922,7 @@ const Dashboard: React.FC<{ user: any, activeTab?: string }> = ({ user, activeTa
   }
 
   const role = user.role;
-  const mergedEvents = mergeAgendaItems(events, cells, meetingExceptions, user);
+  const mergedEvents = mergeAgendaItems(events, cells, meetingExceptions, [], user);
 
   switch (role) {
     case UserRole.MASTER_ADMIN:

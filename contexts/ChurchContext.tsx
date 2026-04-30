@@ -4,6 +4,7 @@ import { memberService } from '../services/memberService';
 import { cellService } from '../services/cellService';
 import { prayerService } from '../services/prayerService';
 import { eventService } from '../services/eventService';
+import { paidEventService } from '../services/paidEventService';
 import { cellMeetingService } from '../services/cellMeetingService';
 import { churchService } from '../services/churchService';
 
@@ -12,6 +13,7 @@ interface ChurchContextType {
   cells: Cell[];
   prayers: PrayerRequest[];
   events: any[];
+  paidEvents: any[];
   meetingExceptions: CellMeetingException[];
   church: any | null;
   loading: boolean;
@@ -25,6 +27,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   const [cells, setCells] = useState<Cell[]>([]);
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [paidEvents, setPaidEvents] = useState<any[]>([]);
   const [meetingExceptions, setMeetingExceptions] = useState<CellMeetingException[]>([]);
   const [church, setChurch] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
       setCells([]);
       setPrayers([]);
       setEvents([]);
+      setPaidEvents([]);
       setMeetingExceptions([]);
       setLoading(false);
       return;
@@ -75,6 +79,8 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
       if (!options?.partial || options.partial === 'events') {
         promises.push(eventService.getAll(churchId, user).catch(() => []));
         keys.push('events');
+        promises.push(paidEventService.getAll(churchId, user).catch(() => []));
+        keys.push('paidEvents');
       }
       if (!options?.partial || options.partial === 'exceptions') {
         promises.push(cellMeetingService.getExceptions(churchId).catch(() => []));
@@ -89,6 +95,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
         if (key === 'cells') setCells(data);
         if (key === 'prayers') setPrayers(data);
         if (key === 'events') setEvents(data);
+        if (key === 'paidEvents') setPaidEvents(data);
         if (key === 'exceptions') setMeetingExceptions(data);
       });
 
@@ -104,7 +111,7 @@ export const ChurchProvider: React.FC<{ children: React.ReactNode; user: any }> 
   }, [refreshData]);
 
   return (
-    <ChurchContext.Provider value={{ church, members, cells, prayers, events, meetingExceptions, loading, refreshData }}>
+    <ChurchContext.Provider value={{ church, members, cells, prayers, events, paidEvents, meetingExceptions, loading, refreshData }}>
       {children}
     </ChurchContext.Provider>
   );

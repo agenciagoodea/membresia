@@ -203,9 +203,14 @@ export const mergeAgendaItems = (
     }
   }
 
-  const cellMeetings = filteredCells.flatMap(cell => generateCellOccurrences(cell, exceptions)).map(e => normalizeEventForAgenda(e, 'cell_event'));
-  const normalizedChurchEvents = events.map(e => normalizeEventForAgenda(e, 'church_event'));
-  const normalizedPaidEvents = paidEvents.map(e => normalizeEventForAgenda(e, 'paid_event'));
+  const safeEvents = Array.isArray(events) ? events : [];
+  const safeCells = Array.isArray(cells) ? cells : [];
+  const safePaidEvents = Array.isArray(paidEvents) ? paidEvents : [];
+  const safeExceptions = Array.isArray(exceptions) ? exceptions : [];
+
+  const cellMeetings = filteredCells.flatMap(cell => generateCellOccurrences(cell, safeExceptions)).map(e => normalizeEventForAgenda(e, 'cell_event'));
+  const normalizedChurchEvents = safeEvents.map(e => normalizeEventForAgenda(e, 'church_event'));
+  const normalizedPaidEvents = safePaidEvents.map(e => normalizeEventForAgenda(e, 'paid_event'));
   
   // Combine
   const combined = [...normalizedChurchEvents, ...cellMeetings, ...normalizedPaidEvents];
