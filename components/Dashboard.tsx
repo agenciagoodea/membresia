@@ -43,6 +43,30 @@ import MemberProfileModal from './MemberProfileModal';
 import { supabase } from '../services/supabaseClient';
 import { getAvatarUrl } from '../utils/avatarUtils';
 import { getRoleLabel } from '../utils/roleUtils';
+import EventDetailsModal from './Events/EventDetailsModal';
+
+/**
+ * Formata nomes de líderes de forma segura para evitar "& undefined"
+ */
+const formatLeaderNames = (leaderId: string | null, leaderIds: string[] | null, members: Member[]): string => {
+  const getMemberName = (id: string | null) => {
+    if (!id) return null;
+    const m = members.find(member => member.id === id);
+    return m ? m.fullName || m.name : null;
+  };
+
+  const mainLeaderName = getMemberName(leaderId);
+  const otherLeaderNames = (leaderIds || [])
+    .filter(id => id !== leaderId)
+    .map(getMemberName)
+    .filter(name => !!name);
+
+  const allNames = [mainLeaderName, ...otherLeaderNames].filter(name => !!name);
+  
+  if (allNames.length === 0) return 'Sem líder cadastrado';
+  if (allNames.length === 1) return allNames[0] as string;
+  return allNames.join(' & ');
+};
 
 // Componentes Auxiliares
 const PageHeader = React.memo(({ title, subtitle, actions }: { title: string, subtitle: string, actions?: React.ReactNode }) => (
@@ -210,65 +234,11 @@ const DashboardEventsWidget = ({ events }: { events: any[] }) => {
       </div>
 
       {selectedEvent && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedEvent(null)} />
-          <div className="relative w-full max-w-lg bg-zinc-950 rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 z-10 p-3 text-zinc-500 hover:text-white bg-black/40 backdrop-blur-md rounded-2xl transition-all border border-white/5">
-              <X size={20} />
-            </button>
-
-            {selectedEvent.image_url && (
-              <div className="w-full aspect-video overflow-hidden">
-                <img src={selectedEvent.image_url} className="w-full h-full object-cover" alt="" />
-              </div>
-            )}
-
-            <div className="p-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                  Evento da Agenda
-                </div>
-              </div>
-
-              <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-8 leading-none">
-                {selectedEvent.title}
-              </h3>
-
-              <div className="grid grid-cols-2 gap-6 mb-10">
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <Calendar size={12} className="text-amber-500" /> Data do Evento
-                  </p>
-                  <p className="text-lg font-black text-white">
-                    {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()}, {new Date(selectedEvent.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <Clock size={12} className="text-amber-500" /> Horário
-                  </p>
-                  <p className="text-lg font-black text-white">{selectedEvent.time || '00:00'}</p>
-                </div>
-              </div>
-
-              {selectedEvent.location && (
-                <div className="bg-white/5 p-8 rounded-3xl border border-white/5 mb-10">
-                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <MapPin size={14} className="text-rose-500" /> Localização
-                  </p>
-                  <p className="text-sm font-bold text-zinc-300 uppercase leading-relaxed">{selectedEvent.location}</p>
-                </div>
-              )}
-
-              {selectedEvent.description && (
-                <div className="border-t border-white/5 pt-8">
-                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Sobre o Evento</p>
-                  <p className="text-sm text-zinc-400 font-medium leading-relaxed italic">{selectedEvent.description}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <EventDetailsModal
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          event={selectedEvent}
+        />
       )}
     </div>
   );
@@ -586,8 +556,7 @@ Esperamos por você! Vai ser um tempo precioso! \uD83D\uDD25`;
               <div className="bg-black/20 p-3.5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
                 <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[0.2em] mb-1.5">Líderes Atuais</p>
                 <p className="text-zinc-300 text-[10px] font-bold uppercase tracking-widest leading-relaxed line-clamp-2">
-                  {getMemberName(primaryLeadingCell.leaderId)}
-                  {primaryLeadingCell.leaderIds?.filter(id => id !== primaryLeadingCell.leaderId).map(id => ` & ${getMemberName(id)}`).join('')}
+                  {formatLeaderNames(primaryLeadingCell.leaderId, primaryLeadingCell.leaderIds || null, members)}
                 </p>
               </div>
             </div>
