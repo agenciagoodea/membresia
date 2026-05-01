@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { saasService, SaasPaymentLog } from '../../services/saasService';
 
-const SaAIPaymentLogsTab: React.FC = () => {
+const SaaSPaymentLogsTab: React.FC = () => {
   const [logs, setLogs] = useState<SaasPaymentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: '', church: '', plan: '' });

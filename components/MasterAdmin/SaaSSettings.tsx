@@ -5,8 +5,8 @@ import SaaSProfileTab from './SaaSProfileTab';
 import SaaSEmailTab from './SaaSEmailTab';
 import SaaSPaymentTab from './SaaSPaymentTab';
 import SaaSThemeTab from './SaaSThemeTab';
-import SaAITab from './SaAITab';
-import SaAIPaymentLogsTab from './SaAIPaymentLogsTab';
+import SaaSAITab from './SaAITab';
+import SaaSPaymentLogsTab from './SaAIPaymentLogsTab';
 import SaaSWebhookLogsTab from './SaaSWebhookLogsTab';
 
 const TABS = [
@@ -42,7 +42,7 @@ const SaaSSettings: React.FC<{ user: any }> = ({ user }) => {
           {activeTab === 'profile' && <SaaSProfileTab user={user} />}
           {activeTab === 'email' && <SaaSEmailTab />}
           {activeTab === 'payments' && <SaaSPaymentTab />}
-          {activeTab === 'payment_logs' && <SaAIPaymentLogsTab />}
+          {activeTab === 'payment_logs' && <SaaSPaymentLogsTab />}
           {activeTab === 'webhook_logs' && <SaaSWebhookLogsTab />}
           {activeTab === 'ia' && <SaaSAITab />}
           {activeTab === 'theme' && <SaaSThemeTab />}
