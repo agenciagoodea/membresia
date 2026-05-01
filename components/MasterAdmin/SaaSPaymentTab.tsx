@@ -78,119 +78,131 @@ const SaaSPaymentTab: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-zinc-950/50 p-8 rounded-[2rem] border border-white/5 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className={lbl}>Ambiente</label>
-                <select value={s.environment} onChange={e => setS({...s, environment: e.target.value as any})} className={inp + ' cursor-pointer'}>
-                  <option value="sandbox">🧪 Sandbox (Ambiente de Testes)</option>
-                  <option value="production">🚀 Produção (Dinheiro Real)</option>
-                </select>
-              </div>
-              <div>
-                <label className={lbl}>Application ID *</label>
-                <input value={s.mercado_pago_application_id || ''} onChange={e => setS({...s, mercado_pago_application_id: e.target.value})} className={inp} placeholder="Ex: 123456789" />
-              </div>
-            </div>
-
-            <div>
-              <label className={lbl}>Public Key *</label>
-              <input value={s.mercado_pago_public_key || ''} onChange={e => setS({...s, mercado_pago_public_key: e.target.value})} className={inp} placeholder="APP_USR-..." />
-            </div>
-
-            <div>
-              <label className={lbl}>Access Token *</label>
-              <input type="password" value={s.mercado_pago_access_token || ''} onChange={e => setS({...s, mercado_pago_access_token: e.target.value})} className={inp} placeholder="APP_USR-..." />
-            </div>
-
-            <div>
-              <label className={lbl}>Webhook Secret Key</label>
-              <input value={s.mercado_pago_webhook_secret || ''} onChange={e => setS({...s, mercado_pago_webhook_secret: e.target.value})} className={inp} placeholder="Chave de validação do Webhook (opcional)" />
-            </div>
-
-            <div className="p-4 bg-zinc-900 border border-white/5 rounded-xl flex items-center justify-between">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={s.status === 'ativo'} onChange={e => setS({...s, status: e.target.checked ? 'ativo' : 'inativo'})} className="w-5 h-5 accent-emerald-500 rounded" />
-                <span className="text-sm font-bold text-white">Integração Ativa</span>
-              </label>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${s.status === 'ativo' ? 'text-emerald-400' : 'text-zinc-600'}`}>{s.status === 'ativo' ? '● ATIVO' : '○ INATIVO'}</span>
-            </div>
+      {/* Switch Ativação no Topo */}
+      <div className="bg-zinc-950/50 p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-emerald-500/20 transition-all">
+        <div className="flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${s.status === 'ativo' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-500'}`}>
+            <Wifi size={20} />
           </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Status da Integração</h3>
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Habilitar checkout Mercado Pago</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setS({...s, status: s.status === 'ativo' ? 'inativo' : 'ativo'})}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${s.status === 'ativo' ? 'bg-emerald-600' : 'bg-zinc-700'}`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${s.status === 'ativo' ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-end">
-            <button onClick={handleTest} disabled={testing || !s.mercado_pago_access_token}
-              className="flex items-center justify-center gap-2 px-6 py-4 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-2xl transition-all disabled:opacity-30 border border-white/5">
-              {testing ? <RefreshCw className="animate-spin" size={16} /> : <Wifi size={16} />} {testing ? 'Testando...' : 'Testar Conexão'}
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20">
-              {saving ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />} {saving ? 'Salvar Credenciais' : 'Salvar Credenciais'}
-            </button>
+      <div className="bg-zinc-950/50 p-8 rounded-[2rem] border border-white/5 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <label className={lbl}>Ambiente</label>
+            <select value={s.environment} onChange={e => setS({...s, environment: e.target.value as any})} className={inp + ' cursor-pointer'}>
+              <option value="sandbox">🧪 Sandbox (Ambiente de Testes)</option>
+              <option value="production">🚀 Produção (Dinheiro Real)</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Application ID *</label>
+            <input value={s.mercado_pago_application_id || ''} onChange={e => setS({...s, mercado_pago_application_id: e.target.value})} className={inp} placeholder="Ex: 123456789" />
+          </div>
+          <div>
+            <label className={lbl}>Public Key *</label>
+            <input value={s.mercado_pago_public_key || ''} onChange={e => setS({...s, mercado_pago_public_key: e.target.value})} className={inp} placeholder="APP_USR-..." />
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Informações da Conta */}
-          <div className="bg-zinc-950/50 p-8 rounded-[2rem] border border-white/5">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-blue-500" /> Informações da Conta
-            </h3>
-            {accountData ? (
-              <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className={lbl}>Access Token *</label>
+            <input type="password" value={s.mercado_pago_access_token || ''} onChange={e => setS({...s, mercado_pago_access_token: e.target.value})} className={inp} placeholder="APP_USR-..." />
+          </div>
+          <div>
+            <label className={lbl}>Webhook Secret Key</label>
+            <input value={s.mercado_pago_webhook_secret || ''} onChange={e => setS({...s, mercado_pago_webhook_secret: e.target.value})} className={inp} placeholder="Chave de validação do Webhook (opcional)" />
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <button onClick={handleTest} disabled={testing || !s.mercado_pago_access_token}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-2xl transition-all disabled:opacity-30 border border-white/5">
+            {testing ? <RefreshCw className="animate-spin" size={16} /> : <Wifi size={16} />} {testing ? 'Testando Conexão...' : 'Testar Conexão'}
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20">
+            {saving ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />} {saving ? 'Salvando...' : 'Salvar Credenciais'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Informações da Conta */}
+        <div className="bg-zinc-950/50 p-8 rounded-[2rem] border border-white/5 h-full">
+          <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-blue-500" /> Informações da Conta
+          </h3>
+          {accountData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Vendedor</p>
-                  <p className="text-sm font-bold text-white">{accountData.nickname}</p>
+                  <p className="text-sm font-bold text-white truncate">{accountData.nickname}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">ID da Conta</p>
                   <p className="text-sm font-bold text-white">{accountData.id}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">E-mail</p>
-                  <p className="text-sm font-bold text-white truncate">{accountData.email}</p>
-                </div>
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Site ID</p>
-                    <p className="text-sm font-bold text-white">{accountData.site_id}</p>
-                  </div>
-                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black rounded-full border border-emerald-500/20">
-                    {accountData.status}
-                  </span>
-                </div>
               </div>
-            ) : (
-              <p className="text-xs text-zinc-600 italic">Teste a conexão para ver os dados da conta vinculada.</p>
-            )}
-          </div>
+              <div>
+                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">E-mail</p>
+                <p className="text-sm font-bold text-white truncate">{accountData.email}</p>
+              </div>
+              <div className="flex justify-between items-end pt-2">
+                <div>
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Site ID</p>
+                  <p className="text-sm font-bold text-white">{accountData.site_id}</p>
+                </div>
+                <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-black rounded-full border border-emerald-500/20">
+                  {accountData.status}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
+                <WifiOff className="text-zinc-700" size={24} />
+              </div>
+              <p className="text-xs text-zinc-600 italic">Teste a conexão para visualizar os dados da conta vinculada.</p>
+            </div>
+          )}
+        </div>
 
-          {/* Instruções */}
-          <div className="bg-blue-600/5 border border-blue-500/10 p-8 rounded-[2rem]">
-            <h3 className="text-sm font-black text-blue-400 uppercase tracking-widest mb-4">Instruções</h3>
-            <ul className="space-y-3 text-[11px] text-zinc-400 font-medium leading-relaxed">
-              <li className="flex gap-2">
-                <span className="text-blue-500">•</span>
-                Acesse o <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" className="text-blue-400 hover:underline">Painel do Desenvolvedor</a>.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-500">•</span>
-                Crie ou selecione sua aplicação.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-500">•</span>
-                Copie as credenciais da aba "Credenciais de Produção" ou "Teste".
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-500">•</span>
-                Configure a URL de Webhook: <br/>
-                <code className="bg-black px-2 py-1 rounded mt-1 block text-[10px] text-zinc-300">
-                  {window.location.origin}/api/webhooks/mercadopago
-                </code>
-              </li>
-            </ul>
-          </div>
+        {/* Instruções */}
+        <div className="bg-blue-600/5 border border-blue-500/10 p-8 rounded-[2rem] h-full">
+          <h3 className="text-sm font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <AlertCircle size={16} /> Instruções de Configuração
+          </h3>
+          <ul className="space-y-4 text-[11px] text-zinc-400 font-medium leading-relaxed">
+            <li className="flex gap-3">
+              <span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">1</span>
+              Acesse o <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" className="text-blue-400 hover:underline inline-flex items-center gap-1">Painel MP Developers</a>.
+            </li>
+            <li className="flex gap-3">
+              <span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">2</span>
+              Selecione sua aplicação e copie as credenciais de produção ou sandbox.
+            </li>
+            <li className="flex gap-3">
+              <span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">3</span>
+              Configure o Webhook abaixo para receber notificações de pagamento:
+            </li>
+            <div className="bg-black/40 border border-white/5 p-3 rounded-xl font-mono text-[10px] text-zinc-300 break-all">
+              {window.location.origin}/api/webhooks/mercadopago
+            </div>
+          </ul>
         </div>
       </div>
     </div>

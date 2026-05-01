@@ -39,7 +39,7 @@ const SaaSSettings: React.FC<{ user: any }> = ({ user }) => {
           {activeTab === 'profile' && <SaaSProfileTab user={user} />}
           {activeTab === 'email' && <SaaSEmailTab />}
           {activeTab === 'payments' && <SaaSPaymentTab />}
-          {activeTab === 'ia' && <SaAITab />}
+          {activeTab === 'ia' && <SaaSAITab />}
           {activeTab === 'theme' && <SaaSThemeTab />}
         </div>
       </div>
