@@ -21,6 +21,7 @@ const mapToFrontend = (p: any) => ({
 	maxCells: p.max_cells,
 	maxLeaders: p.max_leaders,
 	features: Array.isArray(p.features) ? p.features : JSON.parse(p.features || '[]'),
+	churchCount: p.churches?.[0]?.count || 0
 });
 
 const mapToDb = (p: any) => ({
@@ -36,7 +37,10 @@ export const planService = {
 	async list() {
 		const { data, error } = await supabase
 			.from('plans')
-			.select('*')
+			.select(`
+				*,
+				churches:churches(count)
+			`)
 			.order('price', { ascending: true });
 
 		if (error) throw error;

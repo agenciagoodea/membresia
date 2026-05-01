@@ -18,8 +18,9 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
-import { PlanType, PlanLimits } from '../../types';
 import { planService } from '../../services/planService';
+import { saasService } from '../../services/saasService';
+import { supabase } from '../../services/supabaseClient';
 import PageHeader from '../Shared/PageHeader';
 
 const FEATURE_OPTIONS = [
@@ -229,7 +230,12 @@ const PlanModal = ({
   );
 };
 
-const PlanCard: React.FC<{ plan: any; onEdit: () => void; onDelete: () => void }> = ({ plan, onEdit, onDelete }) => (
+const PlanCard: React.FC<{ 
+  plan: any; 
+  onEdit: () => void; 
+  onDelete: () => void;
+  onTestCheckout: (planId: string) => void;
+}> = ({ plan, onEdit, onDelete, onTestCheckout }) => (
   <div className="bg-zinc-900 rounded-[2.5rem] border border-white/5 p-10 shadow-2xl hover:bg-zinc-800 transition-all group relative overflow-hidden flex flex-col h-full">
     {plan.name === 'ENTERPRISE' && (
       <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -260,7 +266,12 @@ const PlanCard: React.FC<{ plan: any; onEdit: () => void; onDelete: () => void }
     </div>
 
     <div className="mb-8">
-      <h3 className="text-xl font-black text-white tracking-tighter uppercase mb-2">{plan.name}</h3>
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-xl font-black text-white tracking-tighter uppercase">{plan.name}</h3>
+        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${plan.churchCount > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}>
+          {plan.churchCount} {plan.churchCount === 1 ? 'igreja' : 'igrejas'}
+        </span>
+      </div>
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-black text-white">R$ {plan.price}</span>
         <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">/ mês</span>
@@ -298,6 +309,18 @@ const PlanCard: React.FC<{ plan: any; onEdit: () => void; onDelete: () => void }
       {plan.features.length > 5 && (
         <p className="text-[9px] text-zinc-600 font-black uppercase mt-2">+{plan.features.length - 5} recursos inclusos</p>
       )}
+    </div>
+
+    <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 gap-3">
+      <button 
+        onClick={() => onTestCheckout(plan.id)}
+        className="flex items-center justify-center gap-2 py-3 bg-zinc-950 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all"
+      >
+        <CreditCard size={12} /> Testar Checkout
+      </button>
+      <button className="flex items-center justify-center gap-2 py-3 bg-zinc-950 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-800 transition-all">
+        <RefreshCw size={12} /> Sincronizar
+      </button>
     </div>
   </div>
 );
@@ -356,6 +379,25 @@ const PlansManager: React.FC = () => {
     } catch (error) {
       console.error('Erro ao excluir plano:', error);
       alert('Não foi possível excluir o plano.');
+    }
+  };
+
+  const handleTestCheckout = async (planId: string) => {
+    try {
+      // Buscar a primeira igreja para teste
+      const { data: churches } = await supabase.from('churches').select('id').limit(1);
+      if (!churches || churches.length === 0) {
+        alert('Nenhuma igreja encontrada para testar o checkout.');
+        return;
+      }
+
+      const checkout = await saasService.createCheckout(planId, churches[0].id);
+      if (checkout?.init_point) {
+        window.open(checkout.init_point, '_blank');
+      }
+    } catch (err: any) {
+      console.error('Erro ao criar checkout:', err);
+      alert('Erro ao gerar link de pagamento: ' + err.message);
     }
   };
 
@@ -433,6 +475,7 @@ const PlansManager: React.FC = () => {
               plan={plan}
               onEdit={() => handleEditPlan(plan)}
               onDelete={() => handleDeletePlan(plan.id)}
+              onTestCheckout={handleTestCheckout}
             />
           ))}
 

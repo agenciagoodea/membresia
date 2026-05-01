@@ -45,6 +45,50 @@ export interface SaasPaymentSettings {
   status?: string;
 }
 
+export interface SaasSubscription {
+  id: string;
+  church_id: string;
+  plan_id: string;
+  status: 'active' | 'pending' | 'canceled' | 'expired' | 'past_due' | 'trialing';
+  current_period_start: string;
+  current_period_end: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SaasPaymentLog {
+  id: string;
+  church_id?: string;
+  plan_id?: string;
+  subscription_id?: string;
+  amount: number;
+  currency: string;
+  payment_method?: string;
+  status: string;
+  mercado_pago_payment_id?: string;
+  mercado_pago_preference_id?: string;
+  external_reference?: string;
+  raw_response?: any;
+  created_at: string;
+  church?: { name: string };
+  plan?: { name: string };
+}
+
+export interface SaasWebhookLog {
+  id: string;
+  provider: string;
+  event_type?: string;
+  action?: string;
+  payment_id?: string;
+  external_reference?: string;
+  status: 'received' | 'processed' | 'error' | 'ignored';
+  payload: any;
+  headers: any;
+  processed_at?: string;
+  error_message?: string;
+  created_at: string;
+}
+
 export interface SaasAiSettings {
   id?: string;
   provider: string;
@@ -209,5 +253,58 @@ export const saasService = {
       console.error('testMercadoPagoConnection:', e);
       return { ok: false, message: e.message || 'Erro ao testar conexão.' }; 
     }
+  },
+
+  // === AUDITORIA E LOGS ===
+  async getPaymentLogs(filters?: { status?: string; church_id?: string }) {
+    let query = supabase
+      .from('payment_logs')
+      .select(`
+        *,
+        church:churches(name),
+        plan:plans(name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.church_id) query = query.eq('church_id', filters.church_id);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as SaasPaymentLog[];
+  },
+
+  async getWebhookLogs() {
+    const { data, error } = await supabase
+      .from('webhook_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return data as SaasWebhookLog[];
+  },
+
+  async getSubscriptions() {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select(`
+        *,
+        church:churches(name),
+        plan:plans(name)
+      `)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async createCheckout(planId: string, churchId: string) {
+    const { data, error } = await supabase.functions.invoke('create-plan-checkout', {
+      body: { planId, churchId }
+    });
+
+    if (error) throw error;
+    return data;
   }
 };

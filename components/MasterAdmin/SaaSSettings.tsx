@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { User, Mail, CreditCard, Palette } from 'lucide-react';
+import { User, Mail, CreditCard, Palette, Sparkles, History, Activity } from 'lucide-react';
 import PageHeader from '../Shared/PageHeader';
 import SaaSProfileTab from './SaaSProfileTab';
 import SaaSEmailTab from './SaaSEmailTab';
 import SaaSPaymentTab from './SaaSPaymentTab';
 import SaaSThemeTab from './SaaSThemeTab';
-import SaaSAITab from './SaAITab';
-import { Sparkles } from 'lucide-react';
+import SaAITab from './SaAITab';
+import SaAIPaymentLogsTab from './SaAIPaymentLogsTab';
+import SaaSWebhookLogsTab from './SaaSWebhookLogsTab';
 
 const TABS = [
   { id: 'profile', label: 'Meu Perfil', icon: <User size={18} /> },
   { id: 'email', label: 'Email', icon: <Mail size={18} /> },
   { id: 'payments', label: 'Mercado Pago', icon: <CreditCard size={18} /> },
+  { id: 'payment_logs', label: 'Histórico Fin.', icon: <History size={18} /> },
+  { id: 'webhook_logs', label: 'Webhooks', icon: <Activity size={18} /> },
   { id: 'ia', label: 'IA (Células)', icon: <Sparkles size={18} /> },
   { id: 'theme', label: 'Tema do Site', icon: <Palette size={18} /> },
 ];
@@ -39,6 +42,8 @@ const SaaSSettings: React.FC<{ user: any }> = ({ user }) => {
           {activeTab === 'profile' && <SaaSProfileTab user={user} />}
           {activeTab === 'email' && <SaaSEmailTab />}
           {activeTab === 'payments' && <SaaSPaymentTab />}
+          {activeTab === 'payment_logs' && <SaAIPaymentLogsTab />}
+          {activeTab === 'webhook_logs' && <SaaSWebhookLogsTab />}
           {activeTab === 'ia' && <SaaSAITab />}
           {activeTab === 'theme' && <SaaSThemeTab />}
         </div>
