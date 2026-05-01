@@ -5,11 +5,14 @@ import SaaSProfileTab from './SaaSProfileTab';
 import SaaSEmailTab from './SaaSEmailTab';
 import SaaSPaymentTab from './SaaSPaymentTab';
 import SaaSThemeTab from './SaaSThemeTab';
+import SaaSAITab from './SaAITab';
+import { Sparkles } from 'lucide-react';
 
 const TABS = [
   { id: 'profile', label: 'Meu Perfil', icon: <User size={18} /> },
   { id: 'email', label: 'Email', icon: <Mail size={18} /> },
   { id: 'payments', label: 'Mercado Pago', icon: <CreditCard size={18} /> },
+  { id: 'ia', label: 'IA (Células)', icon: <Sparkles size={18} /> },
   { id: 'theme', label: 'Tema do Site', icon: <Palette size={18} /> },
 ];
 
@@ -36,6 +39,7 @@ const SaaSSettings: React.FC<{ user: any }> = ({ user }) => {
           {activeTab === 'profile' && <SaaSProfileTab user={user} />}
           {activeTab === 'email' && <SaaSEmailTab />}
           {activeTab === 'payments' && <SaaSPaymentTab />}
+          {activeTab === 'ia' && <SaAITab />}
           {activeTab === 'theme' && <SaaSThemeTab />}
         </div>
       </div>

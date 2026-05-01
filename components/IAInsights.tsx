@@ -16,6 +16,8 @@ import {
   Terminal
 } from 'lucide-react';
 import { generatePastoralInsight, generateSermonDraft } from '../services/geminiService';
+import { saasService } from '../services/saasService';
+import { useEffect } from 'react';
 
 const IAInsights: React.FC<{ user: any }> = ({ user }) => {
   const [loadingInsight, setLoadingInsight] = useState(false);
@@ -23,8 +25,20 @@ const IAInsights: React.FC<{ user: any }> = ({ user }) => {
   const [insight, setInsight] = useState<string | null>(null);
   const [sermon, setSermon] = useState<string | null>(null);
   const [theme, setTheme] = useState('');
+  const [aiActive, setAiActive] = useState<boolean | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    saasService.getAiSettings().then(settings => {
+      setAiActive(settings?.active || false);
+    }).catch(e => {
+      console.error('Check AI active:', e);
+      setAiActive(false);
+    }).finally(() => setLoadingSettings(false));
+  }, []);
 
   const handleGenerateInsight = async () => {
+    if (!aiActive) return;
     setLoadingInsight(true);
     const churchName = user.church_name || user.churchName || 'Sua Igreja';
     const context = `Igreja: ${churchName}. O pastor deseja 3 estratégias de expansão baseadas no crescimento do Reino.`;
@@ -35,7 +49,7 @@ const IAInsights: React.FC<{ user: any }> = ({ user }) => {
 
   const handleGenerateSermon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!theme) return;
+    if (!theme || !aiActive) return;
     setLoadingSermon(true);
     const result = await generateSermonDraft(theme);
     setSermon(result || 'Erro ao gerar esboço');
@@ -52,10 +66,24 @@ const IAInsights: React.FC<{ user: any }> = ({ user }) => {
           <p className="text-zinc-500 font-medium text-lg italic">Inteligência Artificial generativa aplicada ao crescimento do Reino.</p>
         </div>
         <div className="bg-zinc-900 border border-white/5 px-6 py-3 rounded-2xl flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Gemini Engine Online</span>
+          <div className={`w-2 h-2 rounded-full ${aiActive ? 'bg-emerald-500 animate-ping' : 'bg-red-500'}`} />
+          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+            {aiActive ? 'Gemini Engine Online' : 'IA Offline'}
+          </span>
         </div>
       </div>
+
+      {!loadingSettings && aiActive === false && (
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-[2rem] flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+          <div className="p-3 bg-red-500/20 text-red-500 rounded-xl">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <h4 className="text-white font-bold">Módulo de IA Inativo</h4>
+            <p className="text-zinc-400 text-sm">O administrador mestre precisa configurar a chave de API e ativar o módulo em <strong>Configurações SaaS &gt; IA</strong>.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Pastoral Strategic Insights */}

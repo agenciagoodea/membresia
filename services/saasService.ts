@@ -38,10 +38,20 @@ export interface SaasPaymentSettings {
   id?: string;
   mercado_pago_public_key?: string;
   mercado_pago_access_token?: string;
+  mercado_pago_application_id?: string;
   mercado_pago_webhook_secret?: string;
   environment?: 'sandbox' | 'production';
   checkout_type?: string;
   status?: string;
+}
+
+export interface SaasAiSettings {
+  id?: string;
+  provider: string;
+  api_key?: string;
+  model: string;
+  active: boolean;
+  updated_at?: string;
 }
 
 export interface TermsVersion {
@@ -123,6 +133,31 @@ export const saasService = {
     return data;
   },
 
+  // === IA ===
+  async getAiSettings(): Promise<SaasAiSettings | null> {
+    const { data, error } = await supabase.from('saas_ai_settings').select('*').eq('id', FIXED_ID).maybeSingle();
+    if (error) { console.error('getAiSettings:', error); throw error; }
+    return data;
+  },
+  async updateAiSettings(settings: Partial<SaasAiSettings>): Promise<SaasAiSettings> {
+    const payload = sanitize({ ...settings, id: FIXED_ID, updated_at: new Date().toISOString() });
+    const { data, error } = await supabase.from('saas_ai_settings').upsert(payload, { onConflict: 'id' }).select().single();
+    if (error) { console.error('updateAiSettings:', error); throw error; }
+    return data;
+  },
+  async testAiConnection(provider: string, apiKey: string, model: string): Promise<{ ok: boolean; message: string }> {
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-connection', {
+        body: { provider, apiKey, model }
+      });
+      if (error) throw error;
+      return { ok: data.ok, message: data.message };
+    } catch (e: any) {
+      console.error('testAiConnection:', e);
+      return { ok: false, message: e.message || 'Erro ao testar conexão com IA.' };
+    }
+  },
+
   // === TERMS ===
   async getTermsHistory(): Promise<TermsVersion[]> {
     const { data, error } = await supabase.from('terms_versions').select('*').order('created_at', { ascending: false });
@@ -159,15 +194,20 @@ export const saasService = {
   },
 
   // === TESTE MERCADO PAGO ===
-  async testMercadoPagoConnection(): Promise<{ ok: boolean; message: string }> {
-    const settings = await this.getPaymentSettings();
-    if (!settings?.mercado_pago_access_token) return { ok: false, message: 'Access Token não configurado.' };
+  async testMercadoPagoConnection(): Promise<{ ok: boolean; message: string; data?: any }> {
     try {
-      const r = await fetch('https://api.mercadopago.com/v1/payment_methods', {
-        headers: { 'Authorization': `Bearer ${settings.mercado_pago_access_token}` }
+      const { data, error } = await supabase.functions.invoke('test-mercadopago-connection', {
+        body: { id: FIXED_ID }
       });
-      if (r.ok) return { ok: true, message: 'Conexão OK! Credenciais válidas.' };
-      return { ok: false, message: `Erro ${r.status}: Credenciais inválidas.` };
-    } catch (e: any) { return { ok: false, message: e.message || 'Erro de rede.' }; }
+      if (error) throw error;
+      return { 
+        ok: data.ok, 
+        message: data.message,
+        data: data.accountData 
+      };
+    } catch (e: any) { 
+      console.error('testMercadoPagoConnection:', e);
+      return { ok: false, message: e.message || 'Erro ao testar conexão.' }; 
+    }
   }
 };
