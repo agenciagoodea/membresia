@@ -482,7 +482,7 @@ BEGIN
           SELECT 1
           FROM public.paid_events e
           WHERE e.id = event_id
-            AND e.church_id = church_id
+            AND e.church_id = paid_event_registrations.church_id
             AND e.status = 'published'
         )
       );
