@@ -18,6 +18,7 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
+import { PlanType } from '../../types';
 import { planService } from '../../services/planService';
 import { saasService } from '../../services/saasService';
 import { supabase } from '../../services/supabaseClient';
