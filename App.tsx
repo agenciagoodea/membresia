@@ -317,6 +317,17 @@ const App: React.FC = () => {
   const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const profileResolvedRef = React.useRef(false);
+  const getSafeRole = (inputRole: any): UserRole => {
+    const role = normalizeRole(inputRole);
+    const allowedRoles = [
+      UserRole.MASTER_ADMIN,
+      UserRole.CHURCH_ADMIN,
+      UserRole.PASTOR,
+      UserRole.CELL_LEADER_DISCIPLE,
+      UserRole.MEMBER_VISITOR,
+    ];
+    return allowedRoles.includes(role as UserRole) ? (role as UserRole) : UserRole.MEMBER_VISITOR;
+  };
 
   // --- FUNÇÃO AUXILIAR: Resolver perfil a partir da sessão ---
   const resolveProfile = React.useCallback(async (session: any) => {
@@ -324,9 +335,9 @@ const App: React.FC = () => {
 
     // 1. Tentar cache no metadata (Zero latência)
     const cached = session.user.user_metadata?.profile;
-    // Se temos cache e ele já tem church_id (ou é MASTER_ADMIN que não precisa), retornar
-    if (cached && (cached.churchId || cached.role === UserRole.MASTER_ADMIN)) {
-      return cached;
+    const cachedRole = getSafeRole(cached?.role);
+    if (cached && (cached.churchId || cached.church_id || cachedRole === UserRole.MASTER_ADMIN)) {
+      return { ...cached, role: cachedRole };
     }
 
     // 2. Fallback: buscar no banco (essencial para novos vínculos feitos pelo Master Admin)
@@ -344,7 +355,7 @@ const App: React.FC = () => {
       id: session.user.id,
       name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || 'Usuário',
       email: session.user.email,
-      role: session.user.user_metadata?.role || UserRole.MASTER_ADMIN,
+      role: getSafeRole(session.user.user_metadata?.role),
       churchId: session.user.user_metadata?.church_id || session.user.user_metadata?.churchId || null,
       church_id: session.user.user_metadata?.church_id || session.user.user_metadata?.churchId || null,
       avatar: session.user.user_metadata?.avatar_url || ''
@@ -585,3 +596,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

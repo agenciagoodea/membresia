@@ -1,3 +1,6 @@
+-- DEPRECATED / INSECURE
+-- Não executar em produção.
+-- Use: sql/security_hotfix_phase1.sql e políticas tenant-aware baseadas em auth.uid().
 -- RLS Fix and Church Seed for Prayers Table (CORRIGIDO)
 -- Este script resolve o erro de Foreign Key e as políticas de segurança
 

@@ -44,7 +44,6 @@ export const dbToMember = (row: any): Member => {
     number: row.number || row.numero || '',
     complement: row.complement || row.complemento || '',
     login: row.login || '',
-    password: row.password || '',
     hasChildren: row.has_children || false,
     children: row.children || [],
     leadingCellIds: row.leading_cell_ids || [],
@@ -113,10 +112,6 @@ export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   if (m.spouseId !== undefined) db.spouse_id = sanitize(m.spouseId);
   if (m.login !== undefined) db.login = sanitize(m.login);
   
-  if (m.password && m.password.trim().length > 0) {
-    db.password = m.password;
-  }
-  
   if (m.birthDate !== undefined) db.birth_date = sanitize(m.birthDate);
   if (m.conversionDate !== undefined) db.conversion_date = sanitize(m.conversionDate);
   
@@ -162,6 +157,11 @@ export const memberService = {
 	async getAll(churchId: string, range?: { from: number; to: number }, currentUser?: any) {
 		if (!churchId || churchId.length < 30) {
 			console.warn('[DEBUG RBAC] memberService.getAll - churchId invÃ¡lido:', churchId);
+			return [];
+		}
+
+		if (!currentUser?.id && currentUser?.role !== UserRole.MASTER_ADMIN) {
+			console.warn('[DEBUG RBAC] memberService.getAll - sem contexto de usuário autenticado');
 			return [];
 		}
 
@@ -532,3 +532,6 @@ export const memberService = {
 		return data ? dbToMember(data) : (user.email ? this.getByEmail(user.email) : null);
 	}
 };
+
+
+

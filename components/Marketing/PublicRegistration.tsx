@@ -17,7 +17,6 @@ const PublicRegistration = () => {
 	const [registeredName, setRegisteredName] = useState('');
 
 	const [cells, setCells] = useState<Cell[]>([]);
-	const [members, setMembers] = useState<Member[]>([]);
 	const [invitedCellName, setInvitedCellName] = useState<string>('');
 	const [invitedCellLeadersLabel, setInvitedCellLeadersLabel] = useState<string>('');
 	const [invitedCell, setInvitedCell] = useState<Cell | null>(null);
@@ -47,12 +46,8 @@ const PublicRegistration = () => {
 				setChurch(found);
 
 				if (found) {
-					const [fetchedCells, fetchedMembers] = await Promise.all([
-						cellService.getAll(found.id),
-						memberService.getAll(found.id),
-					]);
+					const fetchedCells = await cellService.getAll(found.id);
 					setCells(fetchedCells);
-					setMembers(fetchedMembers);
 
 					// Verificar se veio de um convite de célula
 					const queryParams = new URLSearchParams(search);
@@ -62,11 +57,12 @@ const PublicRegistration = () => {
 						const targetCell = fetchedCells.find(c => c.id === cellParam);
 						if (targetCell) {
 							const cellLeaderIds = targetCell.leaderIds || (targetCell.leaderId ? [targetCell.leaderId] : []);
-							const leaderNames = getDeduplicatedCouplesLabel(cellLeaderIds, fetchedMembers);
+							const leaderMembers = cellLeaderIds.length > 0 ? await memberService.getByIds(cellLeaderIds) : [];
+							const leaderNames = getDeduplicatedCouplesLabel(cellLeaderIds, leaderMembers);
 							setInvitedCellLeadersLabel(leaderNames);
 
 							const primaryLeaderId = cellLeaderIds[0] || '';
-							const leader = fetchedMembers.find(m => m.id === primaryLeaderId);
+							const leader = leaderMembers.find(m => m.id === primaryLeaderId);
 
 							setFormData(prev => ({
 								...prev,
@@ -102,12 +98,12 @@ const PublicRegistration = () => {
 			if (spouseId) {
 				const spouse = list.find(x => x.id === spouseId);
 				if (spouse) {
-					results.push(`${m.name} e ${spouse.name}`);
+					results.push(`${m.fullName} e ${spouse.fullName}`);
 					processed.add(spouseId);
 					continue;
 				}
 			}
-			results.push(m.name);
+			results.push(m.fullName);
 		}
 		return results.join(' & ');
 	};
@@ -135,10 +131,10 @@ const PublicRegistration = () => {
 				password: formData.password,
 				// phone, birthDate e avatar são opcionais — omitir em vez de enviar string vazia
 				// (string vazia causa erro 400 em colunas date/text com restrições no Supabase)
-				role: formData.role,
+				role: UserRole.MEMBER_VISITOR,
 				church_id: church.id,
 				joinedDate: new Date().toISOString(),
-				status: MemberStatus.ACTIVE,
+				status: MemberStatus.PENDING,
 				stage: LadderStage.WIN,
 				login: formData.email.trim().toLowerCase(),
 				completedMilestones: [],
@@ -360,16 +356,11 @@ const PublicRegistration = () => {
 								<label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Cargo / Perfil</label>
 								<div className="relative group/input">
 									<ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within/input:text-blue-500 transition-colors" size={18} />
-									<select
-										required
-										className="w-full bg-zinc-900/60 border border-white/5 rounded-2xl py-4 pl-12 pr-5 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer uppercase font-black"
-										value={formData.role}
-										onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
-									>
-										<option value={UserRole.MEMBER_VISITOR} className="bg-zinc-950">Membro / Visitante</option>
-										<option value={UserRole.CELL_LEADER_DISCIPLE} className="bg-zinc-950">Líder de Célula</option>
-										<option value={UserRole.PASTOR} className="bg-zinc-950">Pastor</option>
-									</select>
+									<input
+										readOnly
+										value="Membro / Visitante"
+										className="w-full bg-zinc-900/60 border border-white/5 rounded-2xl py-4 pl-12 pr-5 text-sm text-zinc-300 uppercase font-black"
+									/>
 								</div>
 							</div>
 
@@ -473,3 +464,7 @@ const PublicRegistration = () => {
 };
 
 export default PublicRegistration;
+
+
+
+

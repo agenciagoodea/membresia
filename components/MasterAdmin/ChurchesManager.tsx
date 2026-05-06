@@ -508,7 +508,7 @@ const ChurchesManager: React.FC = () => {
       const map: Record<string, string> = {};
       for (const church of data) {
         try {
-          const members = await memberService.getAll(church.id);
+          const members = await memberService.getAll(church.id, undefined, { id: 'master-admin-context', role: UserRole.MASTER_ADMIN });
           const admin = members.find(m => m.role === UserRole.CHURCH_ADMIN);
           if (admin) {
             map[church.id] = admin.name;

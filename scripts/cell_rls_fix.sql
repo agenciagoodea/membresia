@@ -1,3 +1,6 @@
+-- DEPRECATED / INSECURE
+-- Não executar em produção.
+-- Use: sql/security_hotfix_phase1.sql e políticas tenant-aware baseadas em auth.uid().
 -- RLS Fix for Cells and Meeting Reports
 -- Este script habilita o acesso às tabelas de células e relatórios
 

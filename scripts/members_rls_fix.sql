@@ -1,3 +1,6 @@
+-- DEPRECATED / INSECURE
+-- Não executar em produção.
+-- Use: sql/security_hotfix_phase1.sql e políticas tenant-aware baseadas em auth.uid().
 -- RLS Fix for Members Table
 -- Este script habilita o acesso público à tabela members para permitir a importação de novos membros
 
