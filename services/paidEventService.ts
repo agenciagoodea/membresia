@@ -21,6 +21,89 @@ function generateSlug(title: string): string {
   return `${base}-${suffix}`;
 }
 
+function getDisplayName(memberRow: any): string {
+  return String(memberRow?.full_name || memberRow?.name || '').trim();
+}
+
+function mapTeamNamesFromRows(
+  event: PaidEvent,
+  memberRowsById: Map<string, { full_name?: string; name?: string }>
+): PaidEvent {
+  const coordinatorId = event.coordenador_id || '';
+  const coordinatorRow = coordinatorId ? memberRowsById.get(coordinatorId) : null;
+  const coordinatorName = coordinatorRow ? getDisplayName(coordinatorRow) : '';
+
+  const auxiliarNames = (event.auxiliares_ids || [])
+    .map((id) => getDisplayName(memberRowsById.get(id)))
+    .filter(Boolean);
+
+  return {
+    ...event,
+    coordenador_nome: coordinatorName || undefined,
+    auxiliares_nomes: auxiliarNames.length > 0 ? auxiliarNames : undefined,
+  };
+}
+
+async function enrichEventsWithTeamNames(events: PaidEvent[]): Promise<PaidEvent[]> {
+  if (!events?.length) return events;
+
+  const ids = Array.from(
+    new Set(
+      events.flatMap((event) => [
+        ...(event.coordenador_id ? [event.coordenador_id] : []),
+        ...((event.auxiliares_ids || []).filter(Boolean)),
+      ])
+    )
+  ).filter(isUUID);
+
+  if (!ids.length) return events;
+
+  const { data, error } = await supabase
+    .from('members')
+    .select('id,full_name,name')
+    .in('id', ids);
+
+  if (error) {
+    console.warn('Não foi possível carregar nomes da equipe do evento:', error);
+    return events;
+  }
+
+  const membersById = new Map<string, { full_name?: string; name?: string }>(
+    (data || []).map((member: any) => [member.id, member])
+  );
+
+  return events.map((event) => mapTeamNamesFromRows(event, membersById));
+}
+
+async function enrichEventWithTeamNames(event: PaidEvent): Promise<PaidEvent> {
+  const [enriched] = await enrichEventsWithTeamNames([event]);
+  return enriched || event;
+}
+
+async function getPublicTeamNamesBySlug(slug: string): Promise<{ coordenador_nome?: string; auxiliares_nomes?: string[] }> {
+  const { data, error } = await supabase.rpc('get_paid_event_public_team_by_slug', {
+    target_slug: slug,
+  });
+
+  if (error) {
+    console.warn('RPC pública da equipe do evento indisponível:', error);
+    return {};
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return {};
+
+  const coordinatorName = String(row.coordinator_name || '').trim();
+  const auxiliaryNames = Array.isArray(row.auxiliary_names)
+    ? row.auxiliary_names.map((value: any) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    coordenador_nome: coordinatorName || undefined,
+    auxiliares_nomes: auxiliaryNames.length > 0 ? auxiliaryNames : undefined,
+  };
+}
+
 export const paidEventService = {
   async getAll(churchId: string, currentUser?: any): Promise<PaidEvent[]> {
     if (!isUUID(churchId)) {
@@ -68,7 +151,7 @@ export const paidEventService = {
     }
 
     console.log('PAID_EVENT_SERVICE_RESULT', data?.length || 0);
-    return data || [];
+    return enrichEventsWithTeamNames(data || []);
   },
 
   async getBySlug(slug: string): Promise<PaidEvent | null> {
@@ -80,7 +163,14 @@ export const paidEventService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data || null;
+    if (!data) return null;
+
+    const publicTeam = await getPublicTeamNamesBySlug(slug);
+    if (publicTeam.coordenador_nome || (publicTeam.auxiliares_nomes || []).length > 0) {
+      return { ...data, ...publicTeam };
+    }
+
+    return enrichEventWithTeamNames(data);
   },
 
   async getById(id: string): Promise<PaidEvent | null> {
@@ -91,7 +181,8 @@ export const paidEventService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data || null;
+    if (!data) return null;
+    return enrichEventWithTeamNames(data);
   },
 
   async create(eventData: Omit<PaidEvent, 'id' | 'created_at' | 'updated_at' | 'slug' | 'public_link'>): Promise<PaidEvent> {

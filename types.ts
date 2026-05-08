@@ -346,6 +346,8 @@ export interface PaidEvent {
   public_link?: string;
   coordenador_id?: string;
   auxiliares_ids?: string[];
+  coordenador_nome?: string;
+  auxiliares_nomes?: string[];
   created_at: string;
   updated_at: string;
   // Campos calculados (não no DB)

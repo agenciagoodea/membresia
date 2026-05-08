@@ -115,6 +115,9 @@ const PaidEventPublicPage: React.FC = () => {
   const occupancyPct = event.max_participants && spotsLeft !== null
     ? Math.round(((event.max_participants - spotsLeft) / event.max_participants) * 100)
     : null;
+  const coordinatorName = (event.coordenador_nome || '').trim();
+  const auxiliaryNames = (event.auxiliares_nomes || []).map((name) => String(name || '').trim()).filter(Boolean);
+  const hasTeamInfo = Boolean(coordinatorName || auxiliaryNames.length > 0);
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -249,6 +252,28 @@ const PaidEventPublicPage: React.FC = () => {
             <p className="text-[10px] text-zinc-600 font-bold">
               {event.max_participants - (spotsLeft ?? 0)} confirmados de {event.max_participants} vagas
             </p>
+          </div>
+        )}
+
+        {/* Equipe do evento */}
+        {hasTeamInfo && (
+          <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <Users size={14} className="text-violet-400" />
+              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Equipe do Evento</h2>
+            </div>
+            {coordinatorName && (
+              <p className="text-sm text-zinc-300 font-medium">
+                <span className="text-zinc-500 font-black uppercase tracking-wider text-[10px] mr-2">Coordenação:</span>
+                {coordinatorName}
+              </p>
+            )}
+            {auxiliaryNames.length > 0 && (
+              <p className="text-sm text-zinc-300 font-medium">
+                <span className="text-zinc-500 font-black uppercase tracking-wider text-[10px] mr-2">Auxiliares:</span>
+                {auxiliaryNames.join(', ')}
+              </p>
+            )}
           </div>
         )}
 

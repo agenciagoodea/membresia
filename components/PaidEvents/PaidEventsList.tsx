@@ -153,6 +153,9 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
             const canDelete = canDeletePaidEvent(user, evt);
             const canShare = canSharePaidEvent(user, evt);
             const canViewRegistrations = canEdit; // Por enquanto, quem edita vê inscritos
+            const coordinatorName = String(evt.coordenador_nome || '').trim();
+            const auxiliaryNames = (evt.auxiliares_nomes || []).map((name) => String(name || '').trim()).filter(Boolean);
+            const hasTeamInfo = Boolean(coordinatorName || auxiliaryNames.length > 0);
             return (
               <div key={evt.id} className="group bg-zinc-900 border border-white/5 hover:border-violet-500/30 rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-violet-500/5">
                 {/* Banner */}
@@ -174,6 +177,22 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                 {/* Info */}
                 <div className="p-6 space-y-4">
                   <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight">{evt.title}</h3>
+                  {hasTeamInfo && (
+                    <div className="bg-zinc-950 border border-white/5 rounded-2xl px-4 py-3 space-y-1.5">
+                      {coordinatorName && (
+                        <p className="text-[11px] text-zinc-300 font-semibold">
+                          <span className="text-zinc-500 font-black uppercase tracking-wider text-[9px] mr-2">Coordenação:</span>
+                          {coordinatorName}
+                        </p>
+                      )}
+                      {auxiliaryNames.length > 0 && (
+                        <p className="text-[11px] text-zinc-300 font-semibold">
+                          <span className="text-zinc-500 font-black uppercase tracking-wider text-[9px] mr-2">Auxiliares:</span>
+                          {auxiliaryNames.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5">
