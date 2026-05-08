@@ -212,7 +212,8 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                       {(() => {
                         const totalInscritos = evt.stats?.total || 0;
                         const confirmados = evt.stats?.confirmed || 0;
-                        const vagasLivres = evt.max_participants ? Math.max(0, evt.max_participants - confirmados) : Infinity;
+                        const vagasOcupadas = totalInscritos;
+                        const vagasLivres = evt.max_participants ? Math.max(0, evt.max_participants - vagasOcupadas) : Infinity;
                         
                         console.log('PAID_EVENT_CARD_STATS', { 
                           event: evt.title, 

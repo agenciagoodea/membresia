@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Calendar, MapPin, DollarSign, Users, Ticket, Loader2,
   ArrowRight, Share2, MessageCircle, Copy, Check, Clock,
-  ChevronRight, QrCode, Info
+  QrCode, Info
 } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
@@ -28,14 +28,19 @@ const PaidEventPublicPage: React.FC = () => {
         setEvent(data);
 
         // SEO dinâmico
-        document.title = `${data.title} — Inscrições Abertas`;
+        document.title = `${data.title} — ${data.status === 'closed' ? 'Inscrições Encerradas' : 'Inscrições Abertas'}`;
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) metaDesc.setAttribute('content', data.description?.substring(0, 155) || `Inscreva-se no evento ${data.title}`);
 
         if (data.max_participants) {
           try {
-            const count = await paidEventRegistrationService.countActive(data.id);
-            setSpotsLeft(data.max_participants - count);
+            const stats = await paidEventService.getPublicStatsBySlug(data.slug);
+            if (stats) {
+              setSpotsLeft(stats.spots_left ?? Math.max(0, data.max_participants - stats.total_active));
+            } else {
+              const count = await paidEventRegistrationService.countActive(data.id);
+              setSpotsLeft(data.max_participants - count);
+            }
           } catch (countError) {
             // Em acesso público (anon), a RLS pode bloquear SELECT de inscrições.
             // Nesse caso, mantém a página aberta e só oculta o cálculo de vagas restantes.
@@ -110,7 +115,7 @@ const PaidEventPublicPage: React.FC = () => {
     );
   }
 
-  const isSoldOut = spotsLeft !== null && spotsLeft <= 0;
+  const isSoldOut = event.status === 'closed' || (spotsLeft !== null && spotsLeft <= 0);
   const isAlmostFull = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 10;
   const occupancyPct = event.max_participants && spotsLeft !== null
     ? Math.round(((event.max_participants - spotsLeft) / event.max_participants) * 100)
@@ -250,7 +255,7 @@ const PaidEventPublicPage: React.FC = () => {
               />
             </div>
             <p className="text-[10px] text-zinc-600 font-bold">
-              {event.max_participants - (spotsLeft ?? 0)} confirmados de {event.max_participants} vagas
+              {event.max_participants - (spotsLeft ?? 0)} inscritos de {event.max_participants} vagas
             </p>
           </div>
         )}

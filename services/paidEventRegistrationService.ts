@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../types';
+import { paidEventService } from './paidEventService';
 
 function generateRegistrationCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -64,6 +65,13 @@ export const paidEventRegistrationService = {
     regData: Omit<PaidEventRegistration, 'id' | 'created_at' | 'updated_at' | 'registration_code' | 'payment_confirmed_by' | 'payment_confirmed_at' | 'pdf_url'>,
     event?: PaidEvent
   ): Promise<PaidEventRegistration> {
+    if (event?.max_participants) {
+      const stats = await paidEventService.getEventStats(event.id);
+      if (stats?.is_sold_out || (stats?.spots_left !== null && (stats?.spots_left || 0) <= 0)) {
+        throw new Error('As inscrições deste evento foram encerradas por lotação.');
+      }
+    }
+
     const registration_code = generateRegistrationCode();
     const payload = { ...regData, registration_code };
     const { error } = await supabase
@@ -71,6 +79,12 @@ export const paidEventRegistrationService = {
       .insert([payload]);
       
     if (error) throw error;
+
+    try {
+      await this.syncEventCapacityStatus(payload.event_id);
+    } catch (syncError) {
+      console.warn('Falha ao sincronizar status de lotação do evento:', syncError);
+    }
 
     // Send email notification if event is provided
     if (event && payload.email) {
@@ -125,6 +139,12 @@ export const paidEventRegistrationService = {
       new_status: newStatus, changed_by: changedBy, note: note || null
     }]);
 
+    try {
+      await this.syncEventCapacityStatus(current.event_id);
+    } catch (syncError) {
+      console.warn('Falha ao sincronizar lotação após atualização de status:', syncError);
+    }
+
     // Send confirmation email
     if (newStatus === PaymentStatus.CONFIRMED && current.email && event) {
       try {
@@ -152,11 +172,20 @@ export const paidEventRegistrationService = {
   },
 
   async delete(id: string): Promise<void> {
+    const current = await this.getById(id);
     const { error } = await supabase
       .from('paid_event_registrations')
       .delete()
       .eq('id', id);
     if (error) throw error;
+
+    if (current?.event_id) {
+      try {
+        await this.syncEventCapacityStatus(current.event_id);
+      } catch (syncError) {
+        console.warn('Falha ao sincronizar lotação após exclusão:', syncError);
+      }
+    }
   },
 
   async uploadPhoto(file: File, churchId: string): Promise<string> {
@@ -264,6 +293,9 @@ export const paidEventRegistrationService = {
   },
 
   async countConfirmed(eventId: string): Promise<number> {
+    const stats = await paidEventService.getEventStats(eventId);
+    if (stats) return stats.total_confirmed;
+
     const { count, error } = await supabase
       .from('paid_event_registrations')
       .select('id', { count: 'exact', head: true })
@@ -274,6 +306,9 @@ export const paidEventRegistrationService = {
   },
 
   async countActive(eventId: string): Promise<number> {
+    const stats = await paidEventService.getEventStats(eventId);
+    if (stats) return stats.total_active;
+
     // Conta todas as inscrições não canceladas/recusadas (para bloquear vagas)
     const { count, error } = await supabase
       .from('paid_event_registrations')
@@ -293,5 +328,13 @@ export const paidEventRegistrationService = {
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
+  },
+
+  async syncEventCapacityStatus(eventId: string): Promise<void> {
+    if (!eventId) return;
+    const { error } = await supabase.rpc('sync_paid_event_capacity_status', {
+      target_event_id: eventId,
+    });
+    if (error) throw error;
   }
 };

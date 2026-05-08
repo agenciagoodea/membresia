@@ -33,7 +33,7 @@ AS $$
   LEFT JOIN public.members coordinator
     ON coordinator.id = event_row.coordenador_id
   WHERE event_row.slug = target_slug
-    AND event_row.status = 'published'
+    AND event_row.status IN ('published', 'closed')
   LIMIT 1;
 $$;
 
@@ -41,4 +41,3 @@ REVOKE ALL ON FUNCTION public.get_paid_event_public_team_by_slug(text) FROM PUBL
 GRANT EXECUTE ON FUNCTION public.get_paid_event_public_team_by_slug(text) TO anon, authenticated;
 
 COMMIT;
-

@@ -315,6 +315,15 @@ const PaidEventRegistrationForm: React.FC = () => {
     if (!event) return;
     try {
       setSubmitting(true);
+
+      const stats = await paidEventService.getPublicStatsBySlug(event.slug);
+      const isSoldOutNow = Boolean(stats?.is_sold_out) || event.status === 'closed';
+      if (isSoldOutNow || (stats?.spots_left !== null && (stats?.spots_left || 0) <= 0)) {
+        alert('As inscrições deste evento foram encerradas por lotação.');
+        navigate(`/evento/${event.slug}`);
+        return;
+      }
+
       const photo_url = photoFile
         ? await paidEventRegistrationService.uploadPhoto(photoFile, event.church_id)
         : '';
@@ -369,6 +378,23 @@ const PaidEventRegistrationForm: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-white mb-2">Evento não encontrado</h1>
           <p className="text-zinc-500">Este evento não está disponível para inscrição.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (event.status === 'closed') {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full space-y-3">
+          <h1 className="text-2xl font-black text-white">Inscrições Encerradas</h1>
+          <p className="text-zinc-400">Este evento atingiu o limite de vagas.</p>
+          <button
+            onClick={() => navigate(`/evento/${event.slug}`)}
+            className="mt-2 px-6 py-3 rounded-2xl bg-zinc-900 border border-white/10 text-zinc-200 text-sm font-bold hover:bg-zinc-800 transition-all"
+          >
+            Voltar ao evento
+          </button>
         </div>
       </div>
     );

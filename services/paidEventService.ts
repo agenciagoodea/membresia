@@ -1,12 +1,19 @@
 import { supabase } from './supabaseClient';
-import { PaidEvent, PaidEventStatus, UserRole } from '../types';
+import { PaidEvent, PaidEventStatus } from '../types';
 import { memberService } from './memberService';
 import { isUUID } from '../utils/validationUtils';
 
-/**
- * Gera slug URL-friendly a partir do título.
- * Ex: "Encontro com Deus" → "encontro-com-deus-a3b2"
- */
+export interface PaidEventStats {
+  event_id: string;
+  status: string;
+  max_participants: number | null;
+  total_active: number;
+  total_confirmed: number;
+  total_pending: number;
+  spots_left: number | null;
+  is_sold_out: boolean;
+}
+
 function generateSlug(title: string): string {
   const base = title
     .normalize('NFD')
@@ -104,6 +111,20 @@ async function getPublicTeamNamesBySlug(slug: string): Promise<{ coordenador_nom
   };
 }
 
+function normalizeStatsRow(row: any): PaidEventStats | null {
+  if (!row) return null;
+  return {
+    event_id: String(row.event_id || ''),
+    status: String(row.status || ''),
+    max_participants: row.max_participants ?? null,
+    total_active: Number(row.total_active || 0),
+    total_confirmed: Number(row.total_confirmed || 0),
+    total_pending: Number(row.total_pending || 0),
+    spots_left: row.spots_left === null || row.spots_left === undefined ? null : Number(row.spots_left),
+    is_sold_out: Boolean(row.is_sold_out),
+  };
+}
+
 export const paidEventService = {
   async getAll(churchId: string, currentUser?: any): Promise<PaidEvent[]> {
     if (!isUUID(churchId)) {
@@ -118,19 +139,16 @@ export const paidEventService = {
       .select('*')
       .eq('church_id', churchId);
 
-    // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
       const role = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
       const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN', 'PASTOR', 'PASTORA'].includes(role);
       const myId = currentUser.id;
 
       if (!isAdmin && isUUID(myId)) {
-        // 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
         const ecosystemIds = await memberService.getEcosystemIds(myId);
         const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
-        
-        // 2. Lógica: Vê o que criou, o que é do ecossistema OU o que está publicado na igreja
-        let orConditions = `status.eq.published`;
+
+        let orConditions = 'status.eq.published,status.eq.closed';
         if (validEcosystemIds.length > 0) {
           const ecosystemFilter = validEcosystemIds.join(',');
           orConditions += `,created_by.in.(${ecosystemFilter}),coordenador_id.in.(${ecosystemFilter}),auxiliares_ids.cs.{${myId}}`;
@@ -144,7 +162,6 @@ export const paidEventService = {
     query = query.order('created_at', { ascending: false });
 
     const { data, error } = await query;
-
     if (error) {
       console.error('[DEBUG RBAC] paidEventService.getAll - Erro:', error);
       return [];
@@ -159,7 +176,7 @@ export const paidEventService = {
       .from('paid_events')
       .select('*')
       .eq('slug', slug)
-      .eq('status', PaidEventStatus.PUBLISHED)
+      .in('status', [PaidEventStatus.PUBLISHED, PaidEventStatus.CLOSED])
       .maybeSingle();
 
     if (error) throw error;
@@ -205,7 +222,6 @@ export const paidEventService = {
 
   async update(id: string, updates: Partial<PaidEvent>): Promise<PaidEvent> {
     const updateData: any = { ...updates, updated_at: new Date().toISOString() };
-    // Não permitir alterar chaves primárias ou relacionamentos base após criação
     delete updateData.slug;
     delete updateData.id;
     delete updateData.created_at;
@@ -250,10 +266,18 @@ export const paidEventService = {
     return publicUrl;
   },
 
-  /**
-   * Retorna contagem de inscrições por status para um evento.
-   */
   async getRegistrationStats(eventId: string): Promise<{ total: number; confirmed: number; pending: number }> {
+    const statsFromRpc = await this.getEventStats(eventId);
+    if (statsFromRpc) {
+      const stats = {
+        total: statsFromRpc.total_active,
+        confirmed: statsFromRpc.total_confirmed,
+        pending: statsFromRpc.total_pending
+      };
+      console.log('PAID_EVENT_CARD_STATS_RPC', stats);
+      return stats;
+    }
+
     const { data, error } = await supabase
       .from('paid_event_registrations')
       .select('payment_status')
@@ -262,27 +286,50 @@ export const paidEventService = {
     if (error) throw error;
 
     const rows = data || [];
-    console.log('PAID_EVENT_REGISTRATIONS', rows);
-
-    // Status considerados como confirmados/pagos
     const confirmedStatuses = ['PAGO', 'PAID', 'CONFIRMADO', 'CONFIRMED', 'APROVADO', 'APPROVED', 'pago_confirmado'];
-    // Status considerados como cancelados/rejeitados (não contam como pendentes)
     const invalidStatuses = ['CANCELADO', 'CANCELLED', 'RECUSADO', 'REJECTED', 'recusado', 'cancelado'];
 
     const confirmed = rows.filter(r => confirmedStatuses.includes((r.payment_status || '').toUpperCase()) || r.payment_status === 'pago_confirmado').length;
-    const pending = rows.filter(r => 
-      !confirmedStatuses.includes((r.payment_status || '').toUpperCase()) && 
+    const pending = rows.filter(r =>
+      !confirmedStatuses.includes((r.payment_status || '').toUpperCase()) &&
       !invalidStatuses.includes((r.payment_status || '').toUpperCase()) &&
       r.payment_status !== 'pago_confirmado'
     ).length;
 
-    const stats = {
-      total: rows.length,
-      confirmed,
-      pending
-    };
-
-    console.log('PAID_EVENT_CARD_STATS', stats);
+    const stats = { total: rows.length, confirmed, pending };
+    console.log('PAID_EVENT_CARD_STATS_FALLBACK', stats);
     return stats;
+  },
+
+  async getEventStats(eventId: string): Promise<PaidEventStats | null> {
+    if (!eventId) return null;
+    const { data, error } = await supabase.rpc('get_paid_event_stats', {
+      target_event_id: eventId,
+      target_slug: null,
+    });
+
+    if (error) {
+      console.warn('RPC de stats do evento indisponível (eventId):', error);
+      return null;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return normalizeStatsRow(row);
+  },
+
+  async getPublicStatsBySlug(slug: string): Promise<PaidEventStats | null> {
+    if (!slug) return null;
+    const { data, error } = await supabase.rpc('get_paid_event_stats', {
+      target_event_id: null,
+      target_slug: slug,
+    });
+
+    if (error) {
+      console.warn('RPC pública de stats do evento indisponível (slug):', error);
+      return null;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return normalizeStatsRow(row);
   }
 };
