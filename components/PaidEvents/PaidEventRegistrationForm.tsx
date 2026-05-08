@@ -12,6 +12,23 @@ import PixQRCodeBox from './PixQRCodeBox';
 const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
 const TRANSPORT_OPTIONS = ['Carro', 'Ônibus'];
 const GENDER_OPTIONS = ['Masculino', 'Feminino'];
+const PASTOR_ROLE_ALIASES = new Set([
+  'PASTOR',
+  'PASTORA',
+  'MASTER ADMIN',
+  'MASTER_ADMIN',
+  'CHURCH_ADMIN',
+  'ADMINISTRADOR DA IGREJA',
+  'ADMIN_IGREJA',
+  'ADMINISTRADOR_IGREJA',
+]);
+
+const normalizeRole = (value: string | null | undefined) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
 
 // Componente de autocomplete com busca lazy (mínimo 3 caracteres)
 const LazyAutocomplete: React.FC<{
@@ -44,6 +61,10 @@ const LazyAutocomplete: React.FC<{
         const results = await searchFn(v);
         setSuggestions(results);
         setOpen(results.length > 0);
+      } catch (err) {
+        console.error('Erro ao buscar sugestões:', err);
+        setSuggestions([]);
+        setOpen(false);
       } finally {
         setLoading(false);
       }
@@ -169,28 +190,82 @@ const PaidEventRegistrationForm: React.FC = () => {
   const searchDisciplers = async (query: string): Promise<string[]> => {
     if (!churchId || query.length < 3) return [];
     const { supabase } = await import('../../services/supabaseClient');
-    const { data } = await supabase
+    const { data: publicData, error: publicError } = await supabase.rpc('search_public_member_names', {
+      target_church_id: churchId,
+      search_query: query,
+      only_pastors: false,
+    });
+
+    if (!publicError && Array.isArray(publicData)) {
+      const names = publicData
+        .map((m: any) => (m.display_name || '').trim())
+        .filter(Boolean);
+      return Array.from(new Set(names)).slice(0, 10);
+    }
+
+    if (publicError) {
+      console.warn('RPC pública de discipuladores indisponível, usando fallback local:', publicError);
+    }
+
+    const { data, error } = await supabase
       .from('members')
-      .select('name')
+      .select('full_name,name')
       .eq('church_id', churchId)
-      .ilike('name', `%${query}%`)
-      .order('name')
-      .limit(10);
-    return (data || []).map((m: any) => m.name);
+      .or(`full_name.ilike.%${query}%,name.ilike.%${query}%`)
+      .order('full_name')
+      .limit(20);
+
+    if (error) {
+      console.error('Erro ao buscar discipuladores:', error);
+      return [];
+    }
+
+    const names = (data || [])
+      .map((m: any) => (m.full_name || m.name || '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(names)).slice(0, 10);
   };
 
   const searchPastors = async (query: string): Promise<string[]> => {
     if (!churchId || query.length < 3) return [];
     const { supabase } = await import('../../services/supabaseClient');
-    const { data } = await supabase
+    const { data: publicData, error: publicError } = await supabase.rpc('search_public_member_names', {
+      target_church_id: churchId,
+      search_query: query,
+      only_pastors: true,
+    });
+
+    if (!publicError && Array.isArray(publicData)) {
+      const names = publicData
+        .map((m: any) => (m.display_name || '').trim())
+        .filter(Boolean);
+      return Array.from(new Set(names)).slice(0, 10);
+    }
+
+    if (publicError) {
+      console.warn('RPC pública de pastores indisponível, usando fallback local:', publicError);
+    }
+
+    const { data, error } = await supabase
       .from('members')
-      .select('name')
+      .select('full_name,name,role')
       .eq('church_id', churchId)
-      .in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN', 'ADMINISTRADOR DA IGREJA'])
-      .ilike('name', `%${query}%`)
-      .order('name')
-      .limit(10);
-    return (data || []).map((m: any) => m.name);
+      .or(`full_name.ilike.%${query}%,name.ilike.%${query}%`)
+      .order('full_name')
+      .limit(30);
+
+    if (error) {
+      console.error('Erro ao buscar pastores:', error);
+      return [];
+    }
+
+    const names = (data || [])
+      .filter((m: any) => PASTOR_ROLE_ALIASES.has(normalizeRole(m.role)))
+      .map((m: any) => (m.full_name || m.name || '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(names)).slice(0, 10);
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

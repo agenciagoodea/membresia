@@ -54,6 +54,23 @@ export const dbToMember = (row: any): Member => {
 
 const mapToFrontend = dbToMember;
 
+const normalizeUserRole = (role: any): string =>
+  String(role || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+
+const isChurchWideAdminRole = (role: any): boolean => {
+  const normalizedRole = normalizeUserRole(role);
+  return ['MASTER ADMIN', 'MASTER_ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN'].includes(normalizedRole);
+};
+
+const isPastorRole = (role: any): boolean => {
+  const normalizedRole = normalizeUserRole(role);
+  return normalizedRole === 'PASTOR' || normalizedRole === 'PASTORA';
+};
+
 export const memberToDb = (m: Partial<Member> & { church_id?: string }) => {
   const db: any = {};
   
@@ -179,15 +196,26 @@ export const memberService = {
 
 		// Aplicar Filtros de Hierarquia (RBAC)
 		if (currentUser) {
-			const normalizedRole = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-			const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN', 'PASTOR'].includes(normalizedRole);
+			const normalizedRole = normalizeUserRole(currentUser.role);
+			const isChurchWideAdmin = isChurchWideAdminRole(normalizedRole);
+			const isPastor = isPastorRole(normalizedRole);
 			const myId = currentUser.id;
 
-			if (!isAdmin) {
+			// Pastor(a): visualiza apenas sua rede ministerial (abaixo dele[a])
+			if (isPastor) {
+				const ecosystemIds = await this.getEcosystemIds(myId);
+				const visibleIds = Array.from(new Set((ecosystemIds || []).filter(Boolean)));
+
+				if (visibleIds.length > 0) {
+					query = query.in('id', visibleIds);
+				} else {
+					query = query.eq('id', myId);
+				}
+			} else if (!isChurchWideAdmin) {
 				// 1. Obter Ecossistema Ministerial (Recursivo + Conjugal)
 				const ecosystemIds = await this.getEcosystemIds(myId);
 				
-				// 2. Obter células vinculadas ao ecossistema
+				// 2. Obter c?lulas vinculadas ao ecossistema
 				const { data: managedCells } = await supabase
 					.from('cells')
 					.select('id')
@@ -200,13 +228,13 @@ export const memberService = {
 					allowedCellIds.push(myCellId);
 				}
 
-				// Incluir Pastor e Discipulador do próprio usuário para visibilidade
+				// Incluir Pastor e Discipulador do pr?prio usu?rio para visibilidade
 				const leaderIds = [];
 				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
 				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
 
 				// 3. Filtro Unificado
-				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds]));
+				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds])).filter(Boolean);
 				let filterStr = `id.in.(${combinedIds.join(',')}),spouse_id.eq.${myId}`;
 				
 				if (allowedCellIds.length > 0) {
@@ -216,7 +244,6 @@ export const memberService = {
 				query = query.or(filterStr);
 			}
 		}
-
 		query = query.order('full_name', { ascending: true });
 
 		if (range) {
@@ -270,10 +297,20 @@ export const memberService = {
 			.or(`full_name.ilike.%${queryStr}%,name.ilike.%${queryStr}%,email.ilike.%${queryStr}%`);
 
 		if (currentUser) {
-			const isAdmin = [UserRole.CHURCH_ADMIN, UserRole.MASTER_ADMIN, UserRole.PASTOR].includes(currentUser.role);
+			const normalizedRole = normalizeUserRole(currentUser.role);
+			const isChurchWideAdmin = isChurchWideAdminRole(normalizedRole);
+			const isPastor = isPastorRole(normalizedRole);
 			const myId = currentUser.id;
 
-			if (!isAdmin) {
+			if (isPastor) {
+				const ecosystemIds = await this.getEcosystemIds(myId);
+				const visibleIds = Array.from(new Set((ecosystemIds || []).filter(Boolean)));
+				if (visibleIds.length > 0) {
+					query = query.in('id', visibleIds);
+				} else {
+					query = query.eq('id', myId);
+				}
+			} else if (!isChurchWideAdmin) {
 				const ecosystemIds = await this.getEcosystemIds(myId);
 				const { data: managedCells } = await supabase
 					.from('cells')
@@ -291,7 +328,7 @@ export const memberService = {
 				if (currentUser.pastorId) leaderIds.push(currentUser.pastorId);
 				if (currentUser.disciplerId) leaderIds.push(currentUser.disciplerId);
 
-				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds]));
+				const combinedIds = Array.from(new Set([...ecosystemIds, ...leaderIds])).filter(Boolean);
 				let filterStr = `id.in.(${combinedIds.join(',')}),spouse_id.eq.${myId}`;
 				if (allowedCellIds.length > 0) {
 					filterStr += `,cell_id.in.(${allowedCellIds.join(',')})`;
@@ -299,7 +336,6 @@ export const memberService = {
 				query = query.or(filterStr);
 			}
 		}
-
 		const { data, error } = await query.limit(10);
 		if (error) throw error;
 		return (data || []).map(mapToFrontend);
