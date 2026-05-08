@@ -141,9 +141,6 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
 
-  // Pastores para datalist
-  const [pastorsList, setPastorsList] = useState<string[]>([]);
-
   useEffect(() => {
     const load = async () => {
       if (!slug) return;
@@ -159,16 +156,6 @@ const PaidEventRegistrationForm: React.FC = () => {
           );
           setPixQR(qrCodeDataURL);
         }
-
-        import('../../services/supabaseClient').then(async ({ supabase }) => {
-          const { data: pData } = await supabase
-            .from('members')
-            .select('name')
-            .eq('church_id', data.church_id)
-            .in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN', 'ADMINISTRADOR DA IGREJA'])
-            .order('name');
-          if (pData) setPastorsList(pData.map((p: any) => p.name));
-        });
 
       } catch (err) {
         console.error(err);
@@ -186,6 +173,20 @@ const PaidEventRegistrationForm: React.FC = () => {
       .from('members')
       .select('name')
       .eq('church_id', churchId)
+      .ilike('name', `%${query}%`)
+      .order('name')
+      .limit(10);
+    return (data || []).map((m: any) => m.name);
+  };
+
+  const searchPastors = async (query: string): Promise<string[]> => {
+    if (!churchId || query.length < 3) return [];
+    const { supabase } = await import('../../services/supabaseClient');
+    const { data } = await supabase
+      .from('members')
+      .select('name')
+      .eq('church_id', churchId)
+      .in('role', ['PASTOR', 'MASTER_ADMIN', 'CHURCH_ADMIN', 'ADMINISTRADOR DA IGREJA'])
       .ilike('name', `%${query}%`)
       .order('name')
       .limit(10);
@@ -473,18 +474,21 @@ const PaidEventRegistrationForm: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass}>Nome do Pastor *</label>
-                    <input required list="pastors-list" value={form.pastor_name} onChange={e => setForm({...form, pastor_name: e.target.value})} className={inputClass} placeholder="Nome do seu pastor" />
-                    <datalist id="pastors-list">
-                      {pastorsList.map((p, i) => <option key={i} value={p} />)}
-                    </datalist>
-                  </div>
+                  <LazyAutocomplete
+                    label="Nome do Pastor"
+                    value={form.pastor_name}
+                    onChange={v => setForm({...form, pastor_name: v})}
+                    placeholder="Busque por 3+ letras ou informe manualmente"
+                    required
+                    searchFn={searchPastors}
+                    inputClass={inputClass}
+                    labelClass={labelClass}
+                  />
                   <LazyAutocomplete
                     label="Nome do Discipulador"
                     value={form.discipler_name}
                     onChange={v => setForm({...form, discipler_name: v})}
-                    placeholder="Busque por 3+ letras..."
+                    placeholder="Busque por 3+ letras ou informe manualmente"
                     searchFn={searchDisciplers}
                     inputClass={inputClass}
                     labelClass={labelClass}
