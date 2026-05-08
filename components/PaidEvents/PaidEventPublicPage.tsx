@@ -33,8 +33,15 @@ const PaidEventPublicPage: React.FC = () => {
         if (metaDesc) metaDesc.setAttribute('content', data.description?.substring(0, 155) || `Inscreva-se no evento ${data.title}`);
 
         if (data.max_participants) {
-          const count = await paidEventRegistrationService.countActive(data.id);
-          setSpotsLeft(data.max_participants - count);
+          try {
+            const count = await paidEventRegistrationService.countActive(data.id);
+            setSpotsLeft(data.max_participants - count);
+          } catch (countError) {
+            // Em acesso público (anon), a RLS pode bloquear SELECT de inscrições.
+            // Nesse caso, mantém a página aberta e só oculta o cálculo de vagas restantes.
+            console.warn('Não foi possível carregar contagem de vagas no modo público:', countError);
+            setSpotsLeft(null);
+          }
         }
       } catch (err) {
         setError('Erro ao carregar evento.');
