@@ -38,7 +38,7 @@ export const paidEventService = {
     // Aplicar Filtros de Hierarquia Pastoral (RBAC)
     if (currentUser) {
       const role = (currentUser.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN', 'PASTOR'].includes(role);
+      const isAdmin = ['MASTER ADMIN', 'ADMINISTRADOR DA IGREJA', 'CHURCH_ADMIN', 'MASTER_ADMIN', 'PASTOR', 'PASTORA'].includes(role);
       const myId = currentUser.id;
 
       if (!isAdmin && isUUID(myId)) {
@@ -50,9 +50,9 @@ export const paidEventService = {
         let orConditions = `status.eq.published`;
         if (validEcosystemIds.length > 0) {
           const ecosystemFilter = validEcosystemIds.join(',');
-          orConditions += `,created_by.in.(${ecosystemFilter}),coordenador_id.in.(${ecosystemFilter})`;
+          orConditions += `,created_by.in.(${ecosystemFilter}),coordenador_id.in.(${ecosystemFilter}),auxiliares_ids.cs.{${myId}}`;
         } else {
-          orConditions += `,created_by.eq.${myId}`;
+          orConditions += `,created_by.eq.${myId},coordenador_id.eq.${myId},auxiliares_ids.cs.{${myId}}`;
         }
         query = query.or(orConditions);
       }

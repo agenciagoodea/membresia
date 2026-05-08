@@ -562,8 +562,8 @@ const App: React.FC = () => {
                           : <Settings user={currentUser} />
                       } />
                       <Route path="/events" element={<Events user={currentUser} />} />
-                      {/* Rota de Eventos Pagos (Pastor/Admin) */}
-                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR) && (
+                      {/* Rota de Eventos Pagos (Pastor/Admin/Líder) */}
+                      {(currentUser?.role === UserRole.MASTER_ADMIN || currentUser?.role === UserRole.CHURCH_ADMIN || currentUser?.role === UserRole.PASTOR || currentUser?.role === UserRole.CELL_LEADER_DISCIPLE) && (
                         <Route path="/paid-events" element={<PaidEventsManager user={currentUser} />} />
                       )}
 

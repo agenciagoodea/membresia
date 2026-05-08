@@ -3,7 +3,7 @@ import { Plus, Calendar, MapPin, Users, DollarSign, Eye, Edit2, Trash2, Link2, C
 import { paidEventService } from '../../services/paidEventService';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { PaidEvent, PaidEventStatus, UserRole } from '../../types';
-import { canEditPaidEvent, canDeletePaidEvent, canSharePaidEvent } from '../../utils/roleUtils';
+import { canEditPaidEvent, canDeletePaidEvent, canSharePaidEvent, normalizeRole } from '../../utils/roleUtils';
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: 'Rascunho', color: 'text-zinc-400', bg: 'bg-zinc-800 border-zinc-700' },
@@ -25,6 +25,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const canCreateEvent = [UserRole.MASTER_ADMIN, UserRole.CHURCH_ADMIN, UserRole.PASTOR].includes(normalizeRole(user?.role) as UserRole);
 
   const churchId = user.churchId || user.church_id;
 
@@ -93,12 +94,14 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
           </div>
           <p className="text-zinc-500 font-medium text-sm ml-[52px]">Gerencie eventos com inscrição e pagamento Pix.</p>
         </div>
-        <button
-          onClick={onCreateNew}
-          className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20"
-        >
-          <Plus size={18} /> Novo Evento Pago
-        </button>
+        {canCreateEvent && (
+          <button
+            onClick={onCreateNew}
+            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20"
+          >
+            <Plus size={18} /> Novo Evento Pago
+          </button>
+        )}
       </div>
 
       {/* Filtros */}

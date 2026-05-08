@@ -86,6 +86,7 @@ export const LEADER_NAV_ITEMS = [
   { id: 'ladder', label: 'Visão Celular M12', icon: <TrendingUp size={20} /> },
   { id: 'my-activities', label: 'Minhas Atividades M12', icon: <Target size={20} /> },
   { id: 'events', label: 'Agenda da Igreja', icon: <Calendar size={20} /> },
+  { id: 'paid-events', label: 'Eventos Pagos', icon: <Ticket size={20} /> },
   { id: 'prayer-moderation', label: 'Pedidos de Oração', icon: <Heart size={20} /> },
   { id: 'ia-insights', label: 'Estudo de Célula (IA)', icon: <BookOpen size={20} /> },
   { id: 'settings', label: 'Configurações', icon: <Settings size={20} /> },

@@ -23,6 +23,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 );
 
 const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved, event, churchId, user }) => {
+  const userId = user?.id || user?.profile?.id || null;
   const [form, setForm] = useState<any>({
     title: '', description: '', start_date: '', end_date: '', location: '',
     price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
@@ -45,7 +46,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
     if (isOpen && churchId) {
       import('../../services/memberService').then(({ memberService }) => {
         memberService.getAll(churchId, undefined, user).then(list => {
-          setMembersList(list.map(m => ({ id: m.id, name: m.name, role: m.role || 'Membro' })));
+          setMembersList(list.map(m => ({ id: m.id, name: m.fullName || (m as any).name || 'Sem nome', role: m.role || 'Membro' })));
         }).catch(console.error);
       });
     }
@@ -182,6 +183,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
 
   // Field component movido para fora para não perder o foco
   const inputClass = "w-full bg-zinc-900 border border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-violet-600 transition-all";
+  const teamSelectClass = `${inputClass} [color-scheme:dark] [&>option]:bg-zinc-900 [&>option]:text-zinc-100 [&>option]:py-2`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -253,7 +255,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
           <div className="grid grid-cols-1 gap-4 bg-violet-500/5 p-4 rounded-2xl border border-violet-500/10">
             <h4 className="text-violet-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2"><Users size={14} /> Equipe do Evento</h4>
             <Field label="Coordenador Principal">
-              <select value={form.coordenador_id || ''} onChange={e => setForm({ ...form, coordenador_id: e.target.value })} className={inputClass}>
+              <select value={form.coordenador_id || ''} onChange={e => setForm({ ...form, coordenador_id: e.target.value })} className={teamSelectClass}>
                 <option value="">Nenhum</option>
                 {membersList.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -265,7 +267,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
               <select multiple value={form.auxiliares_ids || []} onChange={e => {
                 const selected = Array.from(e.target.selectedOptions as HTMLCollectionOf<HTMLOptionElement>, (option: HTMLOptionElement) => option.value);
                 setForm({ ...form, auxiliares_ids: selected });
-              }} className={`${inputClass} min-h-[100px]`}>
+              }} className={`${teamSelectClass} min-h-[100px]`}>
                 {membersList.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}

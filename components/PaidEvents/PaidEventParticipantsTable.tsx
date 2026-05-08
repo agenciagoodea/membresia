@@ -5,6 +5,7 @@ import { pdfService } from '../../services/pdfService';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import PaidEventRegistrationDetailsModal from './PaidEventRegistrationDetailsModal';
 import PaidEventRegistrationEditModal from './PaidEventRegistrationEditModal';
+import { canEditPaidEvent } from '../../utils/roleUtils';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
   aguardando_comprovante: { label: 'Aguardando', color: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-zinc-700' },
@@ -72,7 +73,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     }
   };
 
-  const canManage = user.role === 'MASTER_ADMIN' || user.role === 'CHURCH_ADMIN' || event.created_by === user.id;
+  const canManage = canEditPaidEvent(user, event);
 
   const handleDeleteRegistration = async (id: string) => {
     if (!canManage) return;
