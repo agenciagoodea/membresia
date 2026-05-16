@@ -101,46 +101,46 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
           
-          <div className="absolute top-6 right-6 flex items-center gap-3">
+          <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 md:gap-3 z-10">
             {canManage && onEdit && (
               <button
                 onClick={() => onEdit(reg)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+                className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-xl border border-blue-500/30 transition-all text-[9px] font-black uppercase tracking-widest backdrop-blur-md"
               >
-                <Edit2 size={14} /> Editar
+                <Edit2 size={12} /> <span className="hidden sm:inline">Editar</span>
               </button>
             )}
-            <button onClick={onClose} className="p-3 bg-black/50 hover:bg-black/80 text-white rounded-2xl backdrop-blur-md border border-white/10 transition-all">
-              <X size={20} />
+            <button onClick={onClose} className="p-2 md:p-3 bg-black/50 hover:bg-black/80 text-white rounded-xl md:rounded-2xl backdrop-blur-md border border-white/10 transition-all">
+              <X size={18} md:size={20} />
             </button>
           </div>
 
-          <div className="absolute -bottom-1 left-10 right-10 flex items-end gap-8">
+          <div className="absolute inset-x-0 bottom-0 px-6 md:px-10 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 translate-y-1/2 md:translate-y-0">
             <div className="relative shrink-0">
               {photoUrl ? (
-                <img src={photoUrl} className="w-40 h-40 rounded-[2.5rem] object-cover ring-8 ring-zinc-950 shadow-2xl" alt="" />
+                <img src={photoUrl} className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] object-cover ring-4 md:ring-8 ring-zinc-950 shadow-2xl" alt="" />
               ) : (
-                <div className="w-40 h-40 rounded-[2.5rem] bg-zinc-900 border-8 border-zinc-950 flex items-center justify-center text-zinc-700 shadow-2xl">
-                  <User size={64} />
+                <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-zinc-900 border-4 md:border-8 border-zinc-950 flex items-center justify-center text-zinc-700 shadow-2xl">
+                  <User size={48} md:size={64} />
                 </div>
               )}
-              <div className={`absolute -bottom-2 -right-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl border-2 border-zinc-950 ${st.bg} ${st.color}`}>
+              <div className={`absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-xl border-2 border-zinc-950 ${st.bg} ${st.color}`}>
                 {st.label}
               </div>
             </div>
 
-            <div className="mb-8 flex-1">
-              <div className="flex items-center gap-3 text-zinc-400 font-bold text-xs mb-2">
-                <span className="px-2 py-0.5 bg-zinc-900 rounded text-[10px] border border-white/5 uppercase tracking-[0.2em]">{reg.registration_code}</span>
-                <span className="w-1 h-1 bg-zinc-700 rounded-full" />
-                <span className="flex items-center gap-1.5"><Calendar size={12} /> {eventPeriod}</span>
+            <div className="mb-0 md:mb-8 flex-1 text-center md:text-left">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-zinc-400 font-bold text-[10px] md:text-xs mb-1 md:mb-2">
+                <span className="px-2 py-0.5 bg-zinc-900 rounded text-[8px] md:text-[10px] border border-white/5 uppercase tracking-[0.2em]">{reg.registration_code}</span>
+                <span className="hidden md:block w-1 h-1 bg-zinc-700 rounded-full" />
+                <span className="flex items-center gap-1.5"><Calendar size={10} md:size={12} /> {eventPeriod}</span>
               </div>
-              <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-lg">
+              <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-lg">
                 {reg.full_name}
               </h2>
             </div>
 
-            <div className="mb-8 flex flex-col gap-2">
+            <div className="hidden md:flex mb-8 flex-col gap-2">
               {reg.payment_status === 'pago_confirmado' && (
                 <button onClick={handleDownloadPDF} className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-violet-900/20">
                   <FileText size={16} /> Ficha PDF
@@ -150,15 +150,14 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
           </div>
         </div>
 
-        <div className="p-10 pt-16 overflow-y-auto flex-1 scrollbar-hide grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="p-6 md:p-10 pt-20 md:pt-16 overflow-y-auto flex-1 scrollbar-hide grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
           
-          {/* Coluna 1 & 2: Dados e Mensagens */}
-          <div className="lg:col-span-2 space-y-10">
+          <div className="lg:col-span-2 space-y-8 md:space-y-10">
             
             {/* Dados Pessoais */}
             <section>
               <SectionTitle icon={User} title="Dados do Participante" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <DetailItem label="Telefone" value={reg.phone} icon={Phone} />
                 <DetailItem label="Gênero" value={reg.gender} icon={User} />
                 <DetailItem label="Idade" value={reg.age ? `${reg.age} anos` : 'Não informada'} icon={Clock} />
@@ -171,46 +170,46 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
             {/* Liderança e Discipulado */}
             <section>
               <SectionTitle icon={Users} title="Liderança e Discipulado" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <DetailItem label="Pastor Responsável" value={reg.pastor_name} icon={Heart} />
                 <DetailItem label="Discipulador / Supervisor" value={reg.discipler_name || 'Não informado'} icon={Users} />
               </div>
             </section>
 
             {/* Saúde e Oração */}
-            <section className="grid grid-cols-1 gap-6">
+            <section className="grid grid-cols-1 gap-4 md:gap-6">
               {reg.has_allergy && (
-                <div className="bg-rose-500/5 border border-rose-500/10 rounded-3xl p-6 flex gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
-                    <AlertTriangle size={24} />
+                <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl md:rounded-3xl p-5 md:p-6 flex gap-4 md:gap-5">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+                    <AlertTriangle size={20} md:size={24} />
                   </div>
                   <div>
-                    <h4 className="text-rose-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">Alergias e Restrições</h4>
-                    <p className="text-zinc-200 font-bold leading-relaxed">{reg.allergy_description || 'Sim (não detalhado)'}</p>
+                    <h4 className="text-rose-500 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] mb-1">Alergias e Restrições</h4>
+                    <p className="text-zinc-200 text-xs md:text-sm font-bold leading-relaxed">{reg.allergy_description || 'Sim (não detalhado)'}</p>
                   </div>
                 </div>
               )}
               
               {reg.prayer_request && (
-                <div className="bg-violet-500/5 border border-violet-500/10 rounded-3xl p-6 flex gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-500 shrink-0">
-                    <Heart size={24} />
+                <div className="bg-violet-500/5 border border-violet-500/10 rounded-2xl md:rounded-3xl p-5 md:p-6 flex gap-4 md:gap-5">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-500 shrink-0">
+                    <Heart size={20} md:size={24} />
                   </div>
                   <div>
-                    <h4 className="text-violet-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">Motivo de Oração</h4>
-                    <p className="text-zinc-300 italic font-medium leading-relaxed">"{reg.prayer_request}"</p>
+                    <h4 className="text-violet-500 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] mb-1">Motivo de Oração</h4>
+                    <p className="text-zinc-300 text-xs md:text-sm italic font-medium leading-relaxed">"{reg.prayer_request}"</p>
                   </div>
                 </div>
               )}
 
               {reg.observations && (
-                <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 flex gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-500 shrink-0">
-                    <FileText size={24} />
+                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl md:rounded-3xl p-5 md:p-6 flex gap-4 md:gap-5">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-500 shrink-0">
+                    <FileText size={20} md:size={24} />
                   </div>
                   <div>
-                    <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">Observações Adicionais</h4>
-                    <p className="text-zinc-400 text-sm leading-relaxed">{reg.observations}</p>
+                    <h4 className="text-zinc-500 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] mb-1">Observações Adicionais</h4>
+                    <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">{reg.observations}</p>
                   </div>
                 </div>
               )}
@@ -264,15 +263,25 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
 
             {/* Ações de Status */}
             {['comprovante_enviado', 'em_analise', 'aguardando_comprovante'].includes(reg.payment_status) && (
-              <div className="pt-6 space-y-3">
-                <button onClick={handleConfirm} className="w-full flex items-center justify-center gap-3 py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-900/20">
+              <div className="pt-2 md:pt-6 space-y-3">
+                <button onClick={handleConfirm} className="w-full flex items-center justify-center gap-3 py-4 md:py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl md:rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-900/20">
                   <CheckCircle2 size={18} /> Aprovar Inscrição
                 </button>
-                <button onClick={handleReject} className="w-full flex items-center justify-center gap-3 py-5 bg-zinc-900 hover:bg-rose-900/20 text-zinc-500 hover:text-rose-500 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5">
+                <button onClick={handleReject} className="w-full flex items-center justify-center gap-3 py-4 md:py-5 bg-zinc-900 hover:bg-rose-900/20 text-zinc-500 hover:text-rose-500 rounded-2xl md:rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5">
                   <XCircle size={18} /> Recusar Pagamento
                 </button>
               </div>
             )}
+            
+            {/* Botão PDF Mobile */}
+            <div className="md:hidden pt-2">
+              {reg.payment_status === 'pago_confirmado' && (
+                <button onClick={handleDownloadPDF} className="w-full flex items-center justify-center gap-3 py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-violet-900/20">
+                  <FileText size={18} /> Gerar Ficha PDF
+                </button>
+              )}
+            </div>
+          </div>
           </div>
         </div>
       </div>

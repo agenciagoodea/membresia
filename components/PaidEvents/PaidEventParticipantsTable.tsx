@@ -158,43 +158,43 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20 whitespace-nowrap">
             <FileText size={14} /> Relatório
           </button>
-          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
+          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20 whitespace-nowrap">
             <Printer size={14} /> Crachás
           </button>
-          <button onClick={exportCSV} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
+          <button onClick={exportCSV} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5 whitespace-nowrap">
             <Download size={14} /> CSV
           </button>
         </div>
       </div>
 
       {/* Stats + Barra de Ocupação */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
-          <p className="text-2xl font-black text-white">{stats.total}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inscritos Total</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
+          <p className="text-xl md:text-2xl font-black text-white">{stats.total}</p>
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Inscritos Total</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
-          <p className="text-2xl font-black text-emerald-400">{stats.confirmed}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
+          <p className="text-xl md:text-2xl font-black text-emerald-400">{stats.confirmed}</p>
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Confirmados</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
-          <p className="text-2xl font-black text-amber-400">{stats.pending}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Aguard. Análise</p>
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
+          <p className="text-xl md:text-2xl font-black text-amber-400">{stats.pending}</p>
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Aguard. Análise</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
           {spotsLeft !== null ? (
             <>
-              <p className={`text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{Math.max(0, spotsLeft)}</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
+              <p className={`text-xl md:text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{Math.max(0, spotsLeft)}</p>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Vagas Livres</p>
             </>
           ) : (
             <>
-              <p className="text-2xl font-black text-zinc-500">∞</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Sem Limite</p>
+              <p className="text-xl md:text-2xl font-black text-zinc-500">∞</p>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Sem Limite</p>
             </>
           )}
         </div>
@@ -231,7 +231,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
       )}
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col lg:flex-row gap-3">
         <div className="flex items-center gap-2 bg-zinc-900 px-4 py-3 rounded-xl border border-white/5 flex-1">
           <Search size={14} className="text-zinc-500 shrink-0" />
           <input
@@ -242,15 +242,17 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             className="bg-transparent border-none outline-none text-sm font-medium text-zinc-200 w-full"
           />
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
-          <option value="all">Todos Status</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-        <select value={filterTransport} onChange={e => setFilterTransport(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
-          <option value="all">Transporte</option>
-          <option value="Carro">Carro</option>
-          <option value="Ônibus">Ônibus</option>
-        </select>
+        <div className="grid grid-cols-2 lg:flex gap-3">
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
+            <option value="all">Todos Status</option>
+            {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          <select value={filterTransport} onChange={e => setFilterTransport(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
+            <option value="all">Transporte</option>
+            <option value="Carro">Carro</option>
+            <option value="Ônibus">Ônibus</option>
+          </select>
+        </div>
       </div>
 
       {/* Contagem do filtro */}
@@ -269,7 +271,8 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
         </div>
       ) : (
         <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
-          <div className="overflow-x-auto">
+          {/* Vista Desktop */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 bg-zinc-950/50">
@@ -344,37 +347,37 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                       <td className="px-4 py-4 text-center">
                         <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border ${st.bg} ${st.color} ${st.border} shadow-sm`}>{st.label}</span>
                       </td>
-                      <td className="px-4 py-4 min-w-[120px]">
-                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-1 transition-all">
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 transition-all">
                           {isLoading ? (
                             <Loader2 size={14} className="animate-spin text-violet-400" />
                           ) : (
                             <>
-                              <button onClick={() => setSelectedReg(reg)} className="p-2.5 text-zinc-500 hover:text-white bg-zinc-950 hover:bg-zinc-800 rounded-xl border border-white/5 transition-all shadow-lg" title="Ver detalhes"><Eye size={16} /></button>
+                              <button onClick={() => setSelectedReg(reg)} className="p-2 text-zinc-500 hover:text-white bg-zinc-950 hover:bg-zinc-800 rounded-lg border border-white/5 transition-all" title="Ver detalhes"><Eye size={16} /></button>
                               {reg.phone && (
-                                <button onClick={() => handleWhatsApp(reg)} className="p-2.5 text-emerald-600 hover:text-emerald-400 bg-zinc-950 hover:bg-emerald-500/10 rounded-xl border border-white/5 transition-all shadow-lg" title="WhatsApp"><MessageCircle size={16} /></button>
+                                <button onClick={() => handleWhatsApp(reg)} className="p-2 text-emerald-600 hover:text-emerald-400 bg-zinc-950 hover:bg-emerald-500/10 rounded-lg border border-white/5 transition-all" title="WhatsApp"><MessageCircle size={16} /></button>
                               )}
                               {['comprovante_enviado', 'em_analise', 'aguardando_comprovante'].includes(reg.payment_status) && (
                                 <>
-                                  <button onClick={() => handleConfirm(reg)} className="p-2.5 text-emerald-500 hover:bg-emerald-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Confirmar pagamento"><CheckCircle2 size={16} /></button>
+                                  <button onClick={() => handleConfirm(reg)} className="p-2 text-emerald-500 hover:bg-emerald-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Confirmar pagamento"><CheckCircle2 size={16} /></button>
                                   {reg.payment_status !== 'aguardando_comprovante' && (
-                                    <button onClick={() => handleReject(reg)} className="p-2.5 text-rose-500 hover:bg-rose-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Recusar"><XCircle size={16} /></button>
+                                    <button onClick={() => handleReject(reg)} className="p-2 text-rose-500 hover:bg-rose-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Recusar"><XCircle size={16} /></button>
                                   )}
                                 </>
                               )}
                               {reg.payment_status === 'pago_confirmado' && (
                                 <>
-                                  <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2.5 text-violet-400 hover:bg-violet-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Comprovante PDF"><FileText size={16} /></button>
-                                  <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="p-2.5 text-amber-400 hover:bg-amber-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Crachá PDF">
+                                  <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2 text-violet-400 hover:bg-violet-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Comprovante PDF"><FileText size={16} /></button>
+                                  <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="p-2 text-amber-400 hover:bg-amber-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Crachá PDF">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg>
                                   </button>
                                 </>
                               )}
                               {canManage && (
-                                <button onClick={() => setEditingReg(reg)} className="p-2.5 text-blue-400 hover:bg-blue-500/20 bg-zinc-950 rounded-xl border border-white/5 transition-all shadow-lg" title="Editar inscrição"><Edit2 size={16} /></button>
+                                <button onClick={() => setEditingReg(reg)} className="p-2 text-blue-400 hover:bg-blue-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Editar inscrição"><Edit2 size={16} /></button>
                               )}
                               {canManage && (
-                                <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2.5 text-rose-600 hover:text-rose-400 bg-zinc-950 hover:bg-rose-500/10 rounded-xl border border-white/5 transition-all ml-1 shadow-lg" title="Excluir Inscrição"><Trash2 size={16} /></button>
+                                <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 text-rose-600 hover:text-rose-400 bg-zinc-950 hover:bg-rose-500/10 rounded-lg border border-white/5 transition-all shadow-lg" title="Excluir Inscrição"><Trash2 size={16} /></button>
                               )}
                             </>
                           )}
@@ -385,6 +388,71 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Vista Mobile (Cards) */}
+          <div className="sm:hidden divide-y divide-white/5">
+            {filtered.map(reg => {
+              const st = STATUS_CONFIG[reg.payment_status] || STATUS_CONFIG.aguardando_comprovante;
+              const isLoading = actionLoading === reg.id;
+              const pUrl = paidEventRegistrationService.getFileUrl('event-participant-photos', reg.photo_url || '');
+              return (
+                <div key={reg.id} className="p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      {reg.photo_url ? (
+                        <img src={pUrl} className="w-12 h-12 rounded-xl object-cover ring-2 ring-white/10" alt="" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-600 border border-white/5"><User size={20} /></div>
+                      )}
+                      {reg.payment_status === 'pago_confirmado' && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-zinc-900 flex items-center justify-center"><CheckCircle2 size={10} className="text-white" /></div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">{reg.registration_code} · {reg.pastor_name || 'Sem pastor'}</p>
+                    </div>
+                    <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${st.bg} ${st.color} ${st.border}`}>{st.label}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-zinc-950/50 p-2 rounded-lg border border-white/5">
+                      <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-0.5">Telefone</p>
+                      <p className="text-[10px] font-bold text-zinc-300">{reg.phone || '—'}</p>
+                    </div>
+                    <div className="bg-zinc-950/50 p-2 rounded-lg border border-white/5">
+                      <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-0.5">Blusa / Transp.</p>
+                      <p className="text-[10px] font-bold text-zinc-300">{reg.shirt_size || '—'} · {reg.transport_type || '—'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {isLoading ? (
+                      <Loader2 size={14} className="animate-spin text-violet-400" />
+                    ) : (
+                      <>
+                        <button onClick={() => setSelectedReg(reg)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-zinc-950 text-zinc-400 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest">
+                          <Eye size={14} /> Detalhes
+                        </button>
+                        {reg.phone && (
+                          <button onClick={() => handleWhatsApp(reg)} className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20"><MessageCircle size={16} /></button>
+                        )}
+                        {['comprovante_enviado', 'em_analise', 'aguardando_comprovante'].includes(reg.payment_status) && (
+                          <button onClick={() => handleConfirm(reg)} className="p-2.5 bg-emerald-500 text-white rounded-xl"><CheckCircle2 size={16} /></button>
+                        )}
+                        {reg.payment_status === 'pago_confirmado' && (
+                          <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2.5 bg-violet-600 text-white rounded-xl"><FileText size={16} /></button>
+                        )}
+                        {canManage && (
+                          <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20"><Trash2 size={16} /></button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           {/* Rodapé da tabela */}
           <div className="px-4 py-3 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
