@@ -97,9 +97,9 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
         {canCreateEvent && (
           <button
             onClick={onCreateNew}
-            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20"
           >
-            <Plus size={18} /> Novo Evento Pago
+            <Plus size={16} /> Novo Evento Pago
           </button>
         )}
       </div>
@@ -116,13 +116,13 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
             className="bg-transparent border-none outline-none text-sm font-medium text-zinc-200 w-full"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Filter size={14} className="text-zinc-600 w-full sm:w-auto mb-1 sm:mb-0 hidden sm:block" />
+        <div className="flex flex-nowrap overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap items-center gap-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+          <Filter size={14} className="text-zinc-600 shrink-0 hidden sm:block" />
           {['all', 'draft', 'published', 'closed', 'cancelled'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 filter === f
                   ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20'
                   : 'bg-zinc-900 text-zinc-500 border border-white/5 hover:text-white hover:bg-zinc-800'
@@ -157,9 +157,9 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
             const auxiliaryNames = (evt.auxiliares_nomes || []).map((name) => String(name || '').trim()).filter(Boolean);
             const hasTeamInfo = Boolean(coordinatorName || auxiliaryNames.length > 0);
             return (
-              <div key={evt.id} className="group bg-zinc-900 border border-white/5 hover:border-violet-500/30 rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-violet-500/5">
+              <div key={evt.id} className="group bg-zinc-900 border border-white/5 hover:border-violet-500/30 rounded-3xl md:rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-violet-500/5">
                 {/* Banner */}
-                <div className="h-40 overflow-hidden relative">
+                <div className="h-32 md:h-40 overflow-hidden relative">
                   <img 
                     src={paidEventRegistrationService.getFileUrl('paid-event-banners', evt.banner_url || '')} 
                     className="w-full h-full object-cover" 
@@ -169,7 +169,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
-                  <span className={`absolute top-4 right-4 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color} shadow-lg backdrop-blur-md`}>
+                  <span className={`absolute top-3 right-3 md:top-4 md:right-4 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color} shadow-lg backdrop-blur-md`}>
                     {statusInfo.label}
                   </span>
                 </div>
@@ -194,17 +194,17 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                    <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5">
-                      <Calendar size={11} className="text-zinc-400" /> {paidEventRegistrationService.formatEventPeriod(evt.start_date, evt.end_date)}
+                  <div className="flex flex-wrap gap-2 md:gap-3 text-[9px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                    <span className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1.5 rounded-xl border border-white/5">
+                      <Calendar size={10} className="text-zinc-400" /> {paidEventRegistrationService.formatEventPeriod(evt.start_date, evt.end_date)}
                     </span>
                     {evt.location && (
-                      <span className="flex items-center gap-1.5 bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/5 max-w-[180px] truncate">
-                        <MapPin size={11} className="text-zinc-400" /> <span className="truncate">{evt.location}</span>
+                      <span className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1.5 rounded-xl border border-white/5 max-w-[180px] truncate">
+                        <MapPin size={10} className="text-zinc-400" /> <span className="truncate">{evt.location}</span>
                       </span>
                     )}
-                    <span className="flex items-center gap-1.5 bg-violet-500/10 px-3 py-1.5 rounded-xl border border-violet-500/20 text-violet-400">
-                      <DollarSign size={11} /> {formatCurrency(evt.price)}
+                    <span className="flex items-center gap-1.5 bg-violet-500/10 px-2.5 py-1.5 rounded-xl border border-violet-500/20 text-violet-400">
+                      <DollarSign size={10} /> {formatCurrency(evt.price)}
                     </span>
                   </div>
 
@@ -224,19 +224,19 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
 
                         return (
                           <>
-                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                              <p className="text-lg font-black text-white">{totalInscritos}</p>
-                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-2 md:p-3 text-center">
+                              <p className="text-base md:text-lg font-black text-white">{totalInscritos}</p>
+                              <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</p>
                             </div>
-                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                              <p className="text-lg font-black text-emerald-400">{confirmados}</p>
-                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Confirmados</p>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-2 md:p-3 text-center">
+                              <p className="text-base md:text-lg font-black text-emerald-400">{confirmados}</p>
+                              <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest">Pagos</p>
                             </div>
-                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-3 text-center">
-                              <p className={`text-lg font-black ${vagasLivres <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>
+                            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-2xl p-2 md:p-3 text-center">
+                              <p className={`text-base md:text-lg font-black ${vagasLivres <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>
                                 {vagasLivres === Infinity ? '∞' : vagasLivres}
                               </p>
-                              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas Livres</p>
+                              <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest">Vagas</p>
                             </div>
                           </>
                         );

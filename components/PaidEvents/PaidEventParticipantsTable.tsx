@@ -158,43 +158,43 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20 whitespace-nowrap">
-            <FileText size={14} /> Relatório
+        <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
+            <FileText size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">Relatório</span>
           </button>
-          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20 whitespace-nowrap">
-            <Printer size={14} /> Crachás
+          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
+            <Printer size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">Crachás</span>
           </button>
-          <button onClick={exportCSV} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5 whitespace-nowrap">
-            <Download size={14} /> CSV
+          <button onClick={exportCSV} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
+            <Download size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">CSV</span>
           </button>
         </div>
       </div>
 
       {/* Stats + Barra de Ocupação */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
-          <p className="text-xl md:text-2xl font-black text-white">{stats.total}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Inscritos Total</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-3 md:p-6 text-center">
+          <p className="text-lg md:text-2xl font-black text-white">{stats.total}</p>
+          <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-0.5 md:mt-1">Inscritos</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
-          <p className="text-xl md:text-2xl font-black text-emerald-400">{stats.confirmed}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Confirmados</p>
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-3 md:p-6 text-center">
+          <p className="text-lg md:text-2xl font-black text-emerald-400">{stats.confirmed}</p>
+          <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-0.5 md:mt-1">Pagos</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
-          <p className="text-xl md:text-2xl font-black text-amber-400">{stats.pending}</p>
-          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Aguard. Análise</p>
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-3 md:p-6 text-center">
+          <p className="text-lg md:text-2xl font-black text-amber-400">{stats.pending}</p>
+          <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-0.5 md:mt-1">Análise</p>
         </div>
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 md:p-6 text-center">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-3 md:p-6 text-center">
           {spotsLeft !== null ? (
             <>
-              <p className={`text-xl md:text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{Math.max(0, spotsLeft)}</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Vagas Livres</p>
+              <p className={`text-lg md:text-2xl font-black ${spotsLeft <= 5 ? 'text-rose-400' : 'text-blue-400'}`}>{Math.max(0, spotsLeft)}</p>
+              <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-0.5 md:mt-1">Livres</p>
             </>
           ) : (
             <>
-              <p className="text-xl md:text-2xl font-black text-zinc-500">∞</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1">Sem Limite</p>
+              <p className="text-lg md:text-2xl font-black text-zinc-500">∞</p>
+              <p className="text-[8px] md:text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-0.5 md:mt-1">Vagas</p>
             </>
           )}
         </div>

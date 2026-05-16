@@ -93,7 +93,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
       <div className="relative w-full max-w-4xl bg-zinc-950 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[92vh] flex flex-col">
         
         {/* Banner e Cabeçalho de Perfil */}
-        <div className="relative h-64 shrink-0">
+        <div className="relative h-48 md:h-64 shrink-0">
           {bannerUrl ? (
             <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
           ) : (
@@ -115,27 +115,27 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
             </button>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-6 md:px-10 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 translate-y-1/2 md:translate-y-0">
+          <div className="absolute inset-x-0 bottom-0 px-6 md:px-10 flex flex-col md:flex-row items-center md:items-end gap-3 md:gap-8 translate-y-1/3 md:translate-y-0">
             <div className="relative shrink-0">
               {photoUrl ? (
-                <img src={photoUrl} className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] object-cover ring-4 md:ring-8 ring-zinc-950 shadow-2xl" alt="" />
+                <img src={photoUrl} className="w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] object-cover ring-4 md:ring-8 ring-zinc-950 shadow-2xl" alt="" />
               ) : (
-                <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-zinc-900 border-4 md:border-8 border-zinc-950 flex items-center justify-center text-zinc-700 shadow-2xl">
-                  <User size={48} md:size={64} />
+                <div className="w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-zinc-900 border-4 md:border-8 border-zinc-950 flex items-center justify-center text-zinc-700 shadow-2xl">
+                  <User size={40} md:size={64} />
                 </div>
               )}
-              <div className={`absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-xl border-2 border-zinc-950 ${st.bg} ${st.color}`}>
+              <div className={`absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[7px] md:text-[10px] font-black uppercase tracking-widest shadow-xl border-2 border-zinc-950 ${st.bg} ${st.color}`}>
                 {st.label}
               </div>
             </div>
 
             <div className="mb-0 md:mb-8 flex-1 text-center md:text-left">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-zinc-400 font-bold text-[10px] md:text-xs mb-1 md:mb-2">
-                <span className="px-2 py-0.5 bg-zinc-900 rounded text-[8px] md:text-[10px] border border-white/5 uppercase tracking-[0.2em]">{reg.registration_code}</span>
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 md:gap-3 text-zinc-400 font-bold text-[9px] md:text-xs mb-0.5 md:mb-2">
+                <span className="px-1.5 py-0.5 bg-zinc-900 rounded text-[7px] md:text-[10px] border border-white/5 uppercase tracking-[0.2em]">{reg.registration_code}</span>
                 <span className="hidden md:block w-1 h-1 bg-zinc-700 rounded-full" />
-                <span className="flex items-center gap-1.5"><Calendar size={10} md:size={12} /> {eventPeriod}</span>
+                <span className="flex items-center gap-1"><Calendar size={9} md:size={12} /> {eventPeriod}</span>
               </div>
-              <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-lg">
+              <h2 className="text-xl md:text-4xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-lg">
                 {reg.full_name}
               </h2>
             </div>
@@ -150,7 +150,7 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
           </div>
         </div>
 
-        <div className="p-6 md:p-10 pt-20 md:pt-16 overflow-y-auto flex-1 scrollbar-hide grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
+        <div className="p-4 md:p-10 pt-16 md:pt-16 overflow-y-auto flex-1 scrollbar-hide grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
           
           <div className="lg:col-span-2 space-y-8 md:space-y-10">
             
