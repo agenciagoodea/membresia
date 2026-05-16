@@ -116,8 +116,8 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
             className="bg-transparent border-none outline-none text-sm font-medium text-zinc-200 w-full"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-zinc-600" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter size={14} className="text-zinc-600 w-full sm:w-auto mb-1 sm:mb-0 hidden sm:block" />
           {['all', 'draft', 'published', 'closed', 'cancelled'].map((f) => (
             <button
               key={f}
@@ -146,7 +146,7 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
           <p className="text-zinc-600 text-xs mt-2">Clique em "Novo Evento Pago" para começar</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((evt) => {
             const statusInfo = STATUS_LABELS[evt.status] || STATUS_LABELS.draft;
             const canEdit = canEditPaidEvent(user, evt);
@@ -208,11 +208,11 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                     </span>
                   </div>
 
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
                       {(() => {
                         const totalInscritos = evt.stats?.total || 0;
                         const confirmados = evt.stats?.confirmed || 0;
-                        const vagasOcupadas = totalInscritos;
+                        const vagasOcupadas = confirmados;
                         const vagasLivres = evt.max_participants ? Math.max(0, evt.max_participants - vagasOcupadas) : Infinity;
                         
                         console.log('PAID_EVENT_CARD_STATS', { 
@@ -244,14 +244,14 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                     </div>
 
                   {/* Ações */}
-                  <div className="flex gap-2 pt-2 border-t border-white/5">
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-white/5">
                     {canViewRegistrations && (
                       <button onClick={() => onViewRegistrations(evt)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all">
                         <Users size={14} /> Inscritos
                       </button>
                     )}
                     {canEdit && (
-                      <button onClick={() => onEdit(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Editar">
+                      <button onClick={() => onEdit(evt)} className="flex items-center justify-center p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5 flex-1 sm:flex-none" title="Editar">
                         <Edit2 size={14} />
                       </button>
                     )}
@@ -261,16 +261,16 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                           const link = evt.public_link || `${window.location.origin}/#/evento/${evt.slug}`;
                           const text = `Inscreva-se no evento: ${evt.title}\n\nGaranta sua vaga aqui:\n${link}`;
                           window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-                        }} className={canEdit ? "p-3 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 rounded-xl transition-all border border-white/5 hover:border-emerald-500/20" : "flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all"} title="Compartilhar WhatsApp">
+                        }} className={canEdit ? "flex items-center justify-center p-3 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 rounded-xl transition-all border border-white/5 hover:border-emerald-500/20 flex-1 sm:flex-none" : "flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all"} title="Compartilhar WhatsApp">
                           {canEdit ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> : <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> WhatsApp</>}
                         </button>
-                        <button onClick={() => handleCopyLink(evt)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5" title="Copiar link">
+                        <button onClick={() => handleCopyLink(evt)} className="flex items-center justify-center p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5 flex-1 sm:flex-none" title="Copiar link">
                           {copiedId === evt.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         </button>
                       </>
                     )}
                     {canDelete && (
-                      <button onClick={() => handleDelete(evt.id)} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all border border-rose-500/10" title="Excluir">
+                      <button onClick={() => handleDelete(evt.id)} className="flex items-center justify-center p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all border border-rose-500/10 flex-1 sm:flex-none" title="Excluir">
                         <Trash2 size={14} />
                       </button>
                     )}

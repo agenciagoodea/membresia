@@ -141,6 +141,7 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [pixQR, setPixQR] = useState('');
   const [churchId, setChurchId] = useState('');
   const [step, setStep] = useState(1);
+  const [existingRegistration, setExistingRegistration] = useState<any>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -311,6 +312,45 @@ const PaidEventRegistrationForm: React.FC = () => {
     return true;
   };
 
+  const handleNextStep2 = async () => {
+    if (!validateStep2()) return;
+    
+    if (form.email && event) {
+      setSubmitting(true);
+      try {
+        const { supabase } = await import('../../services/supabaseClient');
+        const { data } = await supabase
+          .from('paid_event_registrations')
+          .select('*')
+          .eq('event_id', event.id)
+          .eq('email', form.email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (data) {
+          if (data.payment_status === 'pago_confirmado') {
+            alert('Encontramos sua inscrição e ela já está confirmada!');
+            setRegCode(data.registration_code);
+            setSuccess(true);
+            setSubmitting(false);
+            return;
+          }
+          setExistingRegistration(data);
+        } else {
+          setExistingRegistration(null);
+        }
+      } catch (e) {
+        setExistingRegistration(null);
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      setExistingRegistration(null);
+    }
+    setStep(3);
+  };
+
   const handleSubmit = async () => {
     if (!event) return;
     try {
@@ -321,6 +361,24 @@ const PaidEventRegistrationForm: React.FC = () => {
       if (isSoldOutNow || (stats?.spots_left !== null && (stats?.spots_left || 0) <= 0)) {
         alert('As inscrições deste evento foram encerradas por lotação.');
         navigate(`/evento/${event.slug}`);
+        return;
+      }
+      if (existingRegistration) {
+        if (!proofFile) {
+          alert('Por favor, envie o comprovante de pagamento para atualizar sua inscrição.');
+          setSubmitting(false);
+          return;
+        }
+        const payment_proof_url = await paidEventRegistrationService.uploadProof(proofFile, event.church_id);
+        const { supabase } = await import('../../services/supabaseClient');
+        await supabase.from('paid_event_registrations').update({
+          payment_proof_url,
+          payment_status: 'comprovante_enviado',
+          updated_at: new Date().toISOString()
+        }).eq('id', existingRegistration.id);
+        
+        setRegCode(existingRegistration.registration_code);
+        setSuccess(true);
         return;
       }
 
@@ -645,8 +703,8 @@ const PaidEventRegistrationForm: React.FC = () => {
               <button onClick={() => setStep(1)} className="flex-1 py-5 bg-zinc-900 text-zinc-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-white/5">
                 Voltar
               </button>
-              <button onClick={() => validateStep2() && setStep(3)} className="flex-[2] py-5 bg-violet-600 text-white rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-500/20">
-                Próximo: Pagamento
+              <button onClick={handleNextStep2} disabled={submitting} className="flex-[2] py-5 flex items-center justify-center gap-2 bg-violet-600 text-white rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-500/20 disabled:opacity-50">
+                {submitting ? <><Loader2 className="animate-spin" size={16} /> Verificando...</> : 'Próximo: Pagamento'}
               </button>
             </div>
           </div>
@@ -654,6 +712,21 @@ const PaidEventRegistrationForm: React.FC = () => {
 
         {step === 3 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            {existingRegistration && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-6">
+                <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm mb-4">Você já se cadastrou!</h3>
+                <p className="text-zinc-300 text-sm mb-4">
+                  Essas são as suas informações cadastradas. Se você já pagou, envie-nos o comprovante abaixo para que nossos administradores possam validar sua inscrição.
+                </p>
+                <div className="bg-zinc-950/50 rounded-2xl p-4 space-y-2">
+                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Nome:</span> <span className="text-white font-bold">{existingRegistration.full_name}</span></p>
+                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">E-mail:</span> <span className="text-white font-bold">{existingRegistration.email}</span></p>
+                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Telefone:</span> <span className="text-white font-bold">{existingRegistration.phone}</span></p>
+                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Status:</span> <span className="text-amber-400 font-bold uppercase tracking-widest">Aguardando Pagamento</span></p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-8 text-center">
               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">Valor da Inscrição</p>
               <p className="text-4xl font-black text-white">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>

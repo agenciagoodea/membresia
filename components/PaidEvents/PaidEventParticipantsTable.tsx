@@ -138,9 +138,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     awaiting: registrations.filter(r => r.payment_status === 'aguardando_comprovante').length,
   };
   const maxParticipants = event.max_participants || 0;
-  const activeCount = filtered.filter(r => r.payment_status !== 'cancelado' && r.payment_status !== 'recusado').length;
+  const activeCount = registrations.filter(r => r.payment_status === 'pago_confirmado').length;
   const occupancy = maxParticipants > 0 ? Math.round((activeCount / maxParticipants) * 100) : null;
-  const spotsLeft = maxParticipants > 0 ? maxParticipants - filtered.length : null; // total_inscritos (mesmo aguardando) bloqueiam vaga
+  const spotsLeft = maxParticipants > 0 ? maxParticipants - activeCount : null; // Apenas pagos confirmados bloqueiam vaga
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -158,14 +158,14 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex items-center gap-2 px-5 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
             <FileText size={14} /> Relatório
           </button>
-          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex items-center gap-2 px-5 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
+          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
             <Printer size={14} /> Crachás
           </button>
-          <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
+          <button onClick={exportCSV} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
             <Download size={14} /> CSV
           </button>
         </div>
@@ -344,8 +344,8 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                       <td className="px-4 py-4 text-center">
                         <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] border ${st.bg} ${st.color} ${st.border} shadow-sm`}>{st.label}</span>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-center gap-1 transition-all">
+                      <td className="px-4 py-4 min-w-[120px]">
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-1 transition-all">
                           {isLoading ? (
                             <Loader2 size={14} className="animate-spin text-violet-400" />
                           ) : (
@@ -387,9 +387,9 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             </table>
           </div>
           {/* Rodapé da tabela */}
-          <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
+          <div className="px-4 py-3 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
             <p className="text-[10px] text-zinc-600 font-bold">{filtered.length} registro(s) exibido(s)</p>
-            <div className="flex items-center gap-4 text-[10px] font-bold">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] font-bold">
               <span className="flex items-center gap-1 text-zinc-600">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Confirmados: {stats.confirmed}
               </span>

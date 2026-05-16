@@ -309,13 +309,12 @@ export const paidEventRegistrationService = {
     const stats = await paidEventService.getEventStats(eventId);
     if (stats) return stats.total_active;
 
-    // Conta todas as inscrições não canceladas/recusadas (para bloquear vagas)
+    // Conta apenas as inscrições pagas (para bloquear vagas)
     const { count, error } = await supabase
       .from('paid_event_registrations')
       .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId)
-      .not('payment_status', 'eq', 'cancelado')
-      .not('payment_status', 'eq', 'recusado');
+      .eq('payment_status', 'pago_confirmado');
     if (error) throw error;
     return count || 0;
   },

@@ -58,8 +58,7 @@ AS $$
     SELECT
       v.id AS event_id,
       count(*) FILTER (
-        WHERE r.payment_status IS DISTINCT FROM 'cancelado'
-          AND r.payment_status IS DISTINCT FROM 'recusado'
+        WHERE r.payment_status = 'pago_confirmado'
       )::bigint AS total_active,
       count(*) FILTER (
         WHERE r.payment_status = 'pago_confirmado'
@@ -134,8 +133,7 @@ BEGIN
   INTO active_count
   FROM public.paid_event_registrations r
   WHERE r.event_id = evt.id
-    AND r.payment_status IS DISTINCT FROM 'cancelado'
-    AND r.payment_status IS DISTINCT FROM 'recusado';
+    AND r.payment_status = 'pago_confirmado';
 
   next_status := evt.status;
 
