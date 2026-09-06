@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, MapPin, Users, DollarSign, Eye, Edit2, Trash2, Link2, Copy, Check, Ticket, Search, Filter } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, DollarSign, Eye, EyeOff, Edit2, Trash2, Link2, Copy, Check, Ticket, Search, Filter } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
 import { PaidEvent, PaidEventStatus, UserRole } from '../../types';
@@ -62,6 +62,22 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
     } catch (error) {
       console.error('Erro ao excluir:', error);
       alert('Erro ao excluir evento.');
+    }
+  };
+
+  const handleTogglePublish = async (evt: PaidEvent) => {
+    const isCurrentlyPublished = evt.status === PaidEventStatus.PUBLISHED;
+    const newStatus = isCurrentlyPublished ? PaidEventStatus.DRAFT : PaidEventStatus.PUBLISHED;
+    const actionLabel = isCurrentlyPublished ? 'despublicar' : 'publicar';
+
+    if (!window.confirm(`Deseja realmente ${actionLabel} o evento "${evt.title}"?`)) return;
+
+    try {
+      await paidEventService.update(evt.id, { status: newStatus });
+      loadEvents();
+    } catch (error) {
+      console.error(`Erro ao ${actionLabel} evento:`, error);
+      alert(`Erro ao ${actionLabel} evento.`);
     }
   };
 
@@ -251,9 +267,22 @@ const PaidEventsList: React.FC<PaidEventsListProps> = ({ user, onCreateNew, onEd
                       </button>
                     )}
                     {canEdit && (
-                      <button onClick={() => onEdit(evt)} className="flex items-center justify-center p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5 flex-1 sm:flex-none" title="Editar">
-                        <Edit2 size={14} />
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => handleTogglePublish(evt)} 
+                          className={`flex items-center justify-center p-3 rounded-xl transition-all border flex-1 sm:flex-none ${
+                            evt.status === PaidEventStatus.PUBLISHED 
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20' 
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
+                          }`}
+                          title={evt.status === PaidEventStatus.PUBLISHED ? "Despublicar evento (voltar para rascunho)" : "Publicar evento"}
+                        >
+                          {evt.status === PaidEventStatus.PUBLISHED ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button onClick={() => onEdit(evt)} className="flex items-center justify-center p-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all border border-white/5 flex-1 sm:flex-none" title="Editar">
+                          <Edit2 size={14} />
+                        </button>
+                      </>
                     )}
                     {canShare && (
                       <>

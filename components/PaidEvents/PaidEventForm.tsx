@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Calendar, MapPin, DollarSign, Users, Key, Image, AlignLeft, Eye, Ticket, Loader2 } from 'lucide-react';
+import { X, Save, Calendar, MapPin, DollarSign, Users, Key, Image, AlignLeft, Eye, EyeOff, Ticket, Loader2 } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
 import { pixService } from '../../services/pixService';
 import { PaidEvent, PaidEventStatus } from '../../types';
@@ -121,7 +121,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent, publishNow?: boolean) => {
+  const handleSubmit = async (e: React.FormEvent, targetStatus?: PaidEventStatus) => {
     e.preventDefault();
     try {
       setSaving(true);
@@ -138,7 +138,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
         );
       }
 
-      const status = publishNow ? PaidEventStatus.PUBLISHED : form.status;
+      const status = targetStatus !== undefined ? targetStatus : (form.status || PaidEventStatus.DRAFT);
 
       const payload = {
         church_id: churchId,
@@ -317,6 +317,19 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
             <textarea value={form.payment_instructions || ''} onChange={e => setForm({ ...form, payment_instructions: e.target.value })} rows={2} className={`${inputClass} resize-none`} />
           </Field>
 
+          <Field label="Status do Evento">
+            <select
+              value={form.status || PaidEventStatus.DRAFT}
+              onChange={e => setForm({ ...form, status: e.target.value })}
+              className={teamSelectClass}
+            >
+              <option value={PaidEventStatus.DRAFT}>Rascunho (Despublicado)</option>
+              <option value={PaidEventStatus.PUBLISHED}>Publicado</option>
+              <option value={PaidEventStatus.CLOSED}>Encerrado</option>
+              <option value={PaidEventStatus.CANCELLED}>Cancelado</option>
+            </select>
+          </Field>
+
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} className="accent-violet-600 w-5 h-5" />
             <span className="text-sm font-bold text-zinc-300">Exibir como destaque para membros</span>
@@ -325,12 +338,52 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
           {/* Botões */}
           <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row justify-end gap-3">
             <button type="button" onClick={onClose} className="px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors">Cancelar</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-2 px-8 py-3.5 bg-zinc-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5 disabled:opacity-50">
-              <Save size={14} /> {saving ? 'Salvando...' : 'Salvar Rascunho'}
-            </button>
-            <button type="button" disabled={saving} onClick={(e) => handleSubmit(e as any, true)} className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20 disabled:opacity-50">
-              <Eye size={14} /> Publicar
-            </button>
+            
+            {form.status === PaidEventStatus.PUBLISHED ? (
+              <>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={(e) => handleSubmit(e as any, PaidEventStatus.DRAFT)}
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                  title="Despublicar evento (voltar para rascunho)"
+                >
+                  <EyeOff size={14} /> {saving ? 'Salvando...' : 'Despublicar'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20 disabled:opacity-50"
+                >
+                  <Save size={14} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  onClick={(e) => {
+                    if (form.status === PaidEventStatus.PUBLISHED) {
+                      handleSubmit(e as any);
+                    } else {
+                      handleSubmit(e as any, PaidEventStatus.DRAFT);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 bg-zinc-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5 disabled:opacity-50"
+                >
+                  <Save size={14} /> {saving ? 'Salvando...' : (form.status === PaidEventStatus.DRAFT ? 'Salvar Rascunho' : 'Salvar Alterações')}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={(e) => handleSubmit(e as any, PaidEventStatus.PUBLISHED)}
+                  className="flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:from-violet-700 hover:to-indigo-700 transition-all shadow-xl shadow-violet-500/20 disabled:opacity-50"
+                >
+                  <Eye size={14} /> {saving ? 'Publicando...' : 'Publicar'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
