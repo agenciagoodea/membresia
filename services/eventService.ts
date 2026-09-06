@@ -48,31 +48,8 @@ export const eventService = {
     const isPastor = normalizedRole === 'PASTOR';
     const isAdmin = isMaster || isChurchAdmin || isPastor;
 
-    if (!isAdmin && isUUID(myId)) {
-      // 1. Obter Ecossistema Ministerial
-      const ecosystemIds = await memberService.getEcosystemIds(myId);
-      const validEcosystemIds = ecosystemIds.filter(id => isUUID(id));
-      const myCellId = currentUser.cellId || currentUser.cell_id;
-      
-      // 2. Construir condições OR (Seguindo regra: Público OR Ecossistema OR Minha Célula)
-      let orConditions = [`is_published.eq.true`];
-      
-      if (validEcosystemIds.length > 0) {
-        const ecosystemFilter = validEcosystemIds.join(',');
-        orConditions.push(`created_by.in.(${ecosystemFilter})`);
-        orConditions.push(`responsible_pastor_id.in.(${ecosystemFilter})`);
-        orConditions.push(`coordinator_id.in.(${ecosystemFilter})`);
-      }
-
-      if (isUUID(myCellId)) {
-        orConditions.push(`cell_ids.cs.{${myCellId}}`);
-      }
-      
-      orConditions.push(`assistant_ids.cs.{${myId}}`);
-
-      query = query.or(orConditions.join(','));
-    } else if (!isAdmin) {
-      // Se for um usuário sem ID (ex: visitante ou erro de sessão), vê apenas o que é público
+    if (!isAdmin) {
+      // Para membros/não-gestores, APENAS eventos publicados devem ser visíveis
       query = query.eq('is_published', true);
     }
     // Admin vê tudo da igreja (já filtrado por church_id acima)

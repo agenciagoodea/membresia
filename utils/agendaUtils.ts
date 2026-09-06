@@ -212,8 +212,12 @@ export const mergeAgendaItems = (
   const safeExceptions = Array.isArray(exceptions) ? exceptions : [];
 
   const cellMeetings = filteredCells.flatMap(cell => generateCellOccurrences(cell, safeExceptions)).map(e => normalizeEventForAgenda(e, 'cell_event'));
-  const normalizedChurchEvents = safeEvents.map(e => normalizeEventForAgenda(e, 'church_event'));
-  const normalizedPaidEvents = safePaidEvents.map(e => normalizeEventForAgenda(e, 'paid_event'));
+  const normalizedChurchEvents = safeEvents
+    .filter(e => isManagement || (e.is_published !== false && (e as any).isPublished !== false))
+    .map(e => normalizeEventForAgenda(e, 'church_event'));
+  const normalizedPaidEvents = safePaidEvents
+    .filter(e => e.status === 'published' || e.status === 'closed')
+    .map(e => normalizeEventForAgenda(e, 'paid_event'));
   
   // Combine
   const combined = [...normalizedChurchEvents, ...cellMeetings, ...normalizedPaidEvents];

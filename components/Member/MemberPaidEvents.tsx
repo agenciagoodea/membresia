@@ -25,7 +25,12 @@ const MemberPaidEvents: React.FC<Props> = ({ user }) => {
     const load = async () => {
       try {
         const data = await paidEventRegistrationService.getByMemberOrEmail(user.id, user.email);
-        setRegistrations(data);
+        const activeEventsData = (data || []).filter((reg: any) => {
+          const evt = reg.paid_events;
+          if (!evt) return true;
+          return evt.status === 'published' || evt.status === 'closed';
+        });
+        setRegistrations(activeEventsData);
       } catch (error) {
         console.error('Erro ao carregar eventos do membro:', error);
       } finally {
