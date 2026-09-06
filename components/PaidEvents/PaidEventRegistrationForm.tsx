@@ -173,9 +173,11 @@ const PaidEventRegistrationForm: React.FC = () => {
         setEvent(data);
         setChurchId(data.church_id);
 
-        if (data.pix_key && data.pix_receiver_name && data.pix_receiver_city) {
+        if (data.pix_key) {
+          const receiver = data.pix_receiver_name || 'RECEBEDOR';
+          const city = data.pix_receiver_city || 'SAO PAULO';
           const { qrCodeDataURL, payload } = await pixService.generatePixQRCode(
-            data.pix_key, data.pix_receiver_name, data.pix_receiver_city, data.price
+            data.pix_key, receiver, city, data.price
           );
           setPixQR(qrCodeDataURL);
           setPixPayload(payload);

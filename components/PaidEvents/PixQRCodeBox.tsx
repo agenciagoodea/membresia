@@ -15,10 +15,10 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
 
   // Calcula o payload Pix Copia e Cola completo caso não tenha sido repassado via prop
   const pixPayload = payload || event.pix_qrcode_payload || (
-    event.pix_key && event.pix_receiver_name
+    event.pix_key
       ? pixService.generatePayload(
           event.pix_key,
-          event.pix_receiver_name,
+          event.pix_receiver_name || 'RECEBEDOR',
           event.pix_receiver_city || 'SAO PAULO',
           event.price
         )
@@ -44,54 +44,55 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="bg-gradient-to-br from-violet-500/5 to-indigo-500/5 border border-violet-500/20 rounded-2xl p-6 space-y-5">
+    <div className="bg-gradient-to-br from-violet-500/5 to-indigo-500/5 border border-violet-500/20 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-violet-600/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-violet-600/20 flex items-center justify-center shrink-0">
           <QrCode size={20} className="text-violet-400" />
         </div>
         <div>
           <h4 className="text-sm font-black text-white uppercase tracking-widest">Pagamento via Pix</h4>
-          <p className="text-[10px] text-zinc-500 font-bold">{event.payment_instructions || 'Escaneie o QR Code ou use o Pix Copia e Cola abaixo'}</p>
+          <p className="text-[10px] text-zinc-500 font-bold leading-tight">{event.payment_instructions || 'Escaneie o QR Code ou use o Pix Copia e Cola abaixo'}</p>
         </div>
       </div>
 
       {/* Valor */}
-      <div className="bg-zinc-950 border border-white/5 rounded-xl p-4 flex items-center justify-between">
+      <div className="bg-zinc-950 border border-white/5 rounded-xl p-3.5 sm:p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <DollarSign size={16} className="text-emerald-400" />
+          <DollarSign size={16} className="text-emerald-400 shrink-0" />
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Valor do Pagamento</span>
         </div>
-        <span className="text-xl font-black text-emerald-400">{formatCurrency(event.price)}</span>
+        <span className="text-lg sm:text-xl font-black text-emerald-400">{formatCurrency(event.price)}</span>
       </div>
 
       {/* QR Code */}
       {qrCodeDataURL && (
-        <div className="flex justify-center">
+        <div className="flex justify-center py-1">
           <div className="bg-white p-3 rounded-2xl shadow-lg">
-            <img src={qrCodeDataURL} alt="QR Code Pix" className="w-48 h-48" />
+            <img src={qrCodeDataURL} alt="QR Code Pix" className="w-44 h-44 sm:w-48 sm:h-48" />
           </div>
         </div>
       )}
 
       {/* Pix Copia e Cola (Payload completo com o Valor embutido) */}
       {pixPayload && (
-        <div className="space-y-2 bg-violet-950/20 border border-violet-500/30 rounded-xl p-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-3 bg-violet-950/20 border border-violet-500/30 rounded-xl p-3.5 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-1">
             <p className="text-[10px] font-black text-violet-300 uppercase tracking-widest flex items-center gap-1.5">
-              <Sparkles size={12} className="text-amber-400" />
-              Pix Copia e Cola (Com Valor)
+              <Sparkles size={12} className="text-amber-400 shrink-0" />
+              Pix Copia e Cola
             </p>
-            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
               Valor {formatCurrency(event.price)} incluso
             </span>
           </div>
 
           <div className="relative">
-            <input
-              type="text"
+            <textarea
               readOnly
+              rows={2}
               value={pixPayload}
-              className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-mono text-zinc-300 select-all outline-none"
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              className="w-full bg-zinc-950 border border-white/10 rounded-xl p-2.5 text-[11px] font-mono text-zinc-300 select-all outline-none resize-none break-all leading-tight"
             />
           </div>
 
@@ -106,7 +107,7 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
           >
             {copiedPayload ? (
               <>
-                <Check size={16} /> Código Pix Copiado com Sucesso!
+                <Check size={16} /> Código Copiado com Sucesso!
               </>
             ) : (
               <>
@@ -114,7 +115,7 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
               </>
             )}
           </button>
-          <p className="text-[9px] text-zinc-400 text-center font-medium">
+          <p className="text-[9px] text-zinc-400 text-center font-medium leading-relaxed">
             Cole este código na opção <strong>"Pix Copia e Cola"</strong> do seu app bancário. O valor de {formatCurrency(event.price)} será preenchido automaticamente.
           </p>
         </div>
@@ -123,18 +124,22 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
       {/* Chave Pix Simples (Opção secundária) */}
       {event.pix_key && (
         <div className="pt-2 border-t border-white/5 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-1">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Chave Pix (Opcional)</p>
-            <span className="text-[9px] text-zinc-500 font-medium">Se preferir digitar manualmente no banco</span>
+            <span className="text-[9px] text-zinc-500 font-medium">Para digitação manual</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-zinc-950 border border-white/5 rounded-xl px-4 py-2.5 text-xs font-mono text-zinc-300 truncate">
-              {pixService.sanitizeKey(event.pix_key)}
-            </div>
+            <input
+              type="text"
+              readOnly
+              value={pixService.sanitizeKey(event.pix_key)}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="flex-1 min-w-0 bg-zinc-950 border border-white/5 rounded-xl px-3 py-2 text-xs font-mono text-zinc-300 outline-none select-all"
+            />
             <button
               type="button"
               onClick={handleCopyKey}
-              className={`p-2.5 rounded-xl transition-all border ${
+              className={`p-2.5 rounded-xl transition-all border shrink-0 ${
                 copiedKey
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                   : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:bg-zinc-800'
