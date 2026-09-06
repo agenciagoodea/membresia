@@ -139,6 +139,7 @@ const PaidEventRegistrationForm: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [regCode, setRegCode] = useState('');
   const [pixQR, setPixQR] = useState('');
+  const [pixPayload, setPixPayload] = useState('');
   const [churchId, setChurchId] = useState('');
   const [step, setStep] = useState(1);
   const [existingRegistration, setExistingRegistration] = useState<any>(null);
@@ -173,10 +174,11 @@ const PaidEventRegistrationForm: React.FC = () => {
         setChurchId(data.church_id);
 
         if (data.pix_key && data.pix_receiver_name && data.pix_receiver_city) {
-          const { qrCodeDataURL } = await pixService.generatePixQRCode(
+          const { qrCodeDataURL, payload } = await pixService.generatePixQRCode(
             data.pix_key, data.pix_receiver_name, data.pix_receiver_city, data.price
           );
           setPixQR(qrCodeDataURL);
+          setPixPayload(payload);
         }
 
       } catch (err) {
@@ -733,7 +735,7 @@ const PaidEventRegistrationForm: React.FC = () => {
             </div>
 
             {event.pix_key && (
-              <PixQRCodeBox event={event} qrCodeDataURL={pixQR} />
+              <PixQRCodeBox event={event} qrCodeDataURL={pixQR} payload={pixPayload} />
             )}
 
             <div className="space-y-4">

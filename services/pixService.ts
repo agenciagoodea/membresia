@@ -31,14 +31,63 @@ function tlv(id: string, value: string): string {
  * Remove acentos e caracteres especiais para compatibilidade com padrão EMV.
  */
 function sanitize(str: string): string {
-  return str
+  return (str || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9 @.]/g, '')
     .substring(0, 25);
 }
 
+/**
+ * Sanitiza a chave Pix para garantir compatibilidade com o padrão EMV (BR Code).
+ * Remove pontuações de CPF, CNPJ e ajusta telefones/e-mails.
+ */
+function sanitizePixKey(key: string): string {
+  if (!key) return '';
+  const trimmed = key.trim();
+
+  // E-mail (contém @)
+  if (trimmed.includes('@')) {
+    return trimmed.toLowerCase();
+  }
+
+  // Chave Aleatória (UUID ex: 123e4567-e89b-12d3-a456-426614174000)
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (uuidRegex.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+
+  const onlyDigits = trimmed.replace(/\D/g, '');
+
+  // Telefone internacional iniciando com +
+  if (trimmed.startsWith('+')) {
+    return '+' + onlyDigits;
+  }
+
+  // CPF (11 dígitos) ou CNPJ (14 dígitos)
+  if (onlyDigits.length === 11 || onlyDigits.length === 14) {
+    return onlyDigits;
+  }
+
+  // Telefone celular/fixo do BR com DDD (10 ou 11 dígitos) sem +55
+  if ((onlyDigits.length === 10 || onlyDigits.length === 11) && !trimmed.includes('.')) {
+    return '+55' + onlyDigits;
+  }
+
+  // Fallback: se houver dígitos e não contiver letras
+  if (onlyDigits.length > 0 && !/[a-zA-Z]/.test(trimmed)) {
+    return onlyDigits;
+  }
+
+  return trimmed;
+}
+
 export const pixService = {
+  /**
+   * Sanitiza a chave Pix exposta para utilização externa
+   */
+  sanitizeKey: sanitizePixKey,
+
   /**
    * Gera o payload BRCode para Pix estático.
    * @param pixKey - Chave Pix (CPF, CNPJ, e-mail, telefone ou aleatória)
@@ -54,12 +103,13 @@ export const pixService = {
     amount: number,
     txId: string = '***'
   ): string {
+    const sanitizedKey = sanitizePixKey(pixKey);
     const sanitizedName = sanitize(receiverName);
-    const sanitizedCity = sanitize(city).substring(0, 15);
+    const sanitizedCity = sanitize(city || 'SAO PAULO').substring(0, 15);
 
     // Merchant Account Information (ID 26)
     const gui = tlv('00', 'br.gov.bcb.pix');
-    const key = tlv('01', pixKey);
+    const key = tlv('01', sanitizedKey);
     const merchantAccountInfo = tlv('26', gui + key);
 
     // Montando o payload

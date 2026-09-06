@@ -282,7 +282,6 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
               )}
             </div>
           </div>
-          </div>
         </div>
       </div>
     </div>
