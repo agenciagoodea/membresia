@@ -5,6 +5,7 @@ import { pdfService } from '../../services/pdfService';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import PaidEventRegistrationDetailsModal from './PaidEventRegistrationDetailsModal';
 import PaidEventRegistrationEditModal from './PaidEventRegistrationEditModal';
+import PaidEventBadgeModal from './PaidEventBadgeModal';
 import { canEditPaidEvent } from '../../utils/roleUtils';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -31,6 +32,8 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const [filterType, setFilterType] = useState('all');
   const [selectedReg, setSelectedReg] = useState<PaidEventRegistration | null>(null);
   const [editingReg, setEditingReg] = useState<PaidEventRegistration | null>(null);
+  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
+  const [badgeTargetReg, setBadgeTargetReg] = useState<PaidEventRegistration | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
 
@@ -198,7 +201,13 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
             {reportLoading ? <Loader2 size={12} className="animate-spin sm:w-3.5 sm:h-3.5" /> : <FileText size={12} className="sm:w-3.5 sm:h-3.5" />}
             <span className="truncate">{reportLoading ? 'Gerando...' : 'Relatório'}</span>
           </button>
-          <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
+          <button
+            onClick={() => {
+              setBadgeTargetReg(null);
+              setBadgeModalOpen(true);
+            }}
+            className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20"
+          >
             <Printer size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">Crachás</span>
           </button>
           <button onClick={exportCSV} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-zinc-800 text-zinc-300 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-zinc-700 transition-all border border-white/5">
@@ -416,7 +425,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                               {reg.payment_status === 'pago_confirmado' && (
                                 <>
                                   <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2 text-violet-400 hover:bg-violet-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Comprovante PDF"><FileText size={16} /></button>
-                                  <button onClick={() => pdfService.downloadParticipantBadge(reg, event)} className="p-2 text-amber-400 hover:bg-amber-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Crachá PDF">
+                                  <button onClick={() => { setBadgeTargetReg(reg); setBadgeModalOpen(true); }} className="p-2 text-amber-400 hover:bg-amber-500/20 bg-zinc-950 rounded-lg border border-white/5 transition-all" title="Escolher Modelo de Crachá">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><path d="M7 15h0"></path><path d="M12 15h5"></path><path d="M7 9h10"></path></svg>
                                   </button>
                                 </>
@@ -497,7 +506,10 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                           <button onClick={() => handleConfirm(reg)} className="p-2.5 bg-emerald-500 text-white rounded-xl"><CheckCircle2 size={16} /></button>
                         )}
                         {reg.payment_status === 'pago_confirmado' && (
-                          <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2.5 bg-violet-600 text-white rounded-xl"><FileText size={16} /></button>
+                          <>
+                            <button onClick={() => pdfService.downloadParticipantPDF(reg, event)} className="p-2.5 bg-violet-600 text-white rounded-xl" title="Ficha PDF"><FileText size={16} /></button>
+                            <button onClick={() => { setBadgeTargetReg(reg); setBadgeModalOpen(true); }} className="p-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl" title="Crachá"><Printer size={16} /></button>
+                          </>
                         )}
                         {canManage && (
                           <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20"><Trash2 size={16} /></button>
@@ -550,6 +562,19 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
           }}
           registration={editingReg}
           event={event}
+        />
+      )}
+
+      {/* Modal Escolha de Modelo de Crachá */}
+      {badgeModalOpen && (
+        <PaidEventBadgeModal
+          event={event}
+          registrations={registrations}
+          targetReg={badgeTargetReg}
+          onClose={() => {
+            setBadgeModalOpen(false);
+            setBadgeTargetReg(null);
+          }}
         />
       )}
     </div>

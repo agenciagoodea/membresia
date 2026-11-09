@@ -2,6 +2,48 @@ import { jsPDF } from 'jspdf';
 import { PaidEventRegistration, PaidEvent } from '../types';
 import { paidEventRegistrationService } from './paidEventRegistrationService';
 
+export type BadgeModelType = 'corporate_10' | 'medium_4' | 'large_2';
+
+export interface BadgeModelOption {
+  id: BadgeModelType;
+  title: string;
+  badgeDimensions: string;
+  perPageLabel: string;
+  capacityText: string;
+  description: string;
+  recommendedFor: string;
+}
+
+export const BADGE_MODELS: BadgeModelOption[] = [
+  {
+    id: 'corporate_10',
+    title: 'Padrão Corporativo / Cartão de Crédito',
+    badgeDimensions: '8,5 x 5,4 cm',
+    perPageLabel: '10 crachás por folha A4',
+    capacityText: 'Dispostos em 2 colunas de 5 crachás cada',
+    description: 'Formato clássico cartão (CR-80 horizontal) com foto lateral grande, nome em destaque, identificação de equipe e margens seguras para corte.',
+    recommendedFor: 'Ideal para porta-crachás rígidos, clips jacaré e crachás compactos com economia máxima de papel.'
+  },
+  {
+    id: 'medium_4',
+    title: 'Credencial Média para Eventos',
+    badgeDimensions: '9 x 12 cm',
+    perPageLabel: '4 crachás por folha A4',
+    capacityText: 'Dispostos em 2 colunas de 2 crachás cada',
+    description: 'Tamanho padrão de encontros, retiros e seminários. Foto centralizada grande, nome de alta visibilidade e tarja de identificação.',
+    recommendedFor: 'O modelo mais utilizado para eventos de fim de semana, com porta-crachá plástico ou cordão direto.'
+  },
+  {
+    id: 'large_2',
+    title: 'Credencial Grande para Congressos',
+    badgeDimensions: '10 x 14 cm',
+    perPageLabel: '2 crachás por folha A4',
+    capacityText: 'Dispostos em 2 crachás verticais centralizados',
+    description: 'Formato imponente de grandes convenções e congressos nacionais. Foto extra grande, tipografia imponente e leitura fácil à distância.',
+    recommendedFor: 'Recomendado para conferências, congressos estaduais/nacionais e credenciamento VIP.'
+  }
+];
+
 export const pdfService = {
   /**
    * Gera PDF individual do participante confirmado.
@@ -145,100 +187,6 @@ export const pdfService = {
     const a = document.createElement('a');
     a.href = url;
     a.download = `inscricao-${reg.registration_code}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  },
-
-  /**
-   * Gera PDF do Crachá CR-80 (54x86mm).
-   */
-  async downloadParticipantBadge(
-    reg: PaidEventRegistration,
-    event: PaidEvent,
-    churchLogo?: string
-  ): Promise<void> {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [54, 86] });
-    
-    const bannerBase64 = event.banner_url ? await paidEventRegistrationService.getImageBase64('paid-event-banners', event.banner_url) : '';
-    const photoBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
-
-    // Background color
-    doc.setFillColor(24, 24, 27); // zinc-900
-    doc.rect(0, 0, 54, 86, 'F');
-
-    // Topo Roxo / Banner
-    doc.setFillColor(139, 92, 246); // violet-500
-    doc.rect(0, 0, 54, 25, 'F');
-    if (bannerBase64) {
-      try {
-        doc.addImage(bannerBase64, 'JPEG', 0, 0, 54, 25);
-        try {
-          doc.setGState(new (doc as any).GState({opacity: 0.4}));
-          doc.setFillColor(0, 0, 0);
-          doc.rect(0, 0, 54, 25, 'F');
-          doc.setGState(new (doc as any).GState({opacity: 1.0}));
-        } catch (e) {}
-      } catch (e) {}
-    }
-
-    // Event title - REMOVED as per user request to leave banner clean
-    /*
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    const titleLines = doc.splitTextToSize(event.title.toUpperCase(), 50);
-    doc.text(titleLines, 27, 12, { align: 'center' });
-    */
-
-    // Participant Photo
-    let photoY = 28;
-    if (photoBase64) {
-      try {
-        doc.setFillColor(255, 255, 255);
-        doc.rect(13, photoY - 1, 28, 28, 'F');
-        doc.addImage(photoBase64, 'JPEG', 14, photoY, 26, 26);
-      } catch {
-        doc.setFillColor(50, 50, 50);
-        doc.rect(14, photoY, 26, 26, 'F');
-      }
-    } else {
-      doc.setFillColor(50, 50, 50);
-      doc.rect(14, photoY, 26, 26, 'F');
-    }
-
-    // Participant Name
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    const nameLines = doc.splitTextToSize(reg.full_name, 50);
-    doc.text(nameLines, 27, 59, { align: 'center' });
-
-    if (reg.registration_type === 'colaborador') {
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(251, 191, 36); // amber-400
-      const colabText = `EQUIPE • ${(reg.collaborator_role || 'COLABORADOR').toUpperCase()}`;
-      doc.text(colabText, 27, 66, { align: 'center' });
-    }
-
-    // Code/Info
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(160, 160, 160);
-    doc.text(`CÓD: ${reg.registration_code}`, 27, 72, { align: 'center' });
-
-    if (reg.pastor_name) {
-      doc.text(`PASTOR: ${reg.pastor_name.toUpperCase()}`, 27, 76, { align: 'center' });
-    }
-
-    // Save
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cracha-${reg.registration_code}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1404,123 +1352,416 @@ export const pdfService = {
   },
 
   /**
-   * Gera PDF A4 com todos os crachás dos inscritos confirmados em grade 3x3.
+   * Gera PDF do Crachá individual conforme o modelo selecionado.
+   */
+  async downloadParticipantBadge(
+    reg: PaidEventRegistration,
+    event: PaidEvent,
+    model: BadgeModelType = 'medium_4',
+    churchLogo?: string
+  ): Promise<void> {
+    await this.generateBadgesByModelPDF(event, [reg], model);
+  },
+
+  /**
+   * Gera PDF A4 com crachás conforme um dos 3 modelos homologados:
+   * 1. corporate_10: Padrão Corporativo / Cartão (8,5 x 5,4 cm) - 10 por folha A4 (2 col x 5 lin)
+   * 2. medium_4: Credencial Média para Eventos (9 x 12 cm) - 4 por folha A4 (2 col x 2 lin)
+   * 3. large_2: Credencial Grande para Congressos (10 x 14 cm) - 2 por folha A4 (centralizados)
+   */
+  async generateBadgesByModelPDF(
+    event: PaidEvent,
+    registrations: PaidEventRegistration[],
+    model: BadgeModelType = 'medium_4',
+    onProgress?: (current: number, total: number) => void
+  ): Promise<void> {
+    if (!registrations || registrations.length === 0) return;
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const bannerBase64 = event.banner_url ? await paidEventRegistrationService.getImageBase64('paid-event-banners', event.banner_url) : '';
+
+    const truncate = (str: string | undefined | null, maxLen: number): string => {
+      if (!str) return '';
+      const trimmed = str.trim();
+      if (trimmed.length <= maxLen) return trimmed;
+      return trimmed.substring(0, maxLen - 1) + '…';
+    };
+
+    const perPage = model === 'corporate_10' ? 10 : model === 'medium_4' ? 4 : 2;
+
+    for (let i = 0; i < registrations.length; i++) {
+      if (onProgress) onProgress(i + 1, registrations.length);
+      const reg = registrations[i];
+      const posOnPage = i % perPage;
+
+      if (posOnPage === 0 && i > 0) {
+        doc.addPage();
+      }
+
+      const pBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
+      const isColab = reg.registration_type === 'colaborador';
+      const roleText = (reg.collaborator_role || 'Apoio Geral').toUpperCase();
+
+      // =======================================================================
+      // MODELO 1: Padrão Corporativo / Cartão de Crédito (8,5 x 5,4 cm)
+      // 10 crachás por folha A4 (2 colunas x 5 linhas)
+      // =======================================================================
+      if (model === 'corporate_10') {
+        const badgeW = 85;
+        const badgeH = 54;
+        const col = posOnPage % 2;
+        const row = Math.floor(posOnPage / 2);
+        const x = 15 + col * (badgeW + 10);
+        const y = 9.5 + row * (badgeH + 2);
+
+        // Fundo escuro moderno
+        doc.setFillColor(24, 24, 27); // zinc-900
+        doc.roundedRect(x, y, badgeW, badgeH, 2.5, 2.5, 'F');
+
+        // Tarja do topo (9mm)
+        doc.setFillColor(124, 58, 237); // violet-600
+        doc.roundedRect(x, y, badgeW, 9, 2.5, 2.5, 'F');
+        doc.rect(x, y + 6, badgeW, 3, 'F');
+
+        // Título do Evento no Topo
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(truncate(event.title.toUpperCase(), 42), x + 4, y + 6);
+
+        // Foto Grande à Esquerda (34 x 38mm)
+        const xFoto = x + 4;
+        const yFoto = y + 12;
+        const wFoto = 33;
+        const hFoto = 38;
+
+        doc.setFillColor(39, 39, 42); // zinc-800
+        doc.roundedRect(xFoto, yFoto, wFoto, hFoto, 2, 2, 'F');
+        if (pBase64) {
+          try {
+            doc.addImage(pBase64, 'JPEG', xFoto, yFoto, wFoto, hFoto);
+          } catch (e) {}
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(16);
+          doc.setTextColor(113, 113, 122);
+          const initials = reg.full_name.split(' ').map(n => n[0]).slice(0, 2).join('');
+          doc.text(initials, xFoto + (wFoto / 2), yFoto + (hFoto / 2) + 5, { align: 'center' });
+        }
+        // Moldura fina da foto
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(xFoto, yFoto, wFoto, hFoto, 2, 2, 'S');
+
+        // Dados do Inscrito (Lado Direito, 44mm úteis)
+        const xInfo = x + 40;
+        const wInfo = 41;
+
+        // Nome em Destaque
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        const nameLines = doc.splitTextToSize(reg.full_name.toUpperCase(), wInfo);
+        doc.text(nameLines.slice(0, 2), xInfo, y + 17);
+
+        // Tag Categoria / Equipe
+        const tagY = nameLines.length > 1 ? y + 26 : y + 24;
+        if (isColab) {
+          doc.setFillColor(217, 119, 6); // amber-600
+          doc.roundedRect(xInfo, tagY, wInfo, 4.5, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5.5);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`EQUIPE • ${truncate(roleText, 18)}`, xInfo + (wInfo / 2), tagY + 3.2, { align: 'center' });
+        } else {
+          doc.setFillColor(16, 185, 129); // emerald-500
+          doc.roundedRect(xInfo, tagY, wInfo, 4.5, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6);
+          doc.setTextColor(255, 255, 255);
+          doc.text('PARTICIPANTE', xInfo + (wInfo / 2), tagY + 3.2, { align: 'center' });
+        }
+
+        // Metadados na Base
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(161, 161, 170); // zinc-400
+        doc.text(`CÓD: ${reg.registration_code}`, xInfo, y + 36);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.5);
+        doc.setTextColor(212, 212, 216); // zinc-300
+        if (reg.pastor_name) {
+          doc.text(`PASTOR: ${truncate(reg.pastor_name.toUpperCase(), 20)}`, xInfo, y + 41);
+        }
+        doc.text(`BLUSA: ${reg.shirt_size || '-'}  •  TRANSP: ${truncate(reg.transport_type || '-', 9)}`, xInfo, y + 46);
+
+        // Guia de corte tracejada
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([1, 1], 0);
+        doc.roundedRect(x, y, badgeW, badgeH, 2.5, 2.5, 'S');
+        doc.setLineDashPattern([], 0);
+      }
+
+      // =======================================================================
+      // MODELO 2: Credencial Média para Eventos (9 x 12 cm)
+      // 4 crachás por folha A4 (2 colunas x 2 linhas)
+      // =======================================================================
+      else if (model === 'medium_4') {
+        const badgeW = 90;
+        const badgeH = 120;
+        const col = posOnPage % 2;
+        const row = Math.floor(posOnPage / 2);
+        const x = 10 + col * (badgeW + 10);
+        const y = 19 + row * (badgeH + 19);
+
+        // Fundo escuro do crachá
+        doc.setFillColor(24, 24, 27); // zinc-900
+        doc.roundedRect(x, y, badgeW, badgeH, 3, 3, 'F');
+
+        // Banner Superior (30mm)
+        doc.setFillColor(124, 58, 237); // violet-600
+        doc.roundedRect(x, y, badgeW, 30, 3, 3, 'F');
+        doc.rect(x, y + 25, badgeW, 5, 'F');
+        if (bannerBase64) {
+          try {
+            doc.addImage(bannerBase64, 'JPEG', x, y, badgeW, 30);
+            try {
+              doc.setGState(new (doc as any).GState({ opacity: 0.35 }));
+              doc.setFillColor(0, 0, 0);
+              doc.rect(x, y, badgeW, 30, 'F');
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            } catch (e) {}
+          } catch (e) {}
+        }
+
+        // Título do Evento no Banner
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(255, 255, 255);
+        const tLines = doc.splitTextToSize(event.title.toUpperCase(), badgeW - 8);
+        doc.text(tLines[0], x + (badgeW / 2), y + 11, { align: 'center' });
+
+        // Furo de Cordão (Guia Visual)
+        doc.setFillColor(39, 39, 42);
+        doc.circle(x + (badgeW / 2), y + 4.5, 2.2, 'F');
+
+        // Foto Grande Centralizada (44 x 44mm)
+        const wFoto = 44;
+        const hFoto = 44;
+        const xFoto = x + (badgeW - wFoto) / 2;
+        const yFoto = y + 21;
+
+        // Moldura Branca
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(xFoto - 1, yFoto - 1, wFoto + 2, hFoto + 2, 2.5, 2.5, 'F');
+
+        doc.setFillColor(39, 39, 42);
+        doc.rect(xFoto, yFoto, wFoto, hFoto, 'F');
+        if (pBase64) {
+          try {
+            doc.addImage(pBase64, 'JPEG', xFoto, yFoto, wFoto, hFoto);
+          } catch (e) {}
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(20);
+          doc.setTextColor(113, 113, 122);
+          const initials = reg.full_name.split(' ').map(n => n[0]).slice(0, 2).join('');
+          doc.text(initials, xFoto + (wFoto / 2), yFoto + (hFoto / 2) + 6, { align: 'center' });
+        }
+
+        // Nome do Inscrito em Grande Destaque
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12.5);
+        doc.setTextColor(255, 255, 255);
+        const nLines = doc.splitTextToSize(reg.full_name.toUpperCase(), badgeW - 8);
+        doc.text(nLines.slice(0, 2), x + (badgeW / 2), y + 73, { align: 'center' });
+
+        // Tarja de Categoria / Equipe
+        const bY = nLines.length > 1 ? y + 84 : y + 82;
+        if (isColab) {
+          doc.setFillColor(217, 119, 6); // amber-600
+          doc.roundedRect(x + 10, bY, badgeW - 20, 6, 2, 2, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`EQUIPE • ${truncate(roleText, 24)}`, x + (badgeW / 2), bY + 4.2, { align: 'center' });
+        } else {
+          doc.setFillColor(124, 58, 237); // violet-600
+          doc.roundedRect(x + 18, bY, badgeW - 36, 6, 2, 2, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(255, 255, 255);
+          doc.text('PARTICIPANTE', x + (badgeW / 2), bY + 4.2, { align: 'center' });
+        }
+
+        // Divisória sutil
+        doc.setDrawColor(45, 45, 55);
+        doc.setLineWidth(0.3);
+        doc.line(x + 10, y + 94, x + badgeW - 10, y + 94);
+
+        // Bloco de Informações na Base
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(212, 212, 216);
+        doc.text(`CÓD: ${reg.registration_code}`, x + (badgeW / 2), y + 100, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(161, 161, 170);
+        if (reg.pastor_name) {
+          doc.text(`PASTOR: ${truncate(reg.pastor_name.toUpperCase(), 32)}`, x + (badgeW / 2), y + 106, { align: 'center' });
+        }
+        doc.text(`BLUSA: ${reg.shirt_size || '-'}  •  TRANSPORTE: ${truncate(reg.transport_type || '-', 14)}`, x + (badgeW / 2), y + 111, { align: 'center' });
+
+        // Guia de corte tracejada
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([1.5, 1.5], 0);
+        doc.roundedRect(x, y, badgeW, badgeH, 3, 3, 'S');
+        doc.setLineDashPattern([], 0);
+      }
+
+      // =======================================================================
+      // MODELO 3: Credencial Grande para Congressos (10 x 14 cm)
+      // 2 crachás por folha A4 (centralizados)
+      // =======================================================================
+      else if (model === 'large_2') {
+        const badgeW = 100;
+        const badgeH = 140;
+        const row = posOnPage % 2;
+        const x = 55; // Centralizado em 210mm ((210 - 100) / 2)
+        const y = 5.5 + row * (badgeH + 6); // 5.5mm topo, 6mm gap, 5.5mm base = 297mm
+
+        // Fundo escuro premium
+        doc.setFillColor(18, 18, 22);
+        doc.roundedRect(x, y, badgeW, badgeH, 4, 4, 'F');
+
+        // Banner Superior Amplo (36mm)
+        doc.setFillColor(109, 40, 217); // violet-700
+        doc.roundedRect(x, y, badgeW, 36, 4, 4, 'F');
+        doc.rect(x, y + 30, badgeW, 6, 'F');
+        if (bannerBase64) {
+          try {
+            doc.addImage(bannerBase64, 'JPEG', x, y, badgeW, 36);
+            try {
+              doc.setGState(new (doc as any).GState({ opacity: 0.35 }));
+              doc.setFillColor(0, 0, 0);
+              doc.rect(x, y, badgeW, 36, 'F');
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            } catch (e) {}
+          } catch (e) {}
+        }
+
+        // Título do Evento no Topo
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        const tLines = doc.splitTextToSize(event.title.toUpperCase(), badgeW - 10);
+        doc.text(tLines[0], x + (badgeW / 2), y + 13, { align: 'center' });
+
+        // Furo de Cordão
+        doc.setFillColor(28, 28, 35);
+        doc.circle(x + (badgeW / 2), y + 5, 2.5, 'F');
+
+        // Foto Extra Grande Centralizada (50 x 50mm)
+        const wFoto = 50;
+        const hFoto = 50;
+        const xFoto = x + (badgeW - wFoto) / 2;
+        const yFoto = y + 25;
+
+        // Moldura Branca
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(xFoto - 1.5, yFoto - 1.5, wFoto + 3, hFoto + 3, 3, 3, 'F');
+
+        doc.setFillColor(39, 39, 42);
+        doc.rect(xFoto, yFoto, wFoto, hFoto, 'F');
+        if (pBase64) {
+          try {
+            doc.addImage(pBase64, 'JPEG', xFoto, yFoto, wFoto, hFoto);
+          } catch (e) {}
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(24);
+          doc.setTextColor(113, 113, 122);
+          const initials = reg.full_name.split(' ').map(n => n[0]).slice(0, 2).join('');
+          doc.text(initials, xFoto + (wFoto / 2), yFoto + (hFoto / 2) + 8, { align: 'center' });
+        }
+
+        // Nome do Inscrito em Tamanho Congresso
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(255, 255, 255);
+        const nLines = doc.splitTextToSize(reg.full_name.toUpperCase(), badgeW - 10);
+        doc.text(nLines.slice(0, 2), x + (badgeW / 2), y + 86, { align: 'center' });
+
+        // Tarja de Identificação
+        const bY = nLines.length > 1 ? y + 99 : y + 96;
+        if (isColab) {
+          doc.setFillColor(217, 119, 6); // amber-600
+          doc.roundedRect(x + 12, bY, badgeW - 24, 7.5, 2, 2, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(255, 255, 255);
+          doc.text(`EQUIPE DE TRABALHO • ${truncate(roleText, 26)}`, x + (badgeW / 2), bY + 5.2, { align: 'center' });
+        } else {
+          doc.setFillColor(79, 70, 229); // indigo-600
+          doc.roundedRect(x + 16, bY, badgeW - 32, 7.5, 2, 2, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(255, 255, 255);
+          doc.text('CONGRESSISTA / PARTICIPANTE', x + (badgeW / 2), bY + 5.2, { align: 'center' });
+        }
+
+        // Bloco Inferior de Credenciamento
+        const boxY = y + 109;
+        doc.setFillColor(28, 28, 35);
+        doc.roundedRect(x + 8, boxY, badgeW - 16, 24, 2.5, 2.5, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(228, 228, 231);
+        doc.text(`CREDENCIAL: ${reg.registration_code}`, x + (badgeW / 2), boxY + 7, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(161, 161, 170);
+        if (reg.pastor_name) {
+          doc.text(`PASTOR / LIDERANÇA: ${truncate(reg.pastor_name.toUpperCase(), 34)}`, x + (badgeW / 2), boxY + 13, { align: 'center' });
+        }
+        doc.text(`KIT: BLUSA ${reg.shirt_size || '-'}  •  TRANSPORTE: ${truncate(reg.transport_type || '-', 16)}`, x + (badgeW / 2), boxY + 19, { align: 'center' });
+
+        // Guia de corte tracejada
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.roundedRect(x, y, badgeW, badgeH, 4, 4, 'S');
+        doc.setLineDashPattern([], 0);
+      }
+    }
+
+    // Dispara o download automático do PDF
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const modelTag = model === 'corporate_10' ? 'cartao-10' : model === 'medium_4' ? 'media-4' : 'congresso-2';
+    a.download = `crachas-${modelTag}-${event.slug}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Gera PDF A4 com crachás (retrocompatibilidade padrão).
    */
   async generateBadgesBatchPDF(
     event: PaidEvent,
     registrations: PaidEventRegistration[]
   ): Promise<void> {
     const confirmed = registrations.filter(r => r.payment_status === 'pago_confirmado');
-    if (confirmed.length === 0) return;
-
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    
-    const bannerBase64 = event.banner_url ? await paidEventRegistrationService.getImageBase64('paid-event-banners', event.banner_url) : '';
-
-    // Dimensões do crachá CR-80
-    const badgeW = 54;
-    const badgeH = 86;
-    
-    // Espaçamentos e Margens
-    const cols = 3;
-    const rows = 3;
-    const marginX = (210 - (cols * badgeW)) / 2; // Centralizado horizontalmente
-    const marginY = (297 - (rows * badgeH)) / 2; // Centralizado verticalmente
-
-    for (let i = 0; i < confirmed.length; i++) {
-      const reg = confirmed[i];
-      const posOnPage = i % 9;
-      const col = posOnPage % 3;
-      const row = Math.floor(posOnPage / 3);
-
-      if (posOnPage === 0 && i > 0) {
-        doc.addPage();
-      }
-
-      const x = marginX + (col * badgeW);
-      const y = marginY + (row * badgeH);
-
-      const pBase64 = reg.photo_url ? await paidEventRegistrationService.getImageBase64('event-participant-photos', reg.photo_url) : '';
-
-      // Fundo Escuro do Crachá
-      doc.setFillColor(24, 24, 27); // zinc-900
-      doc.roundedRect(x, y, badgeW, badgeH, 2, 2, 'F');
-
-      // Topo Roxo / Banner
-      doc.setFillColor(139, 92, 246); // violet-500
-      doc.rect(x, y, badgeW, 25, 'F');
-      if (bannerBase64) {
-        try {
-          doc.addImage(bannerBase64, 'JPEG', x, y, badgeW, 25);
-          try {
-            doc.setGState(new (doc as any).GState({opacity: 0.4}));
-            doc.setFillColor(0, 0, 0);
-            doc.rect(x, y, badgeW, 25, 'F');
-            doc.setGState(new (doc as any).GState({opacity: 1.0}));
-          } catch (e) {}
-        } catch (e) {}
-      }
-
-      // Nome do Evento no Topo - REMOVED as per user request to leave banner clean
-      /*
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      const titleLines = doc.splitTextToSize(event.title.toUpperCase(), badgeW - 4);
-      doc.text(titleLines, x + (badgeW / 2), y + 12, { align: 'center' });
-      */
-
-      // Foto do Participante
-      const photoY = y + 28;
-      doc.setFillColor(50, 50, 50);
-      doc.rect(x + 14, photoY, 26, 26, 'F');
-      if (pBase64) {
-        try {
-          doc.addImage(pBase64, 'JPEG', x + 14, photoY, 26, 26);
-        } catch (e) {}
-      }
-
-      // Nome do Participante
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      const nameLines = doc.splitTextToSize(reg.full_name, badgeW - 4);
-      doc.text(nameLines, x + (badgeW / 2), y + 60, { align: 'center' });
-
-      if (reg.registration_type === 'colaborador') {
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(251, 191, 36); // amber-400
-        const colabText = `EQUIPE • ${(reg.collaborator_role || 'COLABORADOR').toUpperCase()}`;
-        doc.text(colabText, x + (badgeW / 2), y + 67, { align: 'center' });
-      }
-
-      // Código
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(160, 160, 160);
-      doc.text(`CÓD: ${reg.registration_code}`, x + (badgeW / 2), y + 74, { align: 'center' });
-
-      // Pastor / Contato
-      if (reg.pastor_name) {
-        doc.text(`PASTOR: ${reg.pastor_name.toUpperCase()}`, x + (badgeW / 2), y + 78, { align: 'center' });
-      }
-
-      // Borda fina envolta do crachá para guia de corte
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineDashPattern([1, 1], 0);
-      doc.roundedRect(x, y, badgeW, badgeH, 2, 2, 'S');
-      doc.setLineDashPattern([], 0); // reset
-    }
-
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `crachas-lote-${event.slug}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    await this.generateBadgesByModelPDF(event, confirmed.length > 0 ? confirmed : registrations, 'medium_4');
   }
 };
