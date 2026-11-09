@@ -351,55 +351,55 @@ export const pdfService = {
     // PÁGINA 1: DASHBOARD EXECUTIVO CONSOLIDADO
     // =========================================================================
 
-    // 1. Cabeçalho Executivo com Dark Banner e detalhes modernos
-    const headerH = 26;
+    // 1. Cabeçalho Executivo com Dark Banner e detalhes modernos (h = 22mm)
+    const headerH = 22;
     doc.setFillColor(15, 23, 42); // slate-900
-    doc.roundedRect(leftMargin, 10, contentW, headerH, 2.5, 2.5, 'F');
+    doc.roundedRect(leftMargin, 8, contentW, headerH, 2, 2, 'F');
 
     // Faixa de destaque roxa/índigo no topo do banner
     doc.setFillColor(124, 58, 237); // violet-600
-    doc.roundedRect(leftMargin, 10, contentW, 2.5, 1, 1, 'F');
+    doc.roundedRect(leftMargin, 8, contentW, 2, 1, 1, 'F');
 
-    // Identificação do Sistema
+    // Identificação do Sistema (sem emojis)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(196, 181, 253); // violet-300
-    doc.text('ECCLESIA SAAS  •  GESTÃO DE EVENTOS  •  RELATÓRIO EXECUTIVO OFICIAL', leftMargin + 6, 17.5);
+    doc.text('ECCLESIA SAAS  •  GESTÃO DE EVENTOS  •  RELATÓRIO EXECUTIVO OFICIAL', leftMargin + 6, 14.5);
 
     // Título do Evento
-    doc.setFontSize(12.5);
+    doc.setFontSize(11.5);
     doc.setTextColor(255, 255, 255);
     const titleLines = doc.splitTextToSize(event.title.toUpperCase(), contentW - 12);
-    doc.text(titleLines[0], leftMargin + 6, 24);
+    doc.text(titleLines[0], leftMargin + 6, 20.5);
 
     // Metadados do Evento
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(203, 213, 225); // slate-300
     const metaText = `Período: ${eventPeriod}    |    Local: ${event.location || 'Local a definir'}    |    Emissão: ${dataEmissao}`;
-    doc.text(metaText, leftMargin + 6, 31.5);
+    doc.text(metaText, leftMargin + 6, 26);
 
-    // 2. Linha 1 de KPIs: Inscritos, Pagos, Pendentes (y = 40, h = 21mm)
-    const kpiY1 = 39;
+    // 2. Linha 1 de KPIs: Inscritos, Pagos, Pendentes (y = 33, h = 17mm)
+    const kpiY1 = 33;
     const cardW1 = 56.6;
     const cardGap1 = 6;
-    const cardH1 = 21;
+    const cardH1 = 17;
 
     // Card Total Inscritos
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.roundedRect(leftMargin, kpiY1, cardW1, cardH1, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(17);
+    doc.setFontSize(16);
     doc.setTextColor(15, 23, 42);
-    doc.text(String(totalInscritos), leftMargin + 6, kpiY1 + 10);
+    doc.text(String(totalInscritos), leftMargin + 5, kpiY1 + 11.5);
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
-    doc.text('TOTAL DE INSCRITOS', leftMargin + 6, kpiY1 + 15);
+    doc.text('TOTAL DE INSCRITOS', leftMargin + 19, kpiY1 + 7.5);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(5.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('100% da base cadastrada', leftMargin + 6, kpiY1 + 18.5);
+    doc.text('100% da base cadastrada', leftMargin + 19, kpiY1 + 12);
 
     // Card Pagos / Confirmados
     const cardX2 = leftMargin + cardW1 + cardGap1;
@@ -407,16 +407,16 @@ export const pdfService = {
     doc.setDrawColor(187, 247, 208); // emerald-200
     doc.roundedRect(cardX2, kpiY1, cardW1, cardH1, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(17);
+    doc.setFontSize(16);
     doc.setTextColor(22, 163, 74); // emerald-600
-    doc.text(String(totalPagos), cardX2 + 6, kpiY1 + 10);
+    doc.text(String(totalPagos), cardX2 + 5, kpiY1 + 11.5);
     doc.setFontSize(6.5);
     doc.setTextColor(21, 128, 61);
-    doc.text('PAGOS / CONFIRMADOS', cardX2 + 6, kpiY1 + 15);
+    doc.text('PAGOS / CONFIRMADOS', cardX2 + 19, kpiY1 + 7.5);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(5.5);
     doc.setTextColor(22, 163, 74);
-    doc.text(`${pctPagos}% dos inscritos confirmados`, cardX2 + 6, kpiY1 + 18.5);
+    doc.text(`${pctPagos}% dos inscritos pagos`, cardX2 + 19, kpiY1 + 12);
 
     // Card Pendentes / Aguardando
     const cardX3 = cardX2 + cardW1 + cardGap1;
@@ -424,38 +424,38 @@ export const pdfService = {
     doc.setDrawColor(254, 240, 138); // amber-200
     doc.roundedRect(cardX3, kpiY1, cardW1, cardH1, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(17);
+    doc.setFontSize(16);
     doc.setTextColor(217, 119, 6); // amber-600
-    doc.text(String(totalPendentes), cardX3 + 6, kpiY1 + 10);
+    doc.text(String(totalPendentes), cardX3 + 5, kpiY1 + 11.5);
     doc.setFontSize(6.5);
     doc.setTextColor(180, 83, 9);
-    doc.text('PENDENTES / EM ANÁLISE', cardX3 + 6, kpiY1 + 15);
+    doc.text('PENDENTES / EM ANÁLISE', cardX3 + 19, kpiY1 + 7.5);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(5.5);
     doc.setTextColor(217, 119, 6);
-    doc.text(`${pctPendentes}% aguardando quitação`, cardX3 + 6, kpiY1 + 18.5);
+    doc.text(`${pctPendentes}% a confirmar`, cardX3 + 19, kpiY1 + 12);
 
-    // 3. Linha 2 de KPIs: Homens, Mulheres, Carro, Ônibus (y = 63, h = 18mm)
-    const kpiY2 = 63;
+    // 3. Linha 2 de KPIs: Homens, Mulheres, Carro, Ônibus (y = 53, h = 16mm)
+    const kpiY2 = 53;
     const cardW2 = 43;
     const cardGap2 = 3.33;
-    const cardH2 = 18;
+    const cardH2 = 16;
 
     // Card Homens
     doc.setFillColor(239, 246, 255); // blue-50
     doc.setDrawColor(191, 219, 254);
     doc.roundedRect(leftMargin, kpiY2, cardW2, cardH2, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(15);
     doc.setTextColor(29, 78, 216); // blue-700
-    doc.text(String(totalHomens), leftMargin + 5, kpiY2 + 8.5);
+    doc.text(String(totalHomens), leftMargin + 4, kpiY2 + 11);
     doc.setFontSize(6);
     doc.setTextColor(30, 58, 138);
-    doc.text('HOMENS (MASC.)', leftMargin + 5, kpiY2 + 13);
+    doc.text('HOMENS (MASC.)', leftMargin + 14, kpiY2 + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(37, 99, 235);
-    doc.text(`${pctHomens}% do público`, leftMargin + 5, kpiY2 + 16);
+    doc.text(`${pctHomens}% do público`, leftMargin + 14, kpiY2 + 11.5);
 
     // Card Mulheres
     const card2X2 = leftMargin + cardW2 + cardGap2;
@@ -463,16 +463,16 @@ export const pdfService = {
     doc.setDrawColor(251, 207, 232);
     doc.roundedRect(card2X2, kpiY2, cardW2, cardH2, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(15);
     doc.setTextColor(190, 24, 93); // pink-700
-    doc.text(String(totalMulheres), card2X2 + 5, kpiY2 + 8.5);
+    doc.text(String(totalMulheres), card2X2 + 4, kpiY2 + 11);
     doc.setFontSize(6);
     doc.setTextColor(131, 24, 67);
-    doc.text('MULHERES (FEM.)', card2X2 + 5, kpiY2 + 13);
+    doc.text('MULHERES (FEM.)', card2X2 + 14, kpiY2 + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(219, 39, 119);
-    doc.text(`${pctMulheres}% do público`, card2X2 + 5, kpiY2 + 16);
+    doc.text(`${pctMulheres}% do público`, card2X2 + 14, kpiY2 + 11.5);
 
     // Card Carro
     const card2X3 = card2X2 + cardW2 + cardGap2;
@@ -480,16 +480,16 @@ export const pdfService = {
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(card2X3, kpiY2, cardW2, cardH2, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(15);
     doc.setTextColor(51, 65, 85);
-    doc.text(String(totalCarro), card2X3 + 5, kpiY2 + 8.5);
+    doc.text(String(totalCarro), card2X3 + 4, kpiY2 + 11);
     doc.setFontSize(6);
     doc.setTextColor(71, 85, 105);
-    doc.text('VÃO DE CARRO', card2X3 + 5, kpiY2 + 13);
+    doc.text('VÃO DE CARRO', card2X3 + 13, kpiY2 + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(100, 116, 139);
-    doc.text(`${pctCarro}% transporte`, card2X3 + 5, kpiY2 + 16);
+    doc.text(`${pctCarro}% transporte`, card2X3 + 13, kpiY2 + 11.5);
 
     // Card Ônibus
     const card2X4 = card2X3 + cardW2 + cardGap2;
@@ -497,29 +497,29 @@ export const pdfService = {
     doc.setDrawColor(233, 213, 255);
     doc.roundedRect(card2X4, kpiY2, cardW2, cardH2, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(15);
     doc.setTextColor(126, 34, 206); // purple-700
-    doc.text(String(totalOnibus), card2X4 + 5, kpiY2 + 8.5);
+    doc.text(String(totalOnibus), card2X4 + 4, kpiY2 + 11);
     doc.setFontSize(6);
     doc.setTextColor(107, 33, 168);
-    doc.text('VÃO DE ÔNIBUS', card2X4 + 5, kpiY2 + 13);
+    doc.text('VÃO DE ÔNIBUS', card2X4 + 13, kpiY2 + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(147, 51, 234);
-    doc.text(`${pctOnibus}% transporte`, card2X4 + 5, kpiY2 + 16);
+    doc.text(`${pctOnibus}% transporte`, card2X4 + 13, kpiY2 + 11.5);
 
-    // 4. Seção Camisas por Tamanho (Homem vs Mulher) (y = 84, h = 84mm)
-    const shirtsY = 84;
+    // 4. Seção Camisas por Tamanho (Homem vs Mulher) (y = 72, h = 63mm)
+    const shirtsY = 72;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(51, 65, 85);
-    doc.text('DISTRIBUIÇÃO DE CAMISAS POR TAMANHO E GÊNERO', leftMargin, shirtsY + 1);
+    doc.text('DISTRIBUIÇÃO DE CAMISAS POR TAMANHO E GÊNERO', leftMargin, shirtsY + 1.5);
 
     const shirtBoxW = 88;
-    const shirtBoxH = 68;
+    const shirtBoxH = 58;
     const shirtBoxY = shirtsY + 4;
 
-    // Helper para desenhar a tabela de camisas por gênero
+    // Helper para desenhar a tabela de camisas por gênero (sem emojis para evitar caracteres corrompidos)
     const drawShirtTable = (
       x: number,
       title: string,
@@ -538,32 +538,32 @@ export const pdfService = {
       } else {
         doc.setFillColor(131, 24, 67); // pink-900
       }
-      doc.roundedRect(x, shirtBoxY, shirtBoxW, 7.5, 2, 2, 'F');
-      doc.rect(x, shirtBoxY + 5, shirtBoxW, 2.5, 'F'); // remove arredondamento inferior do header
+      doc.roundedRect(x, shirtBoxY, shirtBoxW, 6.5, 2, 2, 'F');
+      doc.rect(x, shirtBoxY + 4.5, shirtBoxW, 2, 'F');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(255, 255, 255);
-      doc.text(title, x + 4, shirtBoxY + 5.2);
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      doc.text(`Total: ${totalShirts} un.`, x + shirtBoxW - 4, shirtBoxY + 5.2, { align: 'right' });
+      doc.setTextColor(255, 255, 255);
+      doc.text(title, x + 4, shirtBoxY + 4.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.text(`Total: ${totalShirts} un.`, x + shirtBoxW - 4, shirtBoxY + 4.5, { align: 'right' });
 
       // Cabeçalho das colunas da tabela de camisas
-      const tableHeadY = shirtBoxY + 7.5;
+      const tableHeadY = shirtBoxY + 6.5;
       doc.setFillColor(241, 245, 249);
-      doc.rect(x, tableHeadY, shirtBoxW, 5, 'F');
+      doc.rect(x, tableHeadY, shirtBoxW, 4.5, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6);
+      doc.setFontSize(5.5);
       doc.setTextColor(100, 116, 139);
-      doc.text('TAMANHO', x + 4, tableHeadY + 3.5);
-      doc.text('QUANTIDADE', x + 24, tableHeadY + 3.5);
-      doc.text('PROPORÇÃO VISUAL', x + 46, tableHeadY + 3.5);
-      doc.text('%', x + shirtBoxW - 4, tableHeadY + 3.5, { align: 'right' });
+      doc.text('TAMANHO', x + 4, tableHeadY + 3.2);
+      doc.text('QUANTIDADE', x + 24, tableHeadY + 3.2);
+      doc.text('PROPORÇÃO VISUAL', x + 46, tableHeadY + 3.2);
+      doc.text('%', x + shirtBoxW - 4, tableHeadY + 3.2, { align: 'right' });
 
       // Linhas dos tamanhos (PP, P, M, G, GG, XG, XXG)
-      let rowY = tableHeadY + 5;
-      const rowHeight = 6.4;
+      let rowY = tableHeadY + 4.5;
+      const rowHeight = 5.5;
       const maxCount = Math.max(...Object.values(sizesMap), 1);
 
       SHIRT_SIZES.forEach((size, idx) => {
@@ -584,41 +584,41 @@ export const pdfService = {
           doc.setFillColor(253, 242, 248);
           doc.setDrawColor(251, 207, 232);
         }
-        doc.roundedRect(x + 4, rowY + 1.2, 9, 4, 1, 1, 'FD');
+        doc.roundedRect(x + 4, rowY + 0.9, 9, 3.7, 0.8, 0.8, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6);
         if (isMen) {
           doc.setTextColor(30, 58, 138);
         } else {
           doc.setTextColor(131, 24, 67);
         }
-        doc.text(size, x + 8.5, rowY + 4.1, { align: 'center' });
+        doc.text(size, x + 8.5, rowY + 3.6, { align: 'center' });
 
         // Quantidade
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
+        doc.setFontSize(6.5);
         doc.setTextColor(15, 23, 42);
-        doc.text(`${count} un.`, x + 24, rowY + 4.2);
+        doc.text(`${count} un.`, x + 24, rowY + 3.7);
 
         // Barra de progresso visual
         const barWidth = 26;
         const fillW = Math.max(1, Math.round((count / maxCount) * barWidth));
         doc.setFillColor(226, 232, 240);
-        doc.roundedRect(x + 46, rowY + 2.2, barWidth, 2.2, 0.8, 0.8, 'F');
+        doc.roundedRect(x + 46, rowY + 1.8, barWidth, 2, 0.6, 0.6, 'F');
         if (count > 0) {
           if (isMen) {
             doc.setFillColor(37, 99, 235);
           } else {
             doc.setFillColor(219, 39, 119);
           }
-          doc.roundedRect(x + 46, rowY + 2.2, fillW, 2.2, 0.8, 0.8, 'F');
+          doc.roundedRect(x + 46, rowY + 1.8, fillW, 2, 0.6, 0.6, 'F');
         }
 
         // Percentual
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6);
         doc.setTextColor(100, 116, 139);
-        doc.text(`${pSize}%`, x + shirtBoxW - 4, rowY + 4.2, { align: 'right' });
+        doc.text(`${pSize}%`, x + shirtBoxW - 4, rowY + 3.7, { align: 'right' });
 
         // Linha divisória sutil
         doc.setDrawColor(241, 245, 249);
@@ -629,170 +629,172 @@ export const pdfService = {
 
       // Rodapé do card
       doc.setFillColor(248, 250, 252);
-      doc.roundedRect(x, shirtBoxY + shirtBoxH - 6.5, shirtBoxW, 6.5, 2, 2, 'F');
+      doc.roundedRect(x, shirtBoxY + shirtBoxH - 5.5, shirtBoxW, 5.5, 2, 2, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
+      doc.setFontSize(6);
       doc.setTextColor(71, 85, 105);
-      doc.text(`Subtotal: ${totalShirts} camisas encomendadas`, x + 4, shirtBoxY + shirtBoxH - 2.2);
+      doc.text(`Subtotal: ${totalShirts} camisas encomendadas`, x + 4, shirtBoxY + shirtBoxH - 1.8);
     };
 
-    // Renderiza Homens à esquerda e Mulheres à direita
-    drawShirtTable(leftMargin, '👔 CAMISAS — HOMENS', totalCamisasHomens, menShirts, true);
-    drawShirtTable(leftMargin + shirtBoxW + 6, '👗 CAMISAS — MULHERES', totalCamisasMulheres, womenShirts, false);
+    // Renderiza Homens à esquerda e Mulheres à direita (sem emojis para evitar mojibake)
+    drawShirtTable(leftMargin, 'CAMISAS — HOMENS', totalCamisasHomens, menShirts, true);
+    drawShirtTable(leftMargin + shirtBoxW + 6, 'CAMISAS — MULHERES', totalCamisasMulheres, womenShirts, false);
 
-    // Banner de Resumo Geral de Camisas a Produzir (y = 160, h = 9mm)
-    const shirtSummaryY = shirtBoxY + shirtBoxH + 3.5;
+    // Banner de Resumo Geral de Camisas a Produzir (y = 138, h = 12mm - centralizado e empilhado para nunca sobrepor)
+    const shirtSummaryY = shirtBoxY + shirtBoxH + 3;
+    const shirtSummaryH = 12;
     doc.setFillColor(240, 253, 244); // emerald-50
     doc.setDrawColor(187, 247, 208); // emerald-200
-    doc.roundedRect(leftMargin, shirtSummaryY, contentW, 9, 2, 2, 'FD');
+    doc.roundedRect(leftMargin, shirtSummaryY, contentW, shirtSummaryH, 2, 2, 'FD');
 
+    // Linha 1: Título em verde escuro
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.5);
     doc.setTextColor(21, 128, 61);
-    doc.text('📦 TOTAL GERAL DE CAMISETAS PARA PRODUÇÃO / CONFECÇÃO:', leftMargin + 6, shirtSummaryY + 5.8);
+    doc.text('TOTAL GERAL DE CAMISETAS PARA PRODUÇÃO / CONFECÇÃO', leftMargin + (contentW / 2), shirtSummaryY + 4.5, { align: 'center' });
 
+    // Linha 2: Quantidade e distribuição em destaque
     doc.setFontSize(8.5);
     doc.setTextColor(22, 163, 74);
-    const summaryShirtsText = `${totalGeralCamisas} PEÇAS  (${totalCamisasHomens} Masculinas + ${totalCamisasMulheres} Femininas)`;
-    doc.text(summaryShirtsText, leftMargin + contentW - 6, shirtSummaryY + 5.8, { align: 'right' });
+    const summaryShirtsText = `${totalGeralCamisas} PEÇAS  •  ${totalCamisasHomens} Masculinas  •  ${totalCamisasMulheres} Femininas`;
+    doc.text(summaryShirtsText, leftMargin + (contentW / 2), shirtSummaryY + 9.5, { align: 'center' });
 
-    // 5. Seção Logística & Financeiro (y = 171, h = 48mm)
-    const logFinY = shirtSummaryY + 12;
+    // 5. Seção Logística & Financeiro (y = 154, h = 44mm)
+    const logFinY = shirtSummaryY + shirtSummaryH + 4;
     const boxLogW = 88;
-    const boxLogH = 46;
+    const boxLogH = 43;
 
-    // Card Logística de Transporte
+    // Card Logística de Transporte (sem emojis)
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(leftMargin, logFinY, boxLogW, boxLogH, 2, 2, 'FD');
 
     doc.setFillColor(30, 41, 59); // slate-800
-    doc.roundedRect(leftMargin, logFinY, boxLogW, 7, 2, 2, 'F');
-    doc.rect(leftMargin, logFinY + 5, boxLogW, 2, 'F');
+    doc.roundedRect(leftMargin, logFinY, boxLogW, 6.5, 2, 2, 'F');
+    doc.rect(leftMargin, logFinY + 4.5, boxLogW, 2, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(255, 255, 255);
-    doc.text('🚌 LOGÍSTICA DE TRANSPORTE & EMBARQUE', leftMargin + 4, logFinY + 4.8);
+    doc.text('LOGÍSTICA DE TRANSPORTE & EMBARQUE', leftMargin + 4, logFinY + 4.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(51, 65, 85);
 
-    let transY = logFinY + 11.5;
+    let transY = logFinY + 11;
     doc.text(`• Ônibus Coletivo: ${totalOnibus} passageiros (${pctOnibus}%)`, leftMargin + 5, transY);
     transY += 4.5;
     const frotaOnibus = Math.ceil(totalOnibus / 44) || (totalOnibus > 0 ? 1 : 0);
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
     doc.text(`  Estimativa de frota: ~${frotaOnibus} ônibus rodoviário(s) (base 44 lug.)`, leftMargin + 5, transY);
 
-    transY += 6;
-    doc.setFontSize(7);
+    transY += 5.5;
+    doc.setFontSize(6.5);
     doc.setTextColor(51, 65, 85);
     doc.text(`• Carro Próprio: ${totalCarro} passageiros (${pctCarro}%)`, leftMargin + 5, transY);
     transY += 4.5;
     const frotaCarros = Math.ceil(totalCarro / 3) || (totalCarro > 0 ? 1 : 0);
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
     doc.text(`  Estimativa de vagas: ~${frotaCarros} veículos particulares (média 3/carro)`, leftMargin + 5, transY);
 
-    transY += 6;
+    transY += 5.5;
     if (totalOutroTransp > 0) {
-      doc.setFontSize(6.5);
+      doc.setFontSize(6);
       doc.setTextColor(100, 116, 139);
       doc.text(`• Outros / Não informado: ${totalOutroTransp} participante(s)`, leftMargin + 5, transY);
-      transY += 5;
+      transY += 4.5;
     }
 
     // Mini barra comparativa de transporte
     doc.setFillColor(241, 245, 249);
-    doc.roundedRect(leftMargin + 5, transY, boxLogW - 10, 4, 1, 1, 'F');
+    doc.roundedRect(leftMargin + 5, transY, boxLogW - 10, 3.5, 0.8, 0.8, 'F');
     const busShareW = Math.round(((totalOnibus) / (totalInscritos || 1)) * (boxLogW - 10));
     if (busShareW > 0) {
       doc.setFillColor(147, 51, 234); // violeta para ônibus
-      doc.roundedRect(leftMargin + 5, transY, busShareW, 4, 1, 1, 'F');
+      doc.roundedRect(leftMargin + 5, transY, busShareW, 3.5, 0.8, 0.8, 'F');
     }
-    doc.setFontSize(5.5);
+    doc.setFontSize(5);
     doc.setTextColor(100, 116, 139);
-    doc.text('Distribuição: [Roxo = Ônibus]  |  [Cinza = Carro]', leftMargin + 5, transY + 6.5);
+    doc.text('Distribuição: [Roxo = Ônibus]  |  [Cinza = Carro]', leftMargin + 5, transY + 6);
 
-    // Card Controle Financeiro & Ocupação
+    // Card Controle Financeiro & Ocupação (sem emojis)
     const finX = leftMargin + boxLogW + 6;
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(finX, logFinY, boxLogW, boxLogH, 2, 2, 'FD');
 
     doc.setFillColor(15, 23, 42); // slate-900
-    doc.roundedRect(finX, logFinY, boxLogW, 7, 2, 2, 'F');
-    doc.rect(finX, logFinY + 5, boxLogW, 2, 'F');
+    doc.roundedRect(finX, logFinY, boxLogW, 6.5, 2, 2, 'F');
+    doc.rect(finX, logFinY + 4.5, boxLogW, 2, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(255, 255, 255);
-    doc.text('💰 CONTROLE FINANCEIRO & VAGAS', finX + 4, logFinY + 4.8);
+    doc.text('CONTROLE FINANCEIRO & VAGAS', finX + 4, logFinY + 4.5);
 
-    let finItemY = logFinY + 11.5;
+    let finItemY = logFinY + 11;
     const price = event.price || 0;
     const formatBRL = (val: number) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(51, 65, 85);
 
     if (price > 0) {
-      doc.text(`• Valor Unitário por Pessoa:`, finX + 5, finItemY);
+      doc.text(`• Valor Unitário:`, finX + 5, finItemY);
       doc.setFont('helvetica', 'bold');
       doc.text(formatBRL(price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 5;
+      finItemY += 4.5;
 
       doc.setFont('helvetica', 'normal');
-      doc.text(`• Arrecadação Confirmada (${totalPagos} pagos):`, finX + 5, finItemY);
+      doc.text(`• Confirmado (${totalPagos} pagos):`, finX + 5, finItemY);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(22, 163, 74);
       doc.text(formatBRL(totalPagos * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 5;
+      finItemY += 4.5;
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
-      doc.text(`• A Confirmar (${totalPendentes} pendentes):`, finX + 5, finItemY);
+      doc.text(`• A Confirmar (${totalPendentes} pend.):`, finX + 5, finItemY);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(217, 119, 6);
       doc.text(formatBRL(totalPendentes * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 5;
+      finItemY += 4.5;
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
-      doc.text(`• Previsão Total do Evento:`, finX + 5, finItemY);
+      doc.text(`• Previsão Total:`, finX + 5, finItemY);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
       doc.text(formatBRL(totalInscritos * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 6;
+      finItemY += 5.5;
     } else {
-      doc.text(`• Valor da Inscrição: Gratuita / Sem Cobrança Direta`, finX + 5, finItemY);
-      finItemY += 6;
+      doc.text(`• Inscrição: Gratuita / Sem Cobrança Direta`, finX + 5, finItemY);
+      finItemY += 5.5;
     }
 
     // Ocupação do Evento
     const maxPart = event.max_participants || 0;
-    const vagasLivres = maxPart > 0 ? Math.max(0, maxPart - totalPagos) : null;
     const ocupacaoPct = maxPart > 0 ? Math.round((totalPagos / maxPart) * 100) : null;
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(71, 85, 105);
     if (maxPart > 0) {
-      doc.text(`Ocupação Oficial: ${ocupacaoPct}% (${totalPagos} pagos / ${maxPart} vagas)`, finX + 5, finItemY);
-      finItemY += 3.5;
+      doc.text(`Ocupação: ${ocupacaoPct}% (${totalPagos} pagos / ${maxPart} vagas)`, finX + 5, finItemY);
+      finItemY += 3;
       doc.setFillColor(226, 232, 240);
-      doc.roundedRect(finX + 5, finItemY, boxLogW - 10, 3.5, 1, 1, 'F');
+      doc.roundedRect(finX + 5, finItemY, boxLogW - 10, 3, 0.8, 0.8, 'F');
       if (ocupacaoPct && ocupacaoPct > 0) {
         doc.setFillColor(22, 163, 74);
-        doc.roundedRect(finX + 5, finItemY, Math.min(boxLogW - 10, Math.round(((ocupacaoPct) / 100) * (boxLogW - 10))), 3.5, 1, 1, 'F');
+        doc.roundedRect(finX + 5, finItemY, Math.min(boxLogW - 10, Math.round(((ocupacaoPct) / 100) * (boxLogW - 10))), 3, 0.8, 0.8, 'F');
       }
     } else {
-      doc.text(`Capacidade de Vagas: Ilimitada / Sem teto cadastrado`, finX + 5, finItemY);
+      doc.text(`Capacidade: Ilimitada / Sem teto cadastrado`, finX + 5, finItemY);
     }
 
-    // 6. Bloco de Orientações da Coordenação (y = 233, h = 42mm)
+    // 6. Bloco de Orientações da Coordenação (y = 201, h = 42mm - cabe perfeitamente na página 1 sem cortar)
     const guideY = logFinY + boxLogH + 4;
     const guideH = 42;
     doc.setFillColor(248, 250, 252);
@@ -800,24 +802,28 @@ export const pdfService = {
     doc.roundedRect(leftMargin, guideY, contentW, guideH, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(30, 41, 59);
-    doc.text('📋 INFORMAÇÕES OPERACIONAIS & DIRETRIZES DA COORDENAÇÃO DO EVENTO', leftMargin + 6, guideY + 6.5);
+    doc.text('DIRETRIZES DA COORDENAÇÃO & ESTRUTURA DO RELATÓRIO', leftMargin + 6, guideY + 6);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(71, 85, 105);
-    let gy = guideY + 12;
+    let gy = guideY + 11.5;
     const addGuideLine = (title: string, desc: string) => {
       doc.setFont('helvetica', 'bold');
       doc.text(title, leftMargin + 6, gy);
+      const titleW = doc.getTextWidth(title);
       doc.setFont('helvetica', 'normal');
-      doc.text(desc, leftMargin + 6 + doc.getTextWidth(title) + 1.5, gy);
-      gy += 4.5;
+      doc.text(desc, leftMargin + 6 + titleW + 1.5, gy);
+      gy += 5.2;
     };
 
     addGuideLine('• Listagem Nominal Segmentada:', 'A partir da Página 2, este relatório apresenta as listas completas separadas por gênero: Homens e Mulheres.');
     addGuideLine('• Credenciamento e Presença:', 'Utilize as listas para registrar a presença física, validação dos comprovantes e entrega das camisetas correspondentes.');
+    addGuideLine('• Transporte e Embarque:', 'Os inscritos no transporte coletivo devem apresentar-se no ponto de concentração no horário estabelecido com documento com foto.');
+    addGuideLine('• Liderança e Apoio:', 'Os contatos telefônicos de discipuladores e pastores encontram-se descritos para pronto acionamento durante as atividades.');
+    addGuideLine('• Organização dos Kits:', 'A relação exata de tamanhos das camisetas acima deve ser utilizada como referência oficial para conferência dos lotes.');
     addGuideLine('• Transporte e Embarque:', 'Os inscritos no transporte coletivo devem apresentar-se no ponto de concentração no horário estabelecido com documento com foto.');
     addGuideLine('• Liderança e Apoio:', 'Os contatos telefônicos de discipuladores e pastores encontram-se descritos para pronto acionamento durante as atividades.');
     addGuideLine('• Organização dos Kits:', 'A relação exata de tamanhos das camisetas acima deve ser utilizada como referência oficial para conferência dos lotes.');
