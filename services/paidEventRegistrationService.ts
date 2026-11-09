@@ -86,26 +86,154 @@ export const paidEventRegistrationService = {
       console.warn('Falha ao sincronizar status de lotação do evento:', syncError);
     }
 
-    // Send email notification if event is provided
+    // Enviar e-mail automático de confirmação de inscrição
     if (event && payload.email) {
       try {
         const { smtpService } = await import('./smtpService');
+        const eventPeriod = this.formatEventPeriod(event.start_date, event.end_date);
+        const formatBRL = (val: number) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const isColab = payload.registration_type === 'colaborador';
+        const modalidadeText = isColab ? `Colaborador / Equipe (${payload.collaborator_role || 'Apoio'})` : 'Participante / Encontrista';
+        const valorText = formatBRL(payload.amount_expected || (isColab ? (event.price_collaborator || event.price) : event.price));
+        const hasProof = Boolean(payload.payment_proof_url);
+
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Confirmação de Inscrição</title>
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f4f4f5;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 30px 15px;">
+              <tr>
+                <td align="center">
+                  <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #18181b; border: 1px solid #27272a; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                    
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #7c3aed, #4f46e5); padding: 36px 30px; text-align: center;">
+                        <span style="display: inline-block; padding: 4px 12px; background-color: rgba(255, 255, 255, 0.2); border-radius: 9999px; font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">
+                          Inscrição Realizada com Sucesso
+                        </span>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: -0.5px; line-height: 1.2;">
+                          ${event.title}
+                        </h1>
+                      </td>
+                    </tr>
+
+                    <!-- Conteúdo Principal -->
+                    <tr>
+                      <td style="padding: 32px 30px;">
+                        <p style="margin: 0 0 16px 0; font-size: 16px; color: #ffffff; font-weight: 700;">
+                          Olá, ${payload.full_name.split(' ')[0]}!
+                        </p>
+                        <p style="margin: 0 0 24px 0; font-size: 14px; color: #a1a1aa; line-height: 1.6;">
+                          Recebemos a sua inscrição para o evento <strong>${event.title}</strong>. Abaixo estão todas as informações da sua credencial e orientações:
+                        </p>
+
+                        <!-- Box do Código de Inscrição -->
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                          <tr>
+                            <td align="center" style="background-color: #09090b; border: 1px dashed #7c3aed; border-radius: 16px; padding: 20px;">
+                              <span style="font-size: 10px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; letter-spacing: 2px;">CÓDIGO DE CREDENCIAL</span>
+                              <div style="font-size: 26px; font-weight: 900; color: #a78bfa; letter-spacing: 3px; margin-top: 6px;">
+                                ${registration_code}
+                              </div>
+                              <span style="display: inline-block; font-size: 11px; color: #71717a; margin-top: 6px;">Guarde este código para apresentar no check-in</span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Tabela com Detalhes da Inscrição -->
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #27272a; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Data / Período:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${eventPeriod}</td>
+                          </tr>
+                          ${event.location ? `
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Local:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${event.location}</td>
+                          </tr>
+                          ` : ''}
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Modalidade:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${modalidadeText}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Valor do Investimento:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 14px; color: #34d399; font-weight: 900;">${valorText}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Camiseta / Transporte:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">Blusa ${payload.shirt_size || '-'} • ${payload.transport_type || '-'}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 12px 18px; font-size: 12px; color: #a1a1aa; font-weight: 700;">Pastor / Liderança:</td>
+                            <td align="right" style="padding: 12px 18px; font-size: 12px; color: #ffffff; font-weight: 700;">${payload.pastor_name || '-'}</td>
+                          </tr>
+                        </table>
+
+                        <!-- Status do Pagamento e Instruções Pix -->
+                        ${hasProof ? `
+                          <div style="background-color: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 16px; padding: 18px; text-align: center; margin-bottom: 24px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #60a5fa; text-transform: uppercase;">
+                              📄 Comprovante Enviado com Sucesso!
+                            </span>
+                            <p style="margin: 6px 0 0 0; font-size: 13px; color: #d4d4d8; line-height: 1.5;">
+                              Nosso time de coordenação já recebeu o seu comprovante. Assim que for validado, você receberá um e-mail de confirmação oficial com sua vaga garantida.
+                            </p>
+                          </div>
+                        ` : `
+                          <div style="background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 16px; padding: 18px; text-align: center; margin-bottom: 24px;">
+                            <span style="font-size: 12px; font-weight: 800; color: #fbbf24; text-transform: uppercase;">
+                              ⏳ Aguardando Envio do Comprovante
+                            </span>
+                            <p style="margin: 6px 0 12px 0; font-size: 13px; color: #d4d4d8; line-height: 1.5;">
+                              Sua vaga pré-reservada aguarda a confirmação do pagamento de <strong>${valorText}</strong>.
+                            </p>
+                            ${event.pix_key ? `
+                              <div style="background-color: #09090b; padding: 12px; border-radius: 10px; font-family: monospace; font-size: 13px; color: #34d399; word-break: break-all; margin-top: 8px;">
+                                Chave Pix: <strong>${event.pix_key}</strong>
+                                ${event.pix_receiver_name ? `<br><span style="font-size: 11px; color: #a1a1aa;">Beneficiário: ${event.pix_receiver_name}</span>` : ''}
+                              </div>
+                            ` : ''}
+                          </div>
+                        `}
+
+                        <p style="margin: 0; font-size: 12px; color: #71717a; text-align: center; line-height: 1.5;">
+                          Dúvidas sobre sua inscrição? Entre em contato diretamente com a liderança ou coordenação do evento.
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Rodapé -->
+                    <tr>
+                      <td style="background-color: #09090b; padding: 20px 30px; text-align: center; border-top: 1px solid #27272a;">
+                        <p style="margin: 0; font-size: 11px; color: #71717a; font-weight: 600;">
+                          Ecclesia SaaS • Gestão Integrada de Eventos e Membresia
+                        </p>
+                      </td>
+                    </tr>
+
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `;
+
         await smtpService.sendEmail(
           payload.church_id,
           payload.email,
-          `Inscrição Recebida: ${event.title}`,
-          `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
-            <h2 style="color: #4f46e5;">Sua inscrição foi recebida!</h2>
-            <p>Olá <strong>${payload.full_name}</strong>, recebemos sua inscrição para o evento <strong>${event.title}</strong>.</p>
-            <p>Código da Inscrição: <strong>${registration_code}</strong></p>
-            <p>Aguardamos o envio do comprovante de pagamento para confirmarmos sua vaga.</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 40px;">Este é um e-mail automático.</p>
-          </div>
-          `
+          `Inscrição Confirmada: ${event.title} [${registration_code}]`,
+          emailHtml
         );
       } catch (e) {
-        console.error('Falha ao enviar email de inscrição:', e);
+        console.error('Falha ao enviar email automático de inscrição:', e);
       }
     }
 
@@ -145,26 +273,116 @@ export const paidEventRegistrationService = {
       console.warn('Falha ao sincronizar lotação após atualização de status:', syncError);
     }
 
-    // Send confirmation email
+    // Enviar e-mail de confirmação oficial de pagamento aprovado
     if (newStatus === PaymentStatus.CONFIRMED && current.email && event) {
       try {
         const { smtpService } = await import('./smtpService');
+        const eventPeriod = this.formatEventPeriod(event.start_date, event.end_date);
+        const isColab = current.registration_type === 'colaborador';
+        const modalidadeText = isColab ? `Colaborador / Equipe (${current.collaborator_role || 'Apoio'})` : 'Participante / Encontrista';
+
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Pagamento Confirmado</title>
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f4f4f5;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 30px 15px;">
+              <tr>
+                <td align="center">
+                  <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #18181b; border: 1px solid #27272a; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                    
+                    <!-- Header Verde -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #059669, #10b981); padding: 36px 30px; text-align: center;">
+                        <span style="display: inline-block; padding: 4px 12px; background-color: rgba(255, 255, 255, 0.2); border-radius: 9999px; font-size: 11px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">
+                          Vaga Garantida • Pagamento Aprovado
+                        </span>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: -0.5px; line-height: 1.2;">
+                          ${event.title}
+                        </h1>
+                      </td>
+                    </tr>
+
+                    <!-- Conteúdo Principal -->
+                    <tr>
+                      <td style="padding: 32px 30px;">
+                        <p style="margin: 0 0 16px 0; font-size: 16px; color: #ffffff; font-weight: 700;">
+                          Parabéns, ${current.full_name.split(' ')[0]}! 🎉
+                        </p>
+                        <p style="margin: 0 0 24px 0; font-size: 14px; color: #a1a1aa; line-height: 1.6;">
+                          Seu pagamento foi <strong style="color: #34d399;">confirmado com sucesso</strong> e a sua vaga está 100% garantida no evento <strong>${event.title}</strong>!
+                        </p>
+
+                        <!-- Box do Código de Credencial -->
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                          <tr>
+                            <td align="center" style="background-color: #09090b; border: 1px dashed #10b981; border-radius: 16px; padding: 20px;">
+                              <span style="font-size: 10px; font-weight: 800; color: #34d399; text-transform: uppercase; letter-spacing: 2px;">CREDENCIAL CONFIRMADA</span>
+                              <div style="font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 3px; margin-top: 6px;">
+                                ${current.registration_code}
+                              </div>
+                              <span style="display: inline-block; font-size: 11px; color: #a1a1aa; margin-top: 6px;">Apresente no check-in para retirar seu crachá e kit</span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Tabela Resumo -->
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #27272a; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Data / Período:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${eventPeriod}</td>
+                          </tr>
+                          ${event.location ? `
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Local:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${event.location}</td>
+                          </tr>
+                          ` : ''}
+                          <tr>
+                            <td style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #a1a1aa; font-weight: 700;">Modalidade:</td>
+                            <td align="right" style="padding: 12px 18px; border-bottom: 1px solid #3f3f46; font-size: 12px; color: #ffffff; font-weight: 700;">${modalidadeText}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 12px 18px; font-size: 12px; color: #a1a1aa; font-weight: 700;">Camiseta / Transporte:</td>
+                            <td align="right" style="padding: 12px 18px; font-size: 12px; color: #ffffff; font-weight: 700;">Blusa ${current.shirt_size || '-'} • ${current.transport_type || '-'}</td>
+                          </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 12px; color: #71717a; text-align: center; line-height: 1.5;">
+                          Nos vemos no evento! Que Deus abençoe ricamente a sua vida.
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Rodapé -->
+                    <tr>
+                      <td style="background-color: #09090b; padding: 20px 30px; text-align: center; border-top: 1px solid #27272a;">
+                        <p style="margin: 0; font-size: 11px; color: #71717a; font-weight: 600;">
+                          Ecclesia SaaS • Gestão Integrada de Eventos e Membresia
+                        </p>
+                      </td>
+                    </tr>
+
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `;
+
         await smtpService.sendEmail(
           current.church_id,
           current.email,
-          `Pagamento Confirmado: ${event.title}`,
-          `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
-            <h2 style="color: #10b981;">Pagamento Confirmado!</h2>
-            <p>Olá <strong>${current.full_name}</strong>, seu pagamento para o evento <strong>${event.title}</strong> foi confirmado com sucesso.</p>
-            <p>Código da Inscrição: <strong>${current.registration_code}</strong></p>
-            <p>Sua vaga está garantida! Em breve você poderá acessar seu crachá.</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 40px;">Este é um e-mail automático.</p>
-          </div>
-          `
+          `✅ Vaga Confirmada: ${event.title} [${current.registration_code}]`,
+          emailHtml
         );
       } catch (e) {
-        console.error('Falha ao enviar email de confirmação:', e);
+        console.error('Falha ao enviar email de confirmação de pagamento:', e);
       }
     }
 

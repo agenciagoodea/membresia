@@ -395,7 +395,7 @@ const PaidEventRegistrationForm: React.FC = () => {
     if (event) {
       updatePixForPrice(getCurrentPrice(), event);
     }
-    setStep(3);
+    setStep(2);
   };
 
   const handleSubmit = async () => {
@@ -564,17 +564,29 @@ const PaidEventRegistrationForm: React.FC = () => {
       {/* Header com Progresso */}
       <div className="bg-zinc-900 border-b border-white/5 p-4 md:p-6 sticky top-0 z-50 backdrop-blur-xl bg-zinc-900/80">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <button onClick={() => navigate(`/evento/${slug}`)} className="p-2 text-zinc-500 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
+              <button 
+                onClick={() => {
+                  if (step === 2) {
+                    setStep(1);
+                  } else {
+                    navigate(`/evento/${slug}`);
+                  }
+                }} 
+                className="p-2 text-zinc-500 hover:text-white transition-colors"
+                title={step === 2 ? "Voltar para Dados" : "Voltar para o Evento"}
+              >
+                <ArrowLeft size={20} />
+              </button>
               <div>
                 <h1 className="text-sm font-black text-white uppercase tracking-tight truncate max-w-[200px]">{event.title}</h1>
-                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Inscrição · Passo {step} de 3</p>
+                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest">Inscrição · Passo {step} de 2</p>
               </div>
             </div>
             <div className="flex gap-1.5">
-              {[1, 2, 3].map(s => (
-                <div key={s} className={`h-1.5 w-8 rounded-full transition-all duration-500 ${step >= s ? 'bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]' : 'bg-zinc-800'}`} />
+              {[1, 2].map(s => (
+                <div key={s} className={`h-1.5 w-10 rounded-full transition-all duration-500 ${step >= s ? 'bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]' : 'bg-zinc-800'}`} />
               ))}
             </div>
           </div>
@@ -583,54 +595,7 @@ const PaidEventRegistrationForm: React.FC = () => {
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-8">
         {step === 1 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="relative h-64 rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl">
-              {bannerUrl ? (
-                <img src={bannerUrl} className="w-full h-full object-cover" alt="" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-violet-900/20 to-zinc-900" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
-              <div className="absolute bottom-6 left-8 right-8">
-                <span className="px-3 py-1 bg-violet-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 inline-block">Evento</span>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{event.title}</h2>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Data e Período</p>
-                <p className="text-sm font-bold text-white uppercase tracking-tight">{eventPeriod}</p>
-              </div>
-              <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Localização</p>
-                <p className="text-sm font-bold text-white uppercase tracking-tight truncate">{event.location || 'Local a definir'}</p>
-              </div>
-              <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Investimento</p>
-                <p className="text-xl font-black text-emerald-400">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              </div>
-              <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Disponibilidade</p>
-                <p className="text-sm font-bold text-white uppercase tracking-tight">Vagas Limitadas</p>
-              </div>
-            </div>
-
-            {event.description && (
-              <div className="bg-zinc-900/30 border border-white/5 rounded-3xl p-8">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4">Sobre o Evento</p>
-                <div className="text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{event.description}</div>
-              </div>
-            )}
-
-            <button onClick={() => setStep(2)} className="w-full flex items-center justify-center gap-3 py-5 bg-violet-600 text-white rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-500/20">
-              Continuar para Dados
-            </button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Foto */}
             <div className="flex flex-col items-center gap-4">
               <div className="relative w-32 h-32 rounded-[2.5rem] overflow-hidden bg-zinc-900 border-4 border-zinc-900 ring-2 ring-white/10 group shadow-2xl">
@@ -814,7 +779,7 @@ const PaidEventRegistrationForm: React.FC = () => {
             </div>
 
             <div className="flex gap-4">
-              <button onClick={() => setStep(1)} className="flex-1 py-5 bg-zinc-900 text-zinc-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-white/5">
+              <button onClick={() => navigate(`/evento/${slug}`)} className="flex-1 py-5 bg-zinc-900 text-zinc-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-white/5">
                 Voltar
               </button>
               <button onClick={handleNextStep2} disabled={submitting} className="flex-[2] py-5 flex items-center justify-center gap-2 bg-violet-600 text-white rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-500/20 disabled:opacity-50">
@@ -824,7 +789,7 @@ const PaidEventRegistrationForm: React.FC = () => {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             {existingRegistration && (
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-6">
@@ -874,7 +839,7 @@ const PaidEventRegistrationForm: React.FC = () => {
             </div>
 
             <div className="flex gap-4">
-              <button onClick={() => setStep(2)} className="flex-1 py-5 bg-zinc-900 text-zinc-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-white/5">
+              <button onClick={() => setStep(1)} className="flex-1 py-5 bg-zinc-900 text-zinc-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-white/5">
                 Voltar
               </button>
               <button onClick={handleSubmit} disabled={submitting} className="flex-[2] flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl text-sm font-black uppercase tracking-widest hover:from-emerald-700 transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50">

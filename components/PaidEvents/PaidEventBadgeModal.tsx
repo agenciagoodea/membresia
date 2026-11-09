@@ -293,3 +293,4 @@ const PaidEventBadgeModal: React.FC<Props> = ({
 };
 
 export default PaidEventBadgeModal;
+

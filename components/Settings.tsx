@@ -58,7 +58,15 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
   const [member, setMember] = useState<Member | null>(null);
   const [church, setChurch] = useState<ChurchTenant | null>(null);
   const [showM12Modal, setShowM12Modal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'paid-events'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'paid-events' | 'smtp'>('profile');
+
+  const canManageSMTP = Boolean(
+    user?.role === UserRole.MASTER_ADMIN || 
+    user?.role === UserRole.CHURCH_ADMIN || 
+    user?.role === UserRole.PASTOR || 
+    user?.role === 'pastor' || 
+    user?.role === 'pastora'
+  );
 
   // Estados dos formulários controlados
   const [profileData, setProfileData] = useState<Partial<Member>>({});
@@ -464,6 +472,14 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
           >
             Eventos Pagos
           </button>
+          {canManageSMTP && (
+            <button 
+              onClick={() => setActiveTab('smtp')}
+              className={`px-6 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all ${activeTab === 'smtp' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+            >
+              Servidor SMTP (E-mails)
+            </button>
+          )}
         </div>
 
         <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl">
@@ -891,14 +907,12 @@ const Settings: React.FC<{ user: any }> = ({ user }) => {
               <MemberPaidEvents user={user} />
             </div>
           )}
+          {!loading && activeTab === 'smtp' && canManageSMTP && (
+            <div className="animate-in fade-in duration-300">
+              <SMTPSettings churchId={church?.id || user.churchId} churchName={church?.name || ''} />
+            </div>
+          )}
         </div>
-
-        {/* Configurações Avançadas (Apenas Admins - removido Pastor) */}
-        {(user.role === UserRole.MASTER_ADMIN || user.role === UserRole.CHURCH_ADMIN) && (
-          <div className="bg-zinc-900 rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl mt-10">
-             <SMTPSettings />
-          </div>
-        )}
 
         {isCropping && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
