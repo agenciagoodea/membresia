@@ -223,6 +223,9 @@ const PaidEventPublicPage: React.FC = () => {
             <div>
               <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Valor</p>
               <p className="text-base font-black text-emerald-400 mt-0.5">{formatCurrency(event.price)}</p>
+              {event.price_collaborator && event.price_collaborator > 0 ? (
+                <p className="text-[10px] font-bold text-violet-400 mt-0.5">Equipe: {formatCurrency(event.price_collaborator)}</p>
+              ) : null}
             </div>
           </div>
 

@@ -12,6 +12,16 @@ import PixQRCodeBox from './PixQRCodeBox';
 const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
 const TRANSPORT_OPTIONS = ['Carro', 'Ônibus'];
 const GENDER_OPTIONS = ['Masculino', 'Feminino'];
+const COLLABORATOR_ROLES = [
+  'Cozinha / Alimentação',
+  'Intercessão',
+  'Recepção / Apoio',
+  'Teatro / Dança / Artes',
+  'Louvor / Sonorização / Mídia',
+  'Limpeza / Estrutura',
+  'Secretaria / Crachás',
+  'Geral / Outra Função'
+];
 const PASTOR_ROLE_ALIASES = new Set([
   'PASTOR',
   'PASTORA',
@@ -146,11 +156,37 @@ const PaidEventRegistrationForm: React.FC = () => {
 
   // Form state
   const [form, setForm] = useState({
+    registration_type: 'participante' as 'participante' | 'colaborador',
+    collaborator_role: '',
     full_name: '', email: '', age: '', gender: '', discipler_name: '', phone: '',
     pastor_name: '', shirt_size: '', transport_type: '',
     has_allergy: false, allergy_description: '', emergency_contact_name: '',
     emergency_contact_phone: '', prayer_request: '', observations: ''
   });
+
+  const getCurrentPrice = (regType = form.registration_type) => {
+    if (!event) return 0;
+    if (regType === 'colaborador' && event.price_collaborator && event.price_collaborator > 0) {
+      return event.price_collaborator;
+    }
+    return event.price;
+  };
+
+  const updatePixForPrice = async (price: number, evt: PaidEvent) => {
+    if (evt.pix_key) {
+      const receiver = evt.pix_receiver_name || 'RECEBEDOR';
+      const city = evt.pix_receiver_city || 'SAO PAULO';
+      try {
+        const { qrCodeDataURL, payload } = await pixService.generatePixQRCode(
+          evt.pix_key, receiver, city, price
+        );
+        setPixQR(qrCodeDataURL);
+        setPixPayload(payload);
+      } catch (e) {
+        console.error('Erro ao gerar Pix:', e);
+      }
+    }
+  };
 
   // Files
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -306,6 +342,10 @@ const PaidEventRegistrationForm: React.FC = () => {
 
   const validateStep2 = () => {
     if (!photoFile) { alert('A foto é obrigatória.'); return false; }
+    if (form.registration_type === 'colaborador' && !form.collaborator_role) {
+      alert('Por favor, selecione sua área de atuação como colaborador.');
+      return false;
+    }
     if (!form.full_name) { alert('O nome completo é obrigatório.'); return false; }
     if (!form.phone) { alert('O telefone é obrigatório.'); return false; }
     if (!form.pastor_name) { alert('O nome do pastor é obrigatório.'); return false; }
@@ -352,6 +392,9 @@ const PaidEventRegistrationForm: React.FC = () => {
     } else {
       setExistingRegistration(null);
     }
+    if (event) {
+      updatePixForPrice(getCurrentPrice(), event);
+    }
     setStep(3);
   };
 
@@ -397,6 +440,8 @@ const PaidEventRegistrationForm: React.FC = () => {
         payment_status = PaymentStatus.PROOF_SENT;
       }
 
+      const currentPrice = getCurrentPrice();
+
       const result = await paidEventRegistrationService.create({
         church_id: event.church_id,
         event_id: event.id,
@@ -405,6 +450,9 @@ const PaidEventRegistrationForm: React.FC = () => {
         email: form.email || undefined,
         age: form.age ? parseInt(form.age) : undefined,
         gender: form.gender as any || undefined,
+        registration_type: form.registration_type || 'participante',
+        collaborator_role: form.registration_type === 'colaborador' ? form.collaborator_role : undefined,
+        amount_expected: currentPrice,
         discipler_name: form.discipler_name || undefined,
         phone: form.phone,
         pastor_name: form.pastor_name,
@@ -607,6 +655,68 @@ const PaidEventRegistrationForm: React.FC = () => {
 
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
+                {/* Modalidade da Inscrição (Participante vs Colaborador) */}
+                {event.price_collaborator && event.price_collaborator > 0 ? (
+                  <div className="bg-zinc-900/60 border border-white/5 rounded-3xl p-5 space-y-4">
+                    <div>
+                      <label className={labelClass}>Tipo de Inscrição *</label>
+                      <p className="text-[11px] text-zinc-500 font-medium mt-0.5">Selecione se você participará como encontrista ou servirá na equipe de trabalho do evento.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, registration_type: 'participante', collaborator_role: '' });
+                          updatePixForPrice(event.price, event);
+                        }}
+                        className={`p-4 rounded-2xl border text-left transition-all ${
+                          form.registration_type !== 'colaborador'
+                            ? 'bg-violet-600/10 border-violet-500 text-white shadow-xl shadow-violet-500/10'
+                            : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
+                        }`}
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-violet-400">Inscrição Geral</p>
+                        <p className="text-sm font-black text-white mt-1">Participante / Encontrista</p>
+                        <p className="text-xs font-black text-emerald-400 mt-1">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, registration_type: 'colaborador' });
+                          if (event.price_collaborator) updatePixForPrice(event.price_collaborator, event);
+                        }}
+                        className={`p-4 rounded-2xl border text-left transition-all ${
+                          form.registration_type === 'colaborador'
+                            ? 'bg-amber-500/10 border-amber-500 text-white shadow-xl shadow-amber-500/10'
+                            : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
+                        }`}
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-400">Equipe de Apoio</p>
+                        <p className="text-sm font-black text-white mt-1">Colaborador / Voluntário</p>
+                        <p className="text-xs font-black text-emerald-400 mt-1">R$ {event.price_collaborator.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </button>
+                    </div>
+
+                    {form.registration_type === 'colaborador' && (
+                      <div className="pt-2 animate-in fade-in duration-300">
+                        <label className={labelClass}>Área de Atuação / Equipe *</label>
+                        <select
+                          required
+                          value={form.collaborator_role}
+                          onChange={e => setForm({ ...form, collaborator_role: e.target.value })}
+                          className={inputClass}
+                        >
+                          <option value="">Selecione sua área de trabalho</option>
+                          {COLLABORATOR_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 <div>
                   <label className={labelClass}>Nome Completo *</label>
                   <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass} placeholder="Seu nome completo" />
@@ -732,12 +842,17 @@ const PaidEventRegistrationForm: React.FC = () => {
             )}
 
             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-8 text-center">
-              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">Valor da Inscrição</p>
-              <p className="text-4xl font-black text-white">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">
+                {form.registration_type === 'colaborador' ? 'Valor da Inscrição (Colaborador / Equipe)' : 'Valor da Inscrição'}
+              </p>
+              <p className="text-4xl font-black text-white">R$ {getCurrentPrice().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              {form.registration_type === 'colaborador' && form.collaborator_role && (
+                <p className="text-xs font-bold text-amber-400 mt-2 uppercase tracking-wide">Área: {form.collaborator_role}</p>
+              )}
             </div>
 
             {event.pix_key && (
-              <PixQRCodeBox event={event} qrCodeDataURL={pixQR} payload={pixPayload} />
+              <PixQRCodeBox event={event} qrCodeDataURL={pixQR} payload={pixPayload} customPrice={getCurrentPrice()} />
             )}
 
             <div className="space-y-4">

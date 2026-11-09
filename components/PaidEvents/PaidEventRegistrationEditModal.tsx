@@ -16,12 +16,24 @@ interface PaidEventRegistrationEditModalProps {
 const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
 const TRANSPORT_OPTIONS = ['Carro', 'Ônibus'];
 const GENDER_OPTIONS = ['Masculino', 'Feminino'];
+const COLLABORATOR_ROLES = [
+  'Cozinha / Alimentação',
+  'Intercessão',
+  'Recepção / Apoio',
+  'Teatro / Dança / Artes',
+  'Louvor / Sonorização / Mídia',
+  'Limpeza / Estrutura',
+  'Secretaria / Crachás',
+  'Geral / Outra Função'
+];
 
 const PaidEventRegistrationEditModal: React.FC<PaidEventRegistrationEditModalProps> = ({
   isOpen, onClose, onSaved, registration, event
 }) => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    registration_type: registration.registration_type || 'participante',
+    collaborator_role: registration.collaborator_role || '',
     full_name: registration.full_name,
     email: registration.email || '',
     age: registration.age?.toString() || '',
@@ -97,6 +109,8 @@ const PaidEventRegistrationEditModal: React.FC<PaidEventRegistrationEditModalPro
       const { error } = await supabase
         .from('paid_event_registrations')
         .update({
+          registration_type: form.registration_type || 'participante',
+          collaborator_role: form.registration_type === 'colaborador' ? form.collaborator_role : null,
           full_name: form.full_name,
           email: form.email || null,
           age: form.age ? parseInt(form.age) : null,
@@ -181,6 +195,50 @@ const PaidEventRegistrationEditModal: React.FC<PaidEventRegistrationEditModalPro
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 bg-zinc-900/60 border border-white/5 rounded-2xl p-4 space-y-3">
+              <label className={labelClass}>Tipo de Inscrição</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, registration_type: 'participante', collaborator_role: '' })}
+                  className={`py-3 px-4 rounded-xl border text-xs font-black uppercase tracking-wider transition-all ${
+                    form.registration_type !== 'colaborador'
+                      ? 'bg-violet-600/20 border-violet-500 text-white'
+                      : 'bg-zinc-900 border-white/5 text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Participante
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, registration_type: 'colaborador' })}
+                  className={`py-3 px-4 rounded-xl border text-xs font-black uppercase tracking-wider transition-all ${
+                    form.registration_type === 'colaborador'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-400'
+                      : 'bg-zinc-900 border-white/5 text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Colaborador / Equipe
+                </button>
+              </div>
+
+              {form.registration_type === 'colaborador' && (
+                <div className="pt-2 animate-in fade-in">
+                  <label className={labelClass}>Área de Atuação / Equipe</label>
+                  <select
+                    value={form.collaborator_role}
+                    onChange={e => setForm({ ...form, collaborator_role: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="">Selecione a área</option>
+                    {COLLABORATOR_ROLES.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
             <div className="md:col-span-2">
               <label className={labelClass}>Nome Completo</label>
               <input value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass} />

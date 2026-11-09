@@ -26,7 +26,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
   const userId = user?.id || user?.profile?.id || null;
   const [form, setForm] = useState<any>({
     title: '', description: '', start_date: '', end_date: '', location: '',
-    price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
+    price: '', price_collaborator: '', max_participants: '', pix_key: '', pix_receiver_name: '',
     pix_receiver_city: '', confirmation_message: 'Sua inscrição foi recebida! Aguarde a confirmação do pagamento.',
     payment_instructions: 'Realize o pagamento via Pix usando o QR Code abaixo e envie o comprovante no formulário.',
     status: 'draft', is_featured: true, coordenador_id: '', auxiliares_ids: []
@@ -55,6 +55,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
       setForm({
         ...event,
         price: event.price?.toString() || '',
+        price_collaborator: event.price_collaborator?.toString() || '',
         max_participants: event.max_participants?.toString() || '',
         start_date: event.start_date ? event.start_date.split('T')[0] : '',
         end_date: event.end_date ? event.end_date.split('T')[0] : '',
@@ -68,7 +69,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
     } else {
       setForm({
         title: '', description: '', start_date: '', end_date: '', location: '',
-        price: '', max_participants: '', pix_key: '', pix_receiver_name: '',
+        price: '', price_collaborator: '', max_participants: '', pix_key: '', pix_receiver_name: '',
         pix_receiver_city: '', confirmation_message: 'Sua inscrição foi recebida! Aguarde a confirmação do pagamento.',
         payment_instructions: 'Realize o pagamento via Pix usando o QR Code abaixo e envie o comprovante no formulário.',
         status: 'draft', is_featured: true, coordenador_id: '', auxiliares_ids: []
@@ -150,6 +151,7 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
         end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
         location: form.location || null,
         price: parseFloat(form.price) || 0,
+        price_collaborator: form.price_collaborator ? parseFloat(form.price_collaborator) : 0,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         pix_key: form.pix_key || null,
         pix_receiver_name: form.pix_receiver_name || null,
@@ -279,9 +281,20 @@ const PaidEventForm: React.FC<PaidEventFormProps> = ({ isOpen, onClose, onSaved,
             <Field label="Valor por Participante (R$) *">
               <input type="number" step="0.01" min="0" required value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="250.00" className={inputClass} />
             </Field>
-            <Field label="Vagas (máx.)">
+            <Field label="Valor para Colaborador / Equipe (R$)">
+              <input type="number" step="0.01" min="0" value={form.price_collaborator || ''} onChange={e => setForm({ ...form, price_collaborator: e.target.value })} placeholder="Ex: 100.00 (opcional)" className={inputClass} />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Vagas Totais (máx.)">
               <input type="number" min="1" value={form.max_participants || ''} onChange={e => setForm({ ...form, max_participants: e.target.value })} placeholder="Ilimitado" className={inputClass} />
             </Field>
+            <div className="flex flex-col justify-center">
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-3">
+                Colaboradores: Se preenchido, os voluntários poderão se inscrever com este valor dedicado.
+              </p>
+            </div>
           </div>
 
           {/* Dados Pix */}

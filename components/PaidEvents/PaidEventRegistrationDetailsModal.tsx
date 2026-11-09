@@ -138,6 +138,13 @@ const PaidEventRegistrationDetailsModal: React.FC<Props> = ({ registration: reg,
               <h2 className="text-xl md:text-4xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-lg">
                 {reg.full_name}
               </h2>
+              {reg.registration_type === 'colaborador' && (
+                <div className="mt-2 flex items-center justify-center md:justify-start gap-2">
+                  <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                    Colaborador / Equipe {reg.collaborator_role ? `• ${reg.collaborator_role}` : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="hidden md:flex mb-8 flex-col gap-2">

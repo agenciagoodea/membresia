@@ -28,6 +28,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterTransport, setFilterTransport] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [selectedReg, setSelectedReg] = useState<PaidEventRegistration | null>(null);
   const [editingReg, setEditingReg] = useState<PaidEventRegistration | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -115,11 +116,20 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   };
 
   const exportCSV = () => {
-    const headers = ['Código', 'Nome', 'E-mail', 'Telefone', 'Pastor', 'Discipulador', 'Blusa', 'Transporte', 'Status', 'Data Inscrição'];
+    const headers = ['Código', 'Tipo', 'Função Equipe', 'Nome', 'E-mail', 'Telefone', 'Pastor', 'Discipulador', 'Blusa', 'Transporte', 'Valor (R$)', 'Status', 'Data Inscrição'];
     const rows = filtered.map(r => [
-      r.registration_code, r.full_name, r.email || '', r.phone || '',
-      r.pastor_name || '', r.discipler_name || '', r.shirt_size || '',
-      r.transport_type || '', STATUS_CONFIG[r.payment_status]?.label || r.payment_status,
+      r.registration_code,
+      r.registration_type === 'colaborador' ? 'Colaborador' : 'Participante',
+      r.collaborator_role || '',
+      r.full_name,
+      r.email || '',
+      r.phone || '',
+      r.pastor_name || '',
+      r.discipler_name || '',
+      r.shirt_size || '',
+      r.transport_type || '',
+      r.amount_expected !== undefined ? r.amount_expected : (r.registration_type === 'colaborador' ? (event.price_collaborator ?? event.price) : event.price),
+      STATUS_CONFIG[r.payment_status]?.label || r.payment_status,
       new Date(r.created_at).toLocaleDateString('pt-BR')
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -133,19 +143,27 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const filtered = registrations.filter(r => {
     if (filterStatus !== 'all' && r.payment_status !== filterStatus) return false;
     if (filterTransport !== 'all' && r.transport_type !== filterTransport) return false;
+    if (filterType === 'participante' && r.registration_type === 'colaborador') return false;
+    if (filterType === 'colaborador' && r.registration_type !== 'colaborador') return false;
     if (search) {
       const q = search.toLowerCase();
       return r.full_name.toLowerCase().includes(q) ||
         (r.email || '').toLowerCase().includes(q) ||
         (r.phone || '').includes(q) ||
         (r.pastor_name || '').toLowerCase().includes(q) ||
+        (r.collaborator_role || '').toLowerCase().includes(q) ||
         r.registration_code.toLowerCase().includes(q);
     }
     return true;
   });
 
+  const totalCollaborators = registrations.filter(r => r.registration_type === 'colaborador').length;
+  const totalStandard = registrations.filter(r => (r.registration_type || 'participante') !== 'colaborador').length;
+
   const stats = {
     total: registrations.length,
+    totalCollaborators,
+    totalStandard,
     confirmed: registrations.filter(r => r.payment_status === 'pago_confirmado').length,
     pending: registrations.filter(r => ['comprovante_enviado', 'em_analise'].includes(r.payment_status)).length,
     awaiting: registrations.filter(r => r.payment_status === 'aguardando_comprovante').length,
@@ -261,6 +279,11 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
           />
         </div>
         <div className="grid grid-cols-2 lg:flex gap-3">
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
+            <option value="all">Todas Modalidades</option>
+            <option value="participante">Participantes ({stats.totalStandard})</option>
+            <option value="colaborador">Colaboradores ({stats.totalCollaborators})</option>
+          </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-zinc-900 border border-white/5 text-zinc-300 text-sm font-bold rounded-xl px-4 py-3 outline-none">
             <option value="all">Todos Status</option>
             {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -333,7 +356,14 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                              {reg.registration_type === 'colaborador' && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md text-[9px] font-black uppercase tracking-wider">
+                                  Colaborador{reg.collaborator_role ? ` • ${reg.collaborator_role}` : ''}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5 truncate">{reg.pastor_name || 'Sem pastor'} · <span className="font-black text-zinc-700">{reg.registration_code}</span></p>
                           </div>
                         </div>
@@ -428,7 +458,14 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-black text-white text-sm uppercase tracking-tight truncate">{reg.full_name}</p>
+                        {reg.registration_type === 'colaborador' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-[8px] font-black uppercase tracking-wider">
+                            Colaborador{reg.collaborator_role ? ` • ${reg.collaborator_role}` : ''}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">{reg.registration_code} · {reg.pastor_name || 'Sem pastor'}</p>
                     </div>
                     <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${st.bg} ${st.color} ${st.border}`}>{st.label}</span>

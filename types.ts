@@ -334,6 +334,7 @@ export interface PaidEvent {
   end_date?: string;
   location?: string;
   price: number;
+  price_collaborator?: number;
   max_participants?: number;
   pix_key?: string;
   pix_receiver_name?: string;
@@ -365,6 +366,9 @@ export interface PaidEventRegistration {
   email?: string;
   age?: number;
   gender?: 'Masculino' | 'Feminino';
+  registration_type?: 'participante' | 'colaborador';
+  collaborator_role?: string;
+  amount_expected?: number;
   discipler_name?: string;
   phone?: string;
   pastor_name?: string;

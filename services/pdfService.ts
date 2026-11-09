@@ -209,11 +209,19 @@ export const pdfService = {
     }
 
     // Participant Name
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
     const nameLines = doc.splitTextToSize(reg.full_name, 50);
-    doc.text(nameLines, 27, 60, { align: 'center' });
+    doc.text(nameLines, 27, 59, { align: 'center' });
+
+    if (reg.registration_type === 'colaborador') {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(251, 191, 36); // amber-400
+      const colabText = `EQUIPE • ${(reg.collaborator_role || 'COLABORADOR').toUpperCase()}`;
+      doc.text(colabText, 27, 66, { align: 'center' });
+    }
 
     // Code/Info
     doc.setFontSize(7);
@@ -288,6 +296,39 @@ export const pdfService = {
     const totalPagos = registrations.filter(r => isPaid(r.payment_status)).length;
     const totalPendentes = registrations.filter(r => isPending(r.payment_status)).length;
     const totalRecusados = registrations.filter(r => r.payment_status === 'recusado' || r.payment_status === 'cancelado').length;
+
+    // Segmentação de Participantes vs Colaboradores
+    const colaboradores = registrations.filter(r => r.registration_type === 'colaborador');
+    const participantes = registrations.filter(r => (r.registration_type || 'participante') !== 'colaborador');
+    const totalColaboradores = colaboradores.length;
+    const totalParticipantes = participantes.length;
+
+    // Precificação Dedicada
+    const pricePart = event.price || 0;
+    const priceColab = (event.price_collaborator !== undefined && event.price_collaborator !== null) ? Number(event.price_collaborator) : 0;
+    const hasColabPrice = priceColab > 0;
+
+    const getRegPrice = (r: PaidEventRegistration) => {
+      if (r.amount_expected !== undefined && r.amount_expected !== null) {
+        return Number(r.amount_expected);
+      }
+      return r.registration_type === 'colaborador' && hasColabPrice ? priceColab : pricePart;
+    };
+
+    const pagosPart = participantes.filter(r => isPaid(r.payment_status));
+    const pagosColab = colaboradores.filter(r => isPaid(r.payment_status));
+    const pendPart = participantes.filter(r => isPending(r.payment_status));
+    const pendColab = colaboradores.filter(r => isPending(r.payment_status));
+
+    const totalArrecadadoPart = pagosPart.reduce((acc, r) => acc + getRegPrice(r), 0);
+    const totalArrecadadoColab = pagosColab.reduce((acc, r) => acc + getRegPrice(r), 0);
+    const totalArrecadado = totalArrecadadoPart + totalArrecadadoColab;
+
+    const totalPendentePart = pendPart.reduce((acc, r) => acc + getRegPrice(r), 0);
+    const totalPendenteColab = pendColab.reduce((acc, r) => acc + getRegPrice(r), 0);
+    const totalPendente = totalPendentePart + totalPendenteColab;
+
+    const previsaoTotal = totalArrecadado + totalPendente;
 
     const menList = registrations.filter(r => isMale(r.gender));
     const womenList = registrations.filter(r => isFemale(r.gender));
@@ -399,7 +440,11 @@ export const pdfService = {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('100% da base cadastrada', leftMargin + 19, kpiY1 + 12);
+    if (totalColaboradores > 0) {
+      doc.text(`${totalParticipantes} Part.  •  ${totalColaboradores} Colaboradores`, leftMargin + 19, kpiY1 + 12);
+    } else {
+      doc.text('100% da base cadastrada', leftMargin + 19, kpiY1 + 12);
+    }
 
     // Card Pagos / Confirmados
     const cardX2 = leftMargin + cardW1 + cardGap1;
@@ -733,42 +778,78 @@ export const pdfService = {
     doc.setTextColor(255, 255, 255);
     doc.text('CONTROLE FINANCEIRO & VAGAS', finX + 4, logFinY + 4.5);
 
-    let finItemY = logFinY + 11;
-    const price = event.price || 0;
+    let finItemY = logFinY + 10.5;
     const formatBRL = (val: number) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(51, 65, 85);
 
-    if (price > 0) {
-      doc.text(`• Valor Unitário:`, finX + 5, finItemY);
-      doc.setFont('helvetica', 'bold');
-      doc.text(formatBRL(price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 4.5;
+    if (pricePart > 0 || hasColabPrice) {
+      if (hasColabPrice) {
+        doc.text(`• Valor Partic. / Colaborador:`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${formatBRL(pricePart)} / ${formatBRL(priceColab)}`, finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.2;
 
-      doc.setFont('helvetica', 'normal');
-      doc.text(`• Confirmado (${totalPagos} pagos):`, finX + 5, finItemY);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(22, 163, 74);
-      doc.text(formatBRL(totalPagos * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`• Arrecadação Confirmada:`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(22, 163, 74);
+        doc.text(formatBRL(totalArrecadado), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 3.7;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(51, 65, 85);
-      doc.text(`• A Confirmar (${totalPendentes} pend.):`, finX + 5, finItemY);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(217, 119, 6);
-      doc.text(formatBRL(totalPendentes * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`  (Part: ${formatBRL(totalArrecadadoPart)} | Colab: ${formatBRL(totalArrecadadoColab)})`, finX + 5, finItemY);
+        finItemY += 4.2;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(51, 65, 85);
-      doc.text(`• Previsão Total:`, finX + 5, finItemY);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 23, 42);
-      doc.text(formatBRL(totalInscritos * price), finX + boxLogW - 5, finItemY, { align: 'right' });
-      finItemY += 5.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(51, 65, 85);
+        doc.text(`• A Confirmar (${totalPendentes} pend.):`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(217, 119, 6);
+        doc.text(formatBRL(totalPendente), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.2;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        doc.text(`• Previsão Total do Evento:`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(formatBRL(previsaoTotal), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.8;
+      } else {
+        doc.text(`• Valor Unitário:`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatBRL(pricePart), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(`• Confirmado (${totalPagos} pagos):`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(22, 163, 74);
+        doc.text(formatBRL(totalArrecadado), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        doc.text(`• A Confirmar (${totalPendentes} pend.):`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(217, 119, 6);
+        doc.text(formatBRL(totalPendente), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 4.5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        doc.text(`• Previsão Total do Evento:`, finX + 5, finItemY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(formatBRL(previsaoTotal), finX + boxLogW - 5, finItemY, { align: 'right' });
+        finItemY += 5.2;
+      }
     } else {
       doc.text(`• Inscrição: Gratuita / Sem Cobrança Direta`, finX + 5, finItemY);
       finItemY += 5.5;
@@ -820,13 +901,11 @@ export const pdfService = {
     };
 
     addGuideLine('• Listagem Nominal Segmentada:', 'A partir da Página 2, este relatório apresenta as listas completas separadas por gênero: Homens e Mulheres.');
-    addGuideLine('• Credenciamento e Presença:', 'Utilize as listas para registrar a presença física, validação dos comprovantes e entrega das camisetas correspondentes.');
-    addGuideLine('• Transporte e Embarque:', 'Os inscritos no transporte coletivo devem apresentar-se no ponto de concentração no horário estabelecido com documento com foto.');
-    addGuideLine('• Liderança e Apoio:', 'Os contatos telefônicos de discipuladores e pastores encontram-se descritos para pronto acionamento durante as atividades.');
-    addGuideLine('• Organização dos Kits:', 'A relação exata de tamanhos das camisetas acima deve ser utilizada como referência oficial para conferência dos lotes.');
-    addGuideLine('• Transporte e Embarque:', 'Os inscritos no transporte coletivo devem apresentar-se no ponto de concentração no horário estabelecido com documento com foto.');
-    addGuideLine('• Liderança e Apoio:', 'Os contatos telefônicos de discipuladores e pastores encontram-se descritos para pronto acionamento durante as atividades.');
-    addGuideLine('• Organização dos Kits:', 'A relação exata de tamanhos das camisetas acima deve ser utilizada como referência oficial para conferência dos lotes.');
+    addGuideLine('• Equipe de Colaboradores:', 'Colaboradores possuem valor dedicado e funções de apoio (Cozinha, Intercessão, etc.) identificadas.');
+    addGuideLine('• Credenciamento e Presença:', 'Utilize as listas para registrar a presença física, validação dos comprovantes e entrega das camisetas.');
+    addGuideLine('• Transporte e Embarque:', 'Inscritos no transporte coletivo devem apresentar-se no local no horário indicado munidos de documento com foto.');
+    addGuideLine('• Liderança e Apoio:', 'Contatos telefônicos de discipuladores e pastores encontram-se descritos para pronto acionamento.');
+    addGuideLine('• Produção das Camisetas:', 'A relação exata de tamanhos das peças acima deve ser utilizada para conferência e distribuição dos kits.');
 
     // =========================================================================
     // PÁGINA 2 EM DIANTE: LISTA DE HOMENS E LISTA DE MULHERES
@@ -990,11 +1069,21 @@ export const pdfService = {
         doc.setTextColor(51, 65, 85);
         doc.text(truncate(reg.registration_code, 15), colX.code + 2, rowY + 4.5);
 
-        // 3. Nome
+        // 3. Nome e Identificação de Equipe
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
         doc.setTextColor(15, 23, 42);
-        doc.text(truncate(reg.full_name, 28), colX.name + 2, rowY + 4.5);
+        const isColab = reg.registration_type === 'colaborador';
+        if (isColab) {
+          doc.text(truncate(reg.full_name, 22), colX.name + 2, rowY + 3.2);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5);
+          doc.setTextColor(180, 83, 9); // amber-700
+          const roleLabel = `EQUIPE: ${(reg.collaborator_role || 'COLABORADOR').toUpperCase()}`;
+          doc.text(truncate(roleLabel, 26), colX.name + 2, rowY + 5.8);
+        } else {
+          doc.text(truncate(reg.full_name, 28), colX.name + 2, rowY + 4.5);
+        }
 
         // 4. Contato / WhatsApp
         doc.setFont('helvetica', 'normal');
@@ -1073,6 +1162,199 @@ export const pdfService = {
       doc.text(`Confirmados (Pagos): ${secPagos}   |   Pendentes: ${secPendentes}`, leftMargin + contentW - 6, rowY + 5.2, { align: 'right' });
     };
 
+    // Helper para renderizar a seção exclusiva de colaboradores/equipe de trabalho
+    const renderCollaboratorSection = () => {
+      if (colaboradores.length === 0) return;
+      doc.addPage();
+
+      const sortedColabs = [...colaboradores].sort((a, b) => a.full_name.localeCompare(b.full_name, 'pt-BR'));
+
+      // Top Banner Âmbar/Dourado Escuro
+      const bannerH = 15;
+      doc.setFillColor(120, 53, 15); // amber-900
+      doc.roundedRect(leftMargin, 10, contentW, bannerH, 2, 2, 'F');
+
+      // Faixa de destaque dourada
+      doc.setFillColor(245, 158, 11); // amber-500
+      doc.roundedRect(leftMargin, 10, contentW, 2, 1, 1, 'F');
+
+      // Título
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text('EQUIPE DE TRABALHO & COLABORADORES', leftMargin + 6, 17.5);
+
+      // Subtítulo
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(254, 243, 199); // amber-100
+      doc.text(`${event.title.toUpperCase()}  •  TOTAL: ${sortedColabs.length} COLABORADORES ESCALADOS`, leftMargin + 6, 22);
+
+      // Badge à direita
+      const badgeW = 32;
+      const badgeH = 5.5;
+      const badgeX = leftMargin + contentW - badgeW - 5;
+      const badgeY = 14.5;
+      doc.setFillColor(217, 119, 6);
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.setTextColor(255, 255, 255);
+      doc.text('EQUIPE DE APOIO', badgeX + (badgeW / 2), badgeY + 3.8, { align: 'center' });
+
+      // Colunas da Tabela de Colaboradores:
+      const cCol = {
+        num: leftMargin, numW: 7,
+        code: leftMargin + 7, codeW: 21,
+        name: leftMargin + 7 + 21, nameW: 45,
+        role: leftMargin + 7 + 21 + 45, roleW: 32,
+        phone: leftMargin + 7 + 21 + 45 + 32, phoneW: 25,
+        shirt: leftMargin + 7 + 21 + 45 + 32 + 25, shirtW: 10,
+        transp: leftMargin + 7 + 21 + 45 + 32 + 25 + 10, transpW: 14,
+        val: leftMargin + 7 + 21 + 45 + 32 + 25 + 10 + 14, valW: 14,
+        status: leftMargin + 7 + 21 + 45 + 32 + 25 + 10 + 14 + 14, statusW: 14,
+      };
+
+      const drawColabHeaderRow = (y: number) => {
+        const h = 6.5;
+        doc.setFillColor(120, 53, 15); // amber-900
+        doc.roundedRect(leftMargin, y, contentW, h, 1, 1, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.8);
+        doc.setTextColor(255, 255, 255);
+
+        doc.text('#', cCol.num + (cCol.numW / 2), y + 4.2, { align: 'center' });
+        doc.text('CÓDIGO', cCol.code + 2, y + 4.2);
+        doc.text('COLABORADOR', cCol.name + 2, y + 4.2);
+        doc.text('FUNÇÃO / SETOR', cCol.role + 2, y + 4.2);
+        doc.text('CONTATO', cCol.phone + 2, y + 4.2);
+        doc.text('BLUSA', cCol.shirt + (cCol.shirtW / 2), y + 4.2, { align: 'center' });
+        doc.text('TRANSP.', cCol.transp + (cCol.transpW / 2), y + 4.2, { align: 'center' });
+        doc.text('VALOR', cCol.val + (cCol.valW / 2), y + 4.2, { align: 'center' });
+        doc.text('STATUS', cCol.status + (cCol.statusW / 2), y + 4.2, { align: 'center' });
+      };
+
+      let tableY = 28;
+      drawColabHeaderRow(tableY);
+      let rowY = tableY + 6.5;
+      const rowHeight = 6.8;
+
+      sortedColabs.forEach((reg, idx) => {
+        if (rowY + rowHeight > 275) {
+          doc.addPage();
+          doc.setFillColor(120, 53, 15);
+          doc.roundedRect(leftMargin, 10, contentW, 9, 1.5, 1.5, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(255, 255, 255);
+          doc.text('EQUIPE DE TRABALHO & COLABORADORES — (Continuação)', leftMargin + 6, 16);
+
+          tableY = 21;
+          drawColabHeaderRow(tableY);
+          rowY = tableY + 6.5;
+        }
+
+        if (idx % 2 === 1) {
+          doc.setFillColor(254, 252, 232); // amber-50 alternado
+          doc.rect(leftMargin, rowY, contentW, rowHeight, 'F');
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(String(idx + 1), cCol.num + (cCol.numW / 2), rowY + 4.5, { align: 'center' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(51, 65, 85);
+        doc.text(truncate(reg.registration_code, 14), cCol.code + 2, rowY + 4.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(15, 23, 42);
+        doc.text(truncate(reg.full_name, 26), cCol.name + 2, rowY + 4.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(180, 83, 9);
+        doc.text(truncate(reg.collaborator_role || 'Apoio Geral', 20), cCol.role + 2, rowY + 4.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(truncate(reg.phone || '-', 15), cCol.phone + 2, rowY + 4.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(30, 41, 59);
+        doc.text(reg.shirt_size || '-', cCol.shirt + (cCol.shirtW / 2), rowY + 4.5, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(truncate(reg.transport_type || '-', 8), cCol.transp + (cCol.transpW / 2), rowY + 4.5, { align: 'center' });
+
+        // Valor
+        const regVal = getRegPrice(reg);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6);
+        doc.setTextColor(51, 65, 85);
+        doc.text(regVal > 0 ? `R$ ${Math.round(regVal)}` : 'Grátis', cCol.val + (cCol.valW / 2), rowY + 4.5, { align: 'center' });
+
+        // Status Pill
+        const pillW = 12;
+        const pillH = 4.2;
+        const pillX = cCol.status + (cCol.statusW - pillW) / 2;
+        const pillY = rowY + 1.3;
+
+        if (isPaid(reg.payment_status)) {
+          doc.setFillColor(220, 252, 231);
+          doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5.5);
+          doc.setTextColor(21, 128, 61);
+          doc.text('PAGO', pillX + (pillW / 2), pillY + 3, { align: 'center' });
+        } else if (reg.payment_status === 'recusado' || reg.payment_status === 'cancelado') {
+          doc.setFillColor(254, 226, 226);
+          doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5.5);
+          doc.setTextColor(185, 28, 28);
+          doc.text('RECUSADO', pillX + (pillW / 2), pillY + 3, { align: 'center' });
+        } else {
+          doc.setFillColor(254, 243, 199);
+          doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5.5);
+          doc.setTextColor(180, 83, 9);
+          doc.text('PEND.', pillX + (pillW / 2), pillY + 3, { align: 'center' });
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(leftMargin, rowY + rowHeight, leftMargin + contentW, rowY + rowHeight);
+
+        rowY += rowHeight;
+      });
+
+      // Subtotal da Equipe de Colaboradores
+      if (rowY + 8 > 275) {
+        doc.addPage();
+        rowY = 15;
+      }
+      doc.setFillColor(254, 243, 199);
+      doc.setDrawColor(251, 191, 36);
+      doc.roundedRect(leftMargin, rowY + 1, contentW, 6.5, 1, 1, 'FD');
+
+      const colabPagos = sortedColabs.filter(r => isPaid(r.payment_status)).length;
+      const colabPendentes = sortedColabs.filter(r => isPending(r.payment_status)).length;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(146, 64, 14);
+      doc.text(`Subtotal Equipe: ${sortedColabs.length} colaboradores`, leftMargin + 6, rowY + 5.2);
+      doc.text(`Confirmados: ${colabPagos} (${formatBRL(totalArrecadadoColab)})   |   Pendentes: ${colabPendentes} (${formatBRL(totalPendenteColab)})`, leftMargin + contentW - 6, rowY + 5.2, { align: 'right' });
+    };
+
     // Renderiza Lista de Homens (inicia na Página 2)
     doc.addPage();
     renderParticipantSection('LISTA DE PARTICIPANTES — HOMENS', 'MASCULINO', menList, false);
@@ -1085,6 +1367,11 @@ export const pdfService = {
     if (otherGenderList.length > 0) {
       doc.addPage();
       renderParticipantSection('PARTICIPANTES — OUTROS / NÃO INFORMADO', 'DIVERSOS', otherGenderList, false);
+    }
+
+    // Se houver colaboradores, renderiza seção dedicada da equipe de apoio
+    if (colaboradores.length > 0) {
+      renderCollaboratorSection();
     }
 
     // =========================================================================
@@ -1194,11 +1481,19 @@ export const pdfService = {
       }
 
       // Nome do Participante
-      doc.setFontSize(11);
+      doc.setFontSize(10.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
       const nameLines = doc.splitTextToSize(reg.full_name, badgeW - 4);
-      doc.text(nameLines, x + (badgeW / 2), y + 62, { align: 'center' });
+      doc.text(nameLines, x + (badgeW / 2), y + 60, { align: 'center' });
+
+      if (reg.registration_type === 'colaborador') {
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(251, 191, 36); // amber-400
+        const colabText = `EQUIPE • ${(reg.collaborator_role || 'COLABORADOR').toUpperCase()}`;
+        doc.text(colabText, x + (badgeW / 2), y + 67, { align: 'center' });
+      }
 
       // Código
       doc.setFontSize(7);

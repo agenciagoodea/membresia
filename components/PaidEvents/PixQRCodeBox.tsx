@@ -7,11 +7,14 @@ interface PixQRCodeBoxProps {
   event: PaidEvent;
   qrCodeDataURL?: string;
   payload?: string;
+  customPrice?: number;
 }
 
-const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, payload }) => {
+const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, payload, customPrice }) => {
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+
+  const finalPrice = customPrice !== undefined ? customPrice : event.price;
 
   // Calcula o payload Pix Copia e Cola completo caso não tenha sido repassado via prop
   const pixPayload = payload || event.pix_qrcode_payload || (
@@ -20,7 +23,7 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
           event.pix_key,
           event.pix_receiver_name || 'RECEBEDOR',
           event.pix_receiver_city || 'SAO PAULO',
-          event.price
+          finalPrice
         )
       : ''
   );
@@ -61,7 +64,7 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
           <DollarSign size={16} className="text-emerald-400 shrink-0" />
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Valor do Pagamento</span>
         </div>
-        <span className="text-lg sm:text-xl font-black text-emerald-400">{formatCurrency(event.price)}</span>
+        <span className="text-lg sm:text-xl font-black text-emerald-400">{formatCurrency(finalPrice)}</span>
       </div>
 
       {/* QR Code */}
@@ -82,7 +85,7 @@ const PixQRCodeBox: React.FC<PixQRCodeBoxProps> = ({ event, qrCodeDataURL, paylo
               Pix Copia e Cola
             </p>
             <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
-              Valor {formatCurrency(event.price)} incluso
+              Valor {formatCurrency(finalPrice)} incluso
             </span>
           </div>
 
