@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Calendar, MapPin, DollarSign, Users, Ticket, Loader2,
   ArrowRight, Share2, MessageCircle, Copy, Check, Clock,
-  QrCode, Info
+  QrCode, Info, CheckCircle2
 } from 'lucide-react';
 import { paidEventService } from '../../services/paidEventService';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
@@ -296,16 +296,86 @@ const PaidEventPublicPage: React.FC = () => {
           </div>
         )}
 
-        {/* Instruções de pagamento */}
-        {event.payment_instructions && (
-          <div className="bg-violet-500/5 border border-violet-500/20 rounded-2xl p-6 space-y-3">
-            <div className="flex items-center gap-2">
-              <QrCode size={14} className="text-violet-400" />
-              <h2 className="text-xs font-black text-violet-300 uppercase tracking-widest">Instruções de Pagamento</h2>
+        {/* Instruções de pagamento e Modalidades (Encontrista vs Colaborador) */}
+        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-violet-500/20 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center text-violet-400">
+                <QrCode size={20} />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-white uppercase tracking-wider">Instruções de Pagamento</h2>
+                <p className="text-[11px] text-zinc-400 font-medium">Escolha de modalidade e dados para transferência Pix</p>
+              </div>
             </div>
-            <p className="text-zinc-300 font-medium leading-relaxed text-sm">{event.payment_instructions}</p>
+            <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-black uppercase tracking-widest rounded-full">
+              Pix Oficial
+            </span>
           </div>
-        )}
+
+          {/* Destaque das modalidades Encontrista vs Colaborador */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+              Modalidades de Inscrição disponíveis no formulário:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Card Encontrista */}
+              <div className="bg-zinc-900/80 border border-violet-500/30 rounded-2xl p-4 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-black uppercase tracking-wider border border-violet-500/20">
+                    Geral
+                  </span>
+                  <p className="text-base font-black text-emerald-400">
+                    {formatCurrency(event.price)}
+                  </p>
+                </div>
+                <h3 className="text-sm font-black text-white uppercase">Encontrista / Participante</h3>
+                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                  Para quem vai viver a experiência completa do encontro como participante.
+                </p>
+              </div>
+
+              {/* Card Colaborador */}
+              <div className="bg-zinc-900/80 border border-amber-500/30 rounded-2xl p-4 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[9px] font-black uppercase tracking-wider border border-amber-500/20">
+                    Equipe de Apoio
+                  </span>
+                  <p className="text-base font-black text-emerald-400">
+                    {formatCurrency(event.price_collaborator && event.price_collaborator > 0 ? event.price_collaborator : event.price)}
+                  </p>
+                </div>
+                <h3 className="text-sm font-black text-white uppercase">Colaborador / Voluntário</h3>
+                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                  Para quem vai servir nas equipes de trabalho (Cozinha, Intercessão, Louvor, etc.).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Destaque: O pagamento é o mesmo para os dois */}
+          <div className="bg-violet-950/40 border border-violet-500/30 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400 shrink-0 mt-0.5">
+              <CheckCircle2 size={18} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-black text-violet-200 uppercase tracking-wide">
+                Atenção: O Pagamento Pix é o mesmo para os dois!
+              </h4>
+              <p className="text-xs text-zinc-300 font-medium leading-relaxed">
+                Ao clicar em <strong>"Quero me Inscrever"</strong>, você escolherá no formulário se participará como <strong>Encontrista</strong> ou <strong>Colaborador</strong>. A chave Pix e a conta bancária da igreja <strong>são as mesmas para ambas as opções</strong>. O sistema gera automaticamente o valor correto da sua modalidade para você pagar e anexar o comprovante.
+              </p>
+            </div>
+          </div>
+
+          {/* Instruções personalizadas do evento */}
+          {event.payment_instructions && (
+            <div className="bg-zinc-950/60 border border-white/5 rounded-2xl p-4 space-y-1.5">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Orientações do Evento:</p>
+              <p className="text-zinc-300 font-medium leading-relaxed text-xs sm:text-sm">{event.payment_instructions}</p>
+            </div>
+          )}
+        </div>
 
         {/* Data completa */}
         <div className="flex items-start gap-4 p-5 bg-zinc-900 border border-white/5 rounded-2xl">

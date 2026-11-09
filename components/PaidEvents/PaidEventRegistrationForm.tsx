@@ -620,67 +620,85 @@ const PaidEventRegistrationForm: React.FC = () => {
 
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
-                {/* Modalidade da Inscrição (Participante vs Colaborador) */}
-                {event.price_collaborator && event.price_collaborator > 0 ? (
-                  <div className="bg-zinc-900/60 border border-white/5 rounded-3xl p-5 space-y-4">
+                {/* Modalidade da Inscrição (Encontrista vs Colaborador) */}
+                <div className="bg-zinc-900/60 border border-white/5 rounded-3xl p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <label className={labelClass}>Tipo de Inscrição *</label>
                       <p className="text-[11px] text-zinc-500 font-medium mt-0.5">Selecione se você participará como encontrista ou servirá na equipe de trabalho do evento.</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm({ ...form, registration_type: 'participante', collaborator_role: '' });
-                          updatePixForPrice(event.price, event);
-                        }}
-                        className={`p-4 rounded-2xl border text-left transition-all ${
-                          form.registration_type !== 'colaborador'
-                            ? 'bg-violet-600/10 border-violet-500 text-white shadow-xl shadow-violet-500/10'
-                            : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
-                        }`}
-                      >
-                        <p className="text-[9px] font-black uppercase tracking-widest text-violet-400">Inscrição Geral</p>
-                        <p className="text-sm font-black text-white mt-1">Participante / Encontrista</p>
-                        <p className="text-xs font-black text-emerald-400 mt-1">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm({ ...form, registration_type: 'colaborador' });
-                          if (event.price_collaborator) updatePixForPrice(event.price_collaborator, event);
-                        }}
-                        className={`p-4 rounded-2xl border text-left transition-all ${
-                          form.registration_type === 'colaborador'
-                            ? 'bg-amber-500/10 border-amber-500 text-white shadow-xl shadow-amber-500/10'
-                            : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
-                        }`}
-                      >
-                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-400">Equipe de Apoio</p>
-                        <p className="text-sm font-black text-white mt-1">Colaborador / Voluntário</p>
-                        <p className="text-xs font-black text-emerald-400 mt-1">R$ {event.price_collaborator.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      </button>
-                    </div>
-
-                    {form.registration_type === 'colaborador' && (
-                      <div className="pt-2 animate-in fade-in duration-300">
-                        <label className={labelClass}>Área de Atuação / Equipe *</label>
-                        <select
-                          required
-                          value={form.collaborator_role}
-                          onChange={e => setForm({ ...form, collaborator_role: e.target.value })}
-                          className={inputClass}
-                        >
-                          <option value="">Selecione sua área de trabalho</option>
-                          {COLLABORATOR_ROLES.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                    <span className="self-start sm:self-auto px-3 py-1 rounded-full bg-violet-500/10 text-violet-300 text-[10px] font-black uppercase tracking-wider border border-violet-500/20">
+                      Mesmo Pix para os dois
+                    </span>
                   </div>
-                ) : null}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, registration_type: 'participante', collaborator_role: '' });
+                        updatePixForPrice(event.price, event);
+                      }}
+                      className={`p-4 rounded-2xl border text-left transition-all ${
+                        form.registration_type !== 'colaborador'
+                          ? 'bg-violet-600/10 border-violet-500 text-white shadow-xl shadow-violet-500/10'
+                          : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-violet-400">Modalidade Geral</p>
+                        <p className="text-xs font-black text-emerald-400">R$ {event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <p className="text-sm font-black text-white mt-1">Encontrista / Participante</p>
+                      <p className="text-[11px] text-zinc-500 mt-1">Viver a experiência completa do encontro.</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, registration_type: 'colaborador' });
+                        const collPrice = (event.price_collaborator && event.price_collaborator > 0) ? event.price_collaborator : event.price;
+                        updatePixForPrice(collPrice, event);
+                      }}
+                      className={`p-4 rounded-2xl border text-left transition-all ${
+                        form.registration_type === 'colaborador'
+                          ? 'bg-amber-500/10 border-amber-500 text-white shadow-xl shadow-amber-500/10'
+                          : 'bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-400">Equipe de Apoio</p>
+                        <p className="text-xs font-black text-emerald-400">
+                          R$ {((event.price_collaborator && event.price_collaborator > 0) ? event.price_collaborator : event.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <p className="text-sm font-black text-white mt-1">Colaborador / Voluntário</p>
+                      <p className="text-[11px] text-zinc-500 mt-1">Servir nas equipes de apoio e trabalho.</p>
+                    </button>
+                  </div>
+
+                  <div className="p-3 bg-zinc-950/80 border border-white/5 rounded-2xl flex items-center gap-2.5 text-[11px] text-zinc-400">
+                    <span className="text-violet-400 font-black">💡 Lembrete:</span>
+                    <span>A chave Pix e a conta de pagamento são exatamente as mesmas tanto para Encontristas quanto para Colaboradores.</span>
+                  </div>
+
+                  {form.registration_type === 'colaborador' && (
+                    <div className="pt-2 animate-in fade-in duration-300">
+                      <label className={labelClass}>Área de Atuação / Equipe *</label>
+                      <select
+                        required
+                        value={form.collaborator_role}
+                        onChange={e => setForm({ ...form, collaborator_role: e.target.value })}
+                        className={inputClass}
+                      >
+                        <option value="">Selecione sua área de trabalho</option>
+                        {COLLABORATOR_ROLES.map(role => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
 
                 <div>
                   <label className={labelClass}>Nome Completo *</label>
@@ -806,14 +824,18 @@ const PaidEventRegistrationForm: React.FC = () => {
               </div>
             )}
 
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-8 text-center">
-              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">
-                {form.registration_type === 'colaborador' ? 'Valor da Inscrição (Colaborador / Equipe)' : 'Valor da Inscrição'}
-              </p>
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 sm:p-8 text-center space-y-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                <span>Inscrição como {form.registration_type === 'colaborador' ? 'Colaborador (Equipe)' : 'Encontrista / Participante'}</span>
+              </div>
               <p className="text-4xl font-black text-white">R$ {getCurrentPrice().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               {form.registration_type === 'colaborador' && form.collaborator_role && (
-                <p className="text-xs font-bold text-amber-400 mt-2 uppercase tracking-wide">Área: {form.collaborator_role}</p>
+                <p className="text-xs font-bold text-amber-400 uppercase tracking-wide">Área de Atuação: {form.collaborator_role}</p>
               )}
+              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-zinc-400 font-medium">
+                <span className="text-violet-400 font-black">💡 Chave Pix Oficial:</span>
+                <span>A conta e os dados Pix de pagamento são os mesmos para Encontristas e Colaboradores.</span>
+              </div>
             </div>
 
             {event.pix_key && (
