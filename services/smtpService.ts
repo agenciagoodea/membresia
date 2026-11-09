@@ -72,7 +72,24 @@ export const smtpService = {
     });
 
     if (error || data?.error) {
-      throw new Error(data?.error || error?.message || 'Falha ao conectar no servidor SMTP');
+      let errorMessage = data?.error;
+      if (!errorMessage && error) {
+        try {
+          const errorContext = await (error as any)?.context?.json();
+          errorMessage = errorContext?.error || errorContext?.message;
+        } catch (_) {
+          try {
+            const rawText = await (error as any)?.context?.text();
+            if (rawText) {
+              const parsed = JSON.parse(rawText);
+              errorMessage = parsed?.error || parsed?.message || rawText;
+            }
+          } catch (__) {
+            errorMessage = error.message;
+          }
+        }
+      }
+      throw new Error(errorMessage || 'Falha ao conectar no servidor SMTP');
     }
 
     // Update last test timestamp
@@ -87,10 +104,25 @@ export const smtpService = {
     });
 
     if (error || data?.error) {
-      console.error('Falha ao enviar e-mail:', error || data?.error);
-      // We don't necessarily throw here if it's an automatic email so we don't block the UI,
-      // but the function caller can decide.
-      throw new Error(data?.error || error?.message);
+      let errorMessage = data?.error;
+      if (!errorMessage && error) {
+        try {
+          const errorContext = await (error as any)?.context?.json();
+          errorMessage = errorContext?.error || errorContext?.message;
+        } catch (_) {
+          try {
+            const rawText = await (error as any)?.context?.text();
+            if (rawText) {
+              const parsed = JSON.parse(rawText);
+              errorMessage = parsed?.error || parsed?.message || rawText;
+            }
+          } catch (__) {
+            errorMessage = error.message;
+          }
+        }
+      }
+      console.error('Falha ao enviar e-mail:', errorMessage || error);
+      throw new Error(errorMessage || error?.message || 'Falha ao enviar e-mail');
     }
   }
 };

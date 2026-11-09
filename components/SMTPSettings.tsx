@@ -90,20 +90,26 @@ const SMTPSettings: React.FC<Props> = ({ churchId: propChurchId, churchName: pro
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!effectiveChurchId) {
       setMessage({ type: 'error', text: 'Identificador da igreja não encontrado.' });
-      return;
+      return false;
     }
     
     try {
       setSaving(true);
       setMessage(null);
       await smtpService.saveSettings({ ...settings, church_id: effectiveChurchId });
+      const refreshed = await smtpService.getSettings(effectiveChurchId);
+      if (refreshed) {
+        setSettings(prev => ({ ...prev, ...refreshed, smtp_password: '' }));
+      }
       setMessage({ type: 'success', text: 'Configurações de SMTP salvas com sucesso!' });
+      return true;
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Erro ao salvar configurações de SMTP.' });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -114,13 +120,26 @@ const SMTPSettings: React.FC<Props> = ({ churchId: propChurchId, churchName: pro
       setMessage({ type: 'error', text: 'Informe um e-mail de destino para o teste.' });
       return;
     }
-    if (!effectiveChurchId) return;
+    if (!effectiveChurchId) {
+      setMessage({ type: 'error', text: 'Identificador da igreja não encontrado.' });
+      return;
+    }
 
     try {
       setTesting(true);
       setMessage(null);
+
+      // Salva automaticamente as configurações atuais no banco antes de disparar o teste
+      if (settings.smtp_host && settings.smtp_user) {
+        await smtpService.saveSettings({ ...settings, church_id: effectiveChurchId });
+        const refreshed = await smtpService.getSettings(effectiveChurchId);
+        if (refreshed) {
+          setSettings(prev => ({ ...prev, ...refreshed, smtp_password: '' }));
+        }
+      }
+
       await smtpService.testConnection(effectiveChurchId, testEmail);
-      setMessage({ type: 'success', text: `E-mail de teste enviado para ${testEmail}! Verifique sua caixa de entrada e spam.` });
+      setMessage({ type: 'success', text: `E-mail de teste enviado com sucesso para ${testEmail}! Verifique sua caixa de entrada e spam.` });
       setSettings(prev => ({ ...prev, last_test_at: new Date().toISOString() }));
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Falha ao enviar e-mail de teste. Verifique suas credenciais SMTP.' });
@@ -448,8 +467,9 @@ const SMTPSettings: React.FC<Props> = ({ churchId: propChurchId, churchName: pro
               <li>Crie ou selecione uma conta (ex: <code className="bg-zinc-800 px-2 py-0.5 rounded text-blue-300 font-mono">contato@seudominio.com</code>).</li>
               <li>Clique em <strong>Conectar Dispositivos</strong> ou veja os dados de configuração segura (SSL/TLS).</li>
               <li>O Servidor de Saída (Host) geralmente é <code className="bg-zinc-800 px-2 py-0.5 rounded text-blue-300 font-mono">mail.seudominio.com</code>.</li>
-              <li>A Porta de saída com SSL é <code className="bg-zinc-800 px-2 py-0.5 rounded text-blue-300 font-mono">465</code>.</li>
-              <li>O Usuário é o endereço de e-mail completo e a Senha é a mesma definida na criação da conta de e-mail.</li>
+              <li>A Porta de saída com SSL é <code className="bg-zinc-800 px-2 py-0.5 rounded text-blue-300 font-mono">465</code> (com SSL ativado) ou <code className="bg-zinc-800 px-2 py-0.5 rounded text-blue-300 font-mono">587</code> (com SSL desmarcado).</li>
+              <li>O Usuário é o endereço de e-mail completo e a Senha é a mesma definida na criação da conta de e-mail no cPanel.</li>
+              <li><strong>Dica:</strong> Se a porta 465 apresentar falha de certificado SSL no seu domínio, utilize a porta <strong>587</strong> e desmarque a opção "Usar Conexão Segura (SSL/TLS)".</li>
             </ol>
           </div>
         )}
