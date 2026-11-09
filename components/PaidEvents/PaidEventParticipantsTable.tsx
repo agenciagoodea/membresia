@@ -31,6 +31,7 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const [selectedReg, setSelectedReg] = useState<PaidEventRegistration | null>(null);
   const [editingReg, setEditingReg] = useState<PaidEventRegistration | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   const loadData = async () => {
     try {
@@ -101,6 +102,18 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
     window.open(`https://api.whatsapp.com/send?phone=${number}&text=${msg}`, '_blank');
   };
 
+  const handleDownloadReport = async () => {
+    try {
+      setReportLoading(true);
+      await pdfService.downloadEventReport(event, registrations);
+    } catch (error) {
+      console.error('Erro ao gerar relatório PDF:', error);
+      alert('Erro ao gerar o relatório em PDF.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const exportCSV = () => {
     const headers = ['Código', 'Nome', 'E-mail', 'Telefone', 'Pastor', 'Discipulador', 'Blusa', 'Transporte', 'Status', 'Data Inscrição'];
     const rows = filtered.map(r => [
@@ -159,8 +172,13 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
           </div>
         </div>
         <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
-          <button onClick={() => pdfService.downloadEventReport(event, registrations)} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20">
-            <FileText size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">Relatório</span>
+          <button
+            onClick={handleDownloadReport}
+            disabled={reportLoading}
+            className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-violet-600/10 text-violet-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-violet-600/20 transition-all border border-violet-500/20 disabled:opacity-50"
+          >
+            {reportLoading ? <Loader2 size={12} className="animate-spin sm:w-3.5 sm:h-3.5" /> : <FileText size={12} className="sm:w-3.5 sm:h-3.5" />}
+            <span className="truncate">{reportLoading ? 'Gerando...' : 'Relatório'}</span>
           </button>
           <button onClick={() => pdfService.generateBadgesBatchPDF(event, registrations)} className="flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-amber-600/10 text-amber-400 rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all border border-amber-500/20">
             <Printer size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="truncate">Crachás</span>
