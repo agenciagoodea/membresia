@@ -226,19 +226,20 @@ export const pdfService = {
       return trimmed.substring(0, maxLen - 1) + '…';
     };
 
-    // Classificação e Métricas
+    // Classificação e Métricas Robustas com Dados Reais
+    const isPaid = (status: string) => status === 'pago_confirmado' || status === 'pago' || status === 'confirmed';
+    const isPending = (status: string) =>
+      ['aguardando_comprovante', 'comprovante_enviado', 'em_analise', 'pending', 'aguardando'].includes(status) ||
+      (!isPaid(status) && status !== 'recusado' && status !== 'cancelado');
+
     const isMale = (gender?: string) => {
       const g = (gender || '').trim().toLowerCase();
-      return g === 'masculino' || g === 'm' || g === 'homem';
+      return g.startsWith('m') || g === 'homem';
     };
     const isFemale = (gender?: string) => {
       const g = (gender || '').trim().toLowerCase();
-      return g === 'feminino' || g === 'f' || g === 'mulher';
+      return g.startsWith('f') || g === 'mulher';
     };
-    const isPaid = (status: string) => status === 'pago_confirmado';
-    const isPending = (status: string) =>
-      ['aguardando_comprovante', 'comprovante_enviado', 'em_analise'].includes(status) ||
-      (!isPaid(status) && status !== 'recusado' && status !== 'cancelado');
 
     const totalInscritos = registrations.length;
     const totalPagos = registrations.filter(r => isPaid(r.payment_status)).length;

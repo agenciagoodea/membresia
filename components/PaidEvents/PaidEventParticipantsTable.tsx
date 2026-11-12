@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Download, FileText, CheckCircle2, XCircle, Eye, User, Shirt, Bus, Car, Loader2, Mail, MessageCircle, AlertTriangle, BarChart3, Trash2, Printer, Calendar, Edit2 } from 'lucide-react';
 import { paidEventRegistrationService } from '../../services/paidEventRegistrationService';
+import { paidEventService } from '../../services/paidEventService';
 import { pdfService } from '../../services/pdfService';
 import { PaidEvent, PaidEventRegistration, PaymentStatus } from '../../types';
 import PaidEventRegistrationDetailsModal from './PaidEventRegistrationDetailsModal';
@@ -109,10 +110,17 @@ const PaidEventParticipantsTable: React.FC<Props> = ({ event, user, onBack }) =>
   const handleDownloadReport = async () => {
     try {
       setReportLoading(true);
-      await pdfService.downloadEventReport(event, registrations);
+      // Sempre busca os dados reais mais atualizados diretamente do banco de dados antes de gerar o relatório
+      const [freshEvent, freshRegistrations] = await Promise.all([
+        paidEventService.getById(event.id),
+        paidEventRegistrationService.getByEvent(event.id)
+      ]);
+      const currentEvent = freshEvent || event;
+      setRegistrations(freshRegistrations);
+      await pdfService.downloadEventReport(currentEvent, freshRegistrations);
     } catch (error) {
       console.error('Erro ao gerar relatório PDF:', error);
-      alert('Erro ao gerar o relatório em PDF.');
+      alert('Erro ao gerar o relatório em PDF com dados atualizados.');
     } finally {
       setReportLoading(false);
     }

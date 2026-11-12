@@ -358,40 +358,46 @@ const PaidEventRegistrationForm: React.FC = () => {
 
   const handleNextStep2 = async () => {
     if (!validateStep2()) return;
+    if (!event) return;
     
-    if (form.email && event) {
+    try {
       setSubmitting(true);
-      try {
-        const { supabase } = await import('../../services/supabaseClient');
-        const { data } = await supabase
-          .from('paid_event_registrations')
-          .select('*')
-          .eq('event_id', event.id)
-          .eq('email', form.email)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-        
-        if (data) {
-          if (data.payment_status === 'pago_confirmado') {
-            alert('Encontramos sua inscrição e ela já está confirmada!');
-            setRegCode(data.registration_code);
-            setSuccess(true);
-            setSubmitting(false);
-            return;
-          }
-          setExistingRegistration(data);
-        } else {
-          setExistingRegistration(null);
+      // Checa duplicidade por Nome Completo ou E-mail usando RPC com security definer
+      const dup = await paidEventRegistrationService.checkDuplicate(
+        event.id,
+        form.full_name,
+        form.email,
+        form.phone
+      );
+
+      if (dup && dup.exists) {
+        setExistingRegistration(dup);
+
+        // Se já estiver com pagamento aprovado:
+        if (dup.payment_status === 'pago_confirmado' || dup.payment_status === 'pago') {
+          alert(`O(A) Encontrista ${dup.full_name} já está cadastrado(a) com sucesso e com pagamento CONFIRMADO!\n\nCódigo da Inscrição: ${dup.registration_code}`);
+          setRegCode(dup.registration_code || '');
+          setSuccess(true);
+          setSubmitting(false);
+          return;
         }
-      } catch (e) {
+
+        // Se já estiver cadastrado (aguardando pagamento ou análise):
+        alert(
+          `Atenção: O(A) Encontrista ${dup.full_name} já possui uma inscrição cadastrada com sucesso neste evento!\n\n` +
+          `Código da Inscrição: ${dup.registration_code}\n\n` +
+          `Não é necessário se cadastrar novamente. Você será direcionado para a etapa de pagamento caso deseje enviar ou atualizar o seu comprovante Pix.`
+        );
+      } else {
         setExistingRegistration(null);
-      } finally {
-        setSubmitting(false);
       }
-    } else {
+    } catch (e) {
+      console.warn('Erro ao checar duplicidade:', e);
       setExistingRegistration(null);
+    } finally {
+      setSubmitting(false);
     }
+
     if (event) {
       updatePixForPrice(getCurrentPrice(), event);
     }
@@ -410,21 +416,37 @@ const PaidEventRegistrationForm: React.FC = () => {
         navigate(`/evento/${event.slug}`);
         return;
       }
-      if (existingRegistration) {
+
+      // 1. Verificação dupla de duplicidade para impedir duplicar cadastro no banco
+      const dup = await paidEventRegistrationService.checkDuplicate(
+        event.id,
+        form.full_name,
+        form.email,
+        form.phone
+      );
+
+      const targetExisting = existingRegistration || (dup.exists ? dup : null);
+
+      if (targetExisting) {
         if (!proofFile) {
-          alert('Por favor, envie o comprovante de pagamento para atualizar sua inscrição.');
+          alert(
+            `O(A) Encontrista ${targetExisting.full_name} já está cadastrado(a) com sucesso!\n\n` +
+            `Código da Inscrição: ${targetExisting.registration_code}\n\n` +
+            `Para concluir ou atualizar sua inscrição existente, anexe o comprovante de pagamento Pix abaixo.`
+          );
           setSubmitting(false);
           return;
         }
+
         const payment_proof_url = await paidEventRegistrationService.uploadProof(proofFile, event.church_id);
         const { supabase } = await import('../../services/supabaseClient');
         await supabase.from('paid_event_registrations').update({
           payment_proof_url,
           payment_status: 'comprovante_enviado',
           updated_at: new Date().toISOString()
-        }).eq('id', existingRegistration.id);
+        }).eq('id', targetExisting.id);
         
-        setRegCode(existingRegistration.registration_code);
+        setRegCode(targetExisting.registration_code);
         setSuccess(true);
         return;
       }
@@ -810,17 +832,45 @@ const PaidEventRegistrationForm: React.FC = () => {
         {step === 2 && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             {existingRegistration && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-6">
-                <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm mb-4">Você já se cadastrou!</h3>
-                <p className="text-zinc-300 text-sm mb-4">
-                  Essas são as suas informações cadastradas. Se você já pagou, envie-nos o comprovante abaixo para que nossos administradores possam validar sua inscrição.
-                </p>
-                <div className="bg-zinc-950/50 rounded-2xl p-4 space-y-2">
-                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Nome:</span> <span className="text-white font-bold">{existingRegistration.full_name}</span></p>
-                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">E-mail:</span> <span className="text-white font-bold">{existingRegistration.email}</span></p>
-                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Telefone:</span> <span className="text-white font-bold">{existingRegistration.phone}</span></p>
-                  <p className="text-xs"><span className="text-zinc-500 font-bold uppercase tracking-widest">Status:</span> <span className="text-amber-400 font-bold uppercase tracking-widest">Aguardando Pagamento</span></p>
+              <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl animate-in fade-in">
+                <div className="flex items-center gap-3 text-amber-400">
+                  <CheckCircle2 size={24} className="shrink-0" />
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black uppercase tracking-wide">
+                      Encontrista Já Cadastrado com Sucesso!
+                    </h3>
+                    <p className="text-xs text-amber-300/90 font-medium">
+                      Identificamos que este(a) encontrista já possui inscrição no evento. Não é necessário cadastrar novamente.
+                    </p>
+                  </div>
                 </div>
+
+                <div className="bg-zinc-950/70 rounded-2xl p-4 sm:p-5 border border-white/5 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-white/5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Código da Inscrição</span>
+                    <span className="text-sm sm:text-base font-black text-amber-400 font-mono tracking-wider">{existingRegistration.registration_code}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-white/5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Nome do Encontrista</span>
+                    <span className="text-xs sm:text-sm font-bold text-white uppercase">{existingRegistration.full_name}</span>
+                  </div>
+                  {existingRegistration.email && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-white/5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">E-mail Cadastrado</span>
+                      <span className="text-xs font-bold text-zinc-300">{existingRegistration.email}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Status Atual</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                      {existingRegistration.payment_status === 'pago_confirmado' ? '● Pago & Confirmado' : existingRegistration.payment_status === 'comprovante_enviado' ? '● Comprovante Enviado (Em Análise)' : '○ Aguardando Comprovante / Pagamento'}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-zinc-300 font-medium leading-relaxed">
+                  Para validar sua vaga, basta realizar o pagamento Pix e anexar o comprovante abaixo para atualizar sua inscrição existente.
+                </p>
               </div>
             )}
 

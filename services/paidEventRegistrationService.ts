@@ -20,6 +20,35 @@ export const paidEventRegistrationService = {
     return data || [];
   },
 
+  async checkDuplicate(eventId: string, fullName: string, email?: string, phone?: string): Promise<{
+    exists: boolean;
+    id?: string;
+    registration_code?: string;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    payment_status?: string;
+    registration_type?: string;
+    collaborator_role?: string;
+  }> {
+    try {
+      const { data, error } = await supabase.rpc('check_paid_event_registration_duplicate', {
+        p_event_id: eventId,
+        p_full_name: fullName,
+        p_email: email || null,
+        p_phone: phone || null
+      });
+      if (error) {
+        console.warn('Erro ao chamar RPC check_paid_event_registration_duplicate:', error);
+        return { exists: false };
+      }
+      return data || { exists: false };
+    } catch (e) {
+      console.warn('Falha na verificação de duplicidade:', e);
+      return { exists: false };
+    }
+  },
+
   async getByMember(memberId: string): Promise<PaidEventRegistration[]> {
     const { data, error } = await supabase
       .from('paid_event_registrations')
